@@ -110,6 +110,8 @@ export interface StoredTake {
   created: string
   /** Mic profile at record time (absent on takes recorded before v0.2). */
   mic?: MicProfile
+  /** Settings in effect when a processed take was recorded (closed loop, v1.1). */
+  applied?: AppliedSettings
 }
 
 export interface Take extends StoredTake {
@@ -202,3 +204,33 @@ export interface VoiceGoal {
   perceived: PerceivedIssue[]
 }
 export const DEFAULT_GOAL: VoiceGoal = { style: 'natural', perceived: [] }
+
+// ---- Closed-loop refinement (v1.1, SPEC "Refinement loop") ----
+/** What the person applied before recording a processed take (captured when they apply/download settings or confirm the guide). */
+export interface AppliedSettings {
+  id: string
+  date: string
+  /** The exact settings that were applied (exported English form). */
+  settings: import('./settings/suggest').SuggestionJson
+  /** Noise-removal route actually used. */
+  noiseRemoval: 'reafir' | 'ai-elgato' | 'ai-nvidia' | 'none'
+  /** Distance the settings were calculated for (base take distance). */
+  dist: string
+  /** 1 = first suggestion, 2+ = refinements. */
+  attempt: number
+}
+
+export type RefineReason = 'chopped' | 'quieter' | 'thin' | 'harsh' | 'stillNoisy' | 'wrongDistance' | 'gateTooHigh'
+
+export interface Refinement {
+  /** Next settings to apply. */
+  settings: import('./settings/suggest').SuggestionJson
+  /** Plain explanations, one per change ("Your voice dropped 12 dB, so the compressor goes up 12 dB"). */
+  changes: { reason: RefineReason; msg: import('./plain/types').Msg }[]
+  /** Suggested noise-removal route for the next attempt. */
+  noiseRemoval: AppliedSettings['noiseRemoval']
+  /** Distance to record the next processed take at. */
+  dist: string
+  /** True after 3 attempts without reaching the improvement threshold: change approach instead of tweaking. */
+  changeApproach: boolean
+}

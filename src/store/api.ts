@@ -1,6 +1,6 @@
 // Store contract. Owned by the orchestrator: the store implementation (benchStore.ts, selectors.ts)
 // and the UI components are written against this file in parallel. Change only with all parties.
-import type { ChartView, DeviceChoice, DeviceKind, MicProfile, Screen, StepRef, Suggestion, Take, VoiceGoal } from '../types'
+import type { ChartView, DeviceChoice, DeviceKind, MicProfile, Screen, StepRef, Suggestion, Take, VoiceGoal, AppliedSettings } from '../types'
 import type { InputDevice } from '../audio/AudioEngine'
 import type { MainsSetting } from '../audio/mains'
 import type { Msg } from '../plain/types'
@@ -42,6 +42,8 @@ export interface BenchState {
   mains: MainsSetting
   /** Voice goal (style + perceived issues); every analysis-derived view targets it. */
   goal: VoiceGoal
+  /** Settings currently applied (persisted in localStorage 'vcb-applied'); copied onto each new processed take. */
+  applied: AppliedSettings | null
   status: StatusMessage | null
 }
 
@@ -77,6 +79,8 @@ export interface BenchActions {
   setFxDist(dist: string): void
   setMicProfile(patch: Partial<MicProfile>): void
   setGoal(patch: Partial<VoiceGoal>): void
+  /** Record that these settings are now applied (Wave Link download/save, or the person confirming the guide). */
+  markApplied(applied: Omit<AppliedSettings, 'id' | 'date' | 'attempt'> & { attempt?: number }): void
   /** Save the mains setting and re-analyze every take with it. */
   setMains(mains: MainsSetting): void
   setStatus(msg: Msg, error?: boolean): void

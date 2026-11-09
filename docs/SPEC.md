@@ -191,3 +191,22 @@ Wave Link keeps all plugin states in `%LOCALAPPDATA%\Packages\Elgato.WaveLink_g5
 4. **Download** the adjusted `Settings.json` (only ParameterState/BypassState of the touched plugins change; formatting — CRLF, indent, .NET-style escaping — preserved) and, in the same click, the untouched original as `Settings.before-<date>.json`. Instructions: quit Wave Link from the tray icon, replace the file in that folder, start Wave Link. Undo = copy the backup back. Plugins missing from the input (e.g. ReaFIR never added) cannot be created from the browser: the preview lists them as "add this effect in Wave Link first, then upload again".
 5. **Optional shortcut (Chrome/Edge):** File System Access API "Save directly" to the same handle, after the same backup download.
 **Profiles** store the decoded plugin states (including the opaque ReaFIR blob once it has been configured in Wave Link) plus the suggestion/goal/validation data; applying a profile = upload the current file → download it with the profile's states. The Python tool stays for people who prefer it.
+
+## Refinement loop (v1.1)
+Real case: applying the suggestion made the take worse (35 → 0: 15 cm chosen as "best", gate −41 dB closing on the processed voice, ReaFIR too strong, bass cut twice, Wet +2 dB). The app must evaluate every applied setting and refine until it improves.
+**Engine fixes (prerequisites):**
+- bestControl in a noisy room (any control SNR < 25): SNR dominates — score = 0.5 × tone excess + 1.5 × max(0, 40 − snr); in quiet rooms unchanged. Real data (2 cm SNR 16.3 boomy, 15 cm SNR 7.9) must pick 2 cm.
+- Gate with noise removal in the chain: threshold = round(clamp(speechMed − 30, −72, −45)), dry −10, hysteresis −6 (the gate sees the processed, quieter voice); without noise removal keep today's rule.
+- bandSnr / noiseBands: noise band floor −100 dBFS-equivalent and bandSnr capped at 60 dB.
+- Distance check: a processed take whose distance differs from `applied.dist` (or the suggestion base) gets a warning and is NOT used to judge the settings ("record at {{dist}} — the settings were made for that distance").
+**Loop:**
+- `applied` (store, localStorage `vcb-applied`): set by `markApplied` when the person downloads/saves an adjusted Wave Link file, applies a profile, or confirms "I applied these" at the end of the guide / suggested settings. Each new processed take copies `applied`.
+- Evaluation of a processed take with `applied`: improved when fxScore ≥ rawScore + 5 and no regressions; else `refine(raw, fx, applied, goal): Refinement` (pure, src/plain/refine.ts):
+  - chopped / zeroRatio > 0.05 → if noiseRemoval = reafir: switch to 'ai-elgato' (attempt ≥ 2) or "lower ReaFIR reduction by half" (attempt 1); gate: threshold − 10 dB (min −72) or dry 0 (gate off) if still chopped on a later attempt.
+  - quieter (levelDrop ≥ 4) → comp wet += levelDrop (cap 18).
+  - thin (bass loss) → move low shelf 150 Hz and the 250 Hz band toward 0 by the measured boom/warmth loss vs raw (never past 0 unless the goal wants more bass).
+  - harsh → high shelf and 3.5 kHz band −(presence/sibilance rise × 0.7), min −4.
+  - stillNoisy (fx SNR < raw SNR + 3 and no other regression) → stronger noise removal: reafir "about 3 dB more" or switch to AI.
+  - wrongDistance → dist = base distance, no other change (re-record first).
+  - changeApproach after 3 attempts without improvement: recommend AI noise removal + physical actions (placement, closer), stop tweaking numbers.
+- **UI:** results for a processed take show an "Attempts" timeline (Attempt N: raw → fx score, ✓/✗) and, when not improved, a "Let's refine" card: the plain list of changes + "Apply refined settings to Wave Link" (dialog with the refined plan; marks applied with attempt+1) + guide link for by-hand changes + "Record again with effects" (goes to the fx step at `dist`). When improved: "It worked" + Save as profile. Copy plain, en + pt-BR.

@@ -47,3 +47,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 29. `[x]` **Goal UI** — Medium. Setup goal card, results "Change goal", charts "your target", en+pt-BR.
 30. `[x]` **Wave Link file round trip + profiles logic** — Careful. TS port of the Settings.json codec (byte-identical round trip on the real file), diff, apply, backup naming; profiles IndexedDB store + migration, validation rule, import/export schema.
 31. `[x]` **Wave Link + profiles UI** — Medium. Upload/preview/download flow (+ Chrome/Edge direct save), #/profiles page, Save as profile, Apply/Re-test/Export/Import/Duplicate/Rename/Delete, en+pt-BR.
+
+## v1.1 — Refinement loop (SPEC "Refinement loop")
+32. `[ ]` **Engine fixes + refine()** — Careful.
+33. `[ ]` **Loop UI + applied tracking** — Medium.
