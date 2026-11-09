@@ -4,6 +4,8 @@ import ToggleButton from '@mui/material/ToggleButton'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import DownloadIcon from '@mui/icons-material/Download'
+import { downloadTakeWav } from './download'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError, type Take } from '../../types'
 
@@ -41,6 +43,9 @@ export function TakeRow({ take }: { take: Take }) {
         </ToggleButton>
         <IconButton size="small" title="Play" aria-label={`Play ${take.name}`} onClick={() => playTake(take.id)}>
           <PlayArrowIcon fontSize="small" />
+        </IconButton>
+        <IconButton size="small" title="Download WAV" aria-label={`Download ${take.name} as WAV`} onClick={() => downloadTakeWav(take)}>
+          <DownloadIcon fontSize="small" />
         </IconButton>
         <IconButton size="small" title="Delete take" aria-label={`Delete ${take.name}`} onClick={() => deleteTake(take.id)}>
           <CloseIcon fontSize="small" />

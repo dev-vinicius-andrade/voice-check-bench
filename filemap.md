@@ -23,6 +23,7 @@
 - `src/audio/dsp.ts` — FFT, Hann cache, power spectrum, `db`/`adb`, `pct`/`median`
 - `src/audio/reference.ts` — `BANDS` reference curve, `deviations()`, `QUIET_SEC`/`MAX_SEC`
 - `src/audio/quickStats.ts` — duration/peak/silence/reading levels of a raw take + plain hint for failed analyses
+- `src/audio/wav.ts` — 16-bit mono WAV encoder + safe file names (Download WAV)
 - `src/audio/analyze.ts` — `analyze(samples, sampleRate)`: levels, noise, speech mask, spectra, hum, sibilance
 - `src/audio/diagnose.ts` — `diagnose()` checks with ids, `countByStatus`, `topIssues`, `f1`
 - `src/audio/testSignals.ts` — test-only seeded PRNG, synthetic take, `fakeAnalysis` fixture

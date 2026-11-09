@@ -1,4 +1,6 @@
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import DownloadIcon from '@mui/icons-material/Download'
+import { downloadTakeWav } from '../results/download'
 import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
@@ -44,9 +46,14 @@ export function TakeSummary({ take }: TakeSummaryProps) {
   const playTake = useBench((s) => s.playTake)
   const a = take.analysis
   const play = (label: string) => (
-    <Button variant="outlined" size="small" startIcon={<PlayArrowIcon />} onClick={() => playTake(take.id)}>
-      {label}
-    </Button>
+    <span className="inline-flex flex-wrap gap-2">
+      <Button variant="outlined" size="small" startIcon={<PlayArrowIcon />} onClick={() => playTake(take.id)}>
+        {label}
+      </Button>
+      <Button variant="text" size="small" startIcon={<DownloadIcon />} onClick={() => downloadTakeWav(take)}>
+        Download WAV
+      </Button>
+    </span>
   )
 
   if (isAnalysisError(a)) {
