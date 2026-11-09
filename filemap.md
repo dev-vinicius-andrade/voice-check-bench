@@ -5,8 +5,13 @@
 - `docs/PLAN.md` — task list with status
 - `docs/prototype/voice-check.html` — working single-file prototype; behaviour reference for the port
 - `tools/apply-reaplugs.py` — writes exported settings into Wave Link Settings.json (`--show`, preview, `--write`, `--self-test`, `--input`)
-- `tools/README.md` — tool usage, Wave Link FXP layout, noisy rooms (notches, manual ReaFIR), safety and restore
+- `tools/README.md` — tool usage, Wave Link FXP layout, noisy rooms (notches, manual ReaFIR), safety and restore; community results (sharing, index build, running locally)
 - `tools/example-settings.json` — sample settings export for previewing the tool
+- `tools/community/aggregate.ts` — `npm run community:aggregate`: fetches `mic-result` issues (GitHub REST, paginated, GITHUB_TOKEN optional) or `--from-file`, writes `public/community/mics.json` (skips the write when only `generated` would change)
+- `.github/ISSUE_TEMPLATE/mic-result.yml` — "Mic result" issue form: summary (json), notes, public-issue consent; label `mic-result`
+- `.github/ISSUE_TEMPLATE/config.yml` — issue chooser (blank issues allowed)
+- `.github/workflows/community.yml` — rebuilds and commits `public/community/mics.json` on mic-result issue events, daily and on demand
+- `public/community/mics.json` — community index served by the app (generated; empty until the first run)
 - `README.md` — project overview, requirements, workflow, scripts
 - `package.json` — scripts and dependencies
 - `src/` — app source (filled in by the plan tasks)
@@ -36,6 +41,17 @@
 - `src/session/bestControl.test.ts` — slots, best control scoring, steps helpers
 - `src/settings/suggest.ts` — `suggest()` (quiet room; noisy room: ReaFIR plan, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase()`, `isNotch()`, `suggestionToText`/`suggestionToJson`
 - `src/settings/suggest.test.ts` — clamps, EQ rounding, gain hints, JSON shape, text sheet; noisy room: chain, ReaFIR plan, notches, band-SNR boosts, gate/comp, condenser hint
+- `src/community/summary.ts` — `anonymizedSummary()`: the CommunitySummary of A's session (no audio, names, devices, dates, ids)
+- `src/community/summary.test.ts` — summary anonymization, free take, non-finite numbers as null
+- `src/community/shareUrl.ts` — `buildShareUrl()`: pre-filled issue-form link ≤ 7500 chars (round, 3 tones, drop rel, else no summary + truncated)
+- `src/community/shareUrl.test.ts` — link shape, shrink steps, blank-form fallback
+- `src/community/types.ts` — community data contract: `CommunitySummary`, `CommunityIndex`, `micKey()`, repo/label/template constants
+- `src/community/validate.ts` — `parseSummary()` strict shape/range check (rebuilds known keys; null bandSnr/noiseKind/spread accepted), `extractSummaryFromIssueBody()`
+- `src/community/validate.test.ts` — accepted/rejected summaries, issue-form body parsing
+- `src/community/aggregate.ts` — `aggregate()` summaries → CommunityIndex (dedupe, micKey groups, spreads, best-control deviations, distance votes, EQ medians), `percentile`, `spread`, `bestRawControl`
+- `src/community/aggregate.test.ts` — grouping, dedupe, malformed bodies, spreads, votes, fx gain, EQ without notches, null bandSnr
+- `src/community/testFixtures.ts` — test-only summary/take/EQ builders
+- `src/community/useCommunity.ts` — `loadCommunityIndex()` (fetched once, fails soft), `useCommunityIndex()`, `useCommunityMic(model)`
 - `public/worklets/` — AudioWorklet scripts served as static files
 - `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
 - `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
@@ -53,8 +69,12 @@
 - `src/components/results/BandSnrChart.tsx` — SVG per-octave voice-over-room SNR bars (0–50 dB) with 10/20 dB guides
 - `src/components/results/BeforeAfterCard.tsx` — raw control vs processed take of A's session: SNR, voice-band SNR, noise floor, verdict
 - `src/components/results/CopySummaryButton.tsx` — "Copy anonymized summary" (clipboard, falls back to voice-check-summary.json)
-- `src/components/results/roomNoise.ts` — noise-kind labels, band SNR helpers, `beforeAfterPair`, `anonymizedSummary`
-- `src/components/results/roomNoise.test.ts` — band SNR helpers, before/after pairing, summary anonymization
+- `src/components/results/ShareCommunityButton.tsx` — "Share with the community": opens the pre-filled GitHub issue form; copies the summary when it does not fit in the link
+- `src/components/results/SummaryActions.tsx` — copy + share buttons with the public-issue note and the paste note
+- `src/components/results/CommunityMicCard.tsx` — "People with this mic": your best raw control vs community SNR, best distance, deviations and typical EQ
+- `src/components/results/CommunityDeviationChart.tsx` — SVG paired per-octave deviation bars (you vs community median)
+- `src/components/results/roomNoise.ts` — noise-kind labels, band SNR helpers, `beforeAfterPair`
+- `src/components/results/roomNoise.test.ts` — band SNR helpers, before/after pairing
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart (A, A + B, A − B) with ±3/±6 zones and legend
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
 - `src/components/results/ChecksList.tsx` — problem checks, passing checks in a collapsed accordion
@@ -70,7 +90,8 @@
 - `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Processed · Results stepper (clickable)
 - `src/components/layout/StatusSnackbar.tsx` — global status Snackbar/Alert
 - `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic profile card, mic card, start/results buttons
-- `src/components/setup/MicProfileCard.tsx` — "Your microphone": model autocomplete, type/pattern/where-you-speak selects, address + placement tip
+- `src/components/setup/MicProfileCard.tsx` — "Your microphone": model autocomplete, type/pattern/where-you-speak selects, address + placement tip, community line
+- `src/components/setup/CommunityMicLine.tsx` — "N people shared results with this mic · typical raw SNR · most voted distance"
 - `src/components/setup/RoomReading.tsx` — "Room: quiet / some noise / noisy" next to the live meter
 - `src/components/setup/useRoomLevel.ts` — minimum of the live level over the last 2 s (room estimate)
 - `src/components/setup/SetupTakeList.tsx` — the 4 guided takes and the input each uses

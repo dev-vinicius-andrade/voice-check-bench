@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography'
 import { MIC_CATALOG, addressTip, placementTip } from '../../mics/catalog'
 import { useBench } from '../../store/benchStore'
 import { useMicProfile } from '../../store/hooks'
+import { CommunityMicLine } from './CommunityMicLine'
 import type { MicAddress, MicKind, MicPattern, MicProfile } from '../../types'
 
 const MODELS = [...MIC_CATALOG.map((m) => m.model), 'Other']
@@ -91,6 +92,7 @@ export function MicProfileCard() {
       <Typography variant="body2" color="text.secondary">
         {addressTip(mic)} {placementTip(mic)}
       </Typography>
+      <CommunityMicLine model={mic.model} />
     </Paper>
   )
 }

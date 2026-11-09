@@ -13,9 +13,10 @@ import { BandChart } from './BandChart'
 import { BeforeAfterCard } from './BeforeAfterCard'
 import { ChecksList } from './ChecksList'
 import { CompareTable } from './CompareTable'
-import { CopySummaryButton } from './CopySummaryButton'
+import { CommunityMicCard } from './CommunityMicCard'
 import { RoomNoisePanel } from './RoomNoisePanel'
 import { StatTiles } from './StatTiles'
+import { SummaryActions } from './SummaryActions'
 import { SuggestedSettings } from './SuggestedSettings'
 import { VerdictAlert } from './VerdictAlert'
 import { useTakeB } from '../../store/hooks'
@@ -39,6 +40,7 @@ function AnalysisBody({ A, a, b, view }: { A: Take; a: Analysis; b: Take | null;
       <StatTiles a={a} checks={checks} b={bAnalysis} checksB={checksB} />
       <RoomNoisePanel a={a} />
       <BeforeAfterCard A={A} />
+      <CommunityMicCard A={A} />
       <BandChart a={a} b={bAnalysis} view={view} />
       <CompareTable A={A} B={b} />
       <ChecksList checks={checks} />
@@ -47,7 +49,7 @@ function AnalysisBody({ A, a, b, view }: { A: Take; a: Analysis; b: Take | null;
         <Typography variant="body2" color="text.secondary" sx={{ maxWidth: '64ch' }}>
           Reference ranges are approximate targets for close-miked spoken voice. Trust your ears over any single number.
         </Typography>
-        <CopySummaryButton A={A} />
+        <SummaryActions A={A} />
       </div>
     </>
   )

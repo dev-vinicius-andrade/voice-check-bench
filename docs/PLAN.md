@@ -16,3 +16,8 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 10. `[x]` **Noisy-room suggestions** — Careful. suggest.ts per SPEC (chain, ReaFIR plan, notches, no boosts in noisy bands, compressor/expander), text/JSON, tests. Depends: types (uses Analysis fields; tests use fakeAnalysis with explicit values).
 11. `[x]` **Room noise + mic profile UI** — Careful. src/mics/catalog.ts; store micProfile/setMicProfile + prefs 'vcb-mic' + take.mic; Setup 'Your microphone' card, room reading + placement tip; step tips from profile; generic step copy; results RoomNoisePanel + BeforeAfterCard + 'Copy anonymized summary'; SuggestedSettings chain + ReaFIR steps. Depends: types.
 12. `[x]` **Integration** — orchestrator. Real WAV check, browser check, commit.
+
+## v0.3 — Community results via GitHub issues (SPEC "Community results via GitHub issues")
+13. `[x]` **Issue form, validation, aggregation, Action** — Careful. `.github/ISSUE_TEMPLATE/mic-result.yml`, `src/community/validate.ts`, `src/community/aggregate.ts`, `tools/community/aggregate.ts`, `.github/workflows/community.yml`.
+14. `[x]` **Share + community display UI** — Medium. `src/community/summary.ts`, `shareUrl.ts`, `useCommunity.ts`, ShareCommunityButton, CommunityMicCard, setup CommunityMicLine.
+15. `[x]` **Integration** — orchestrator. Real WAV → summary → share URL (5.2 kB, no device names) → issue body → validate → aggregate.

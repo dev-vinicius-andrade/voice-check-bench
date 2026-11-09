@@ -75,3 +75,41 @@ Copy-Item Settings.before-voicecheck-<stamp>.json Settings.json
 ```
 
 To try the tool without touching Wave Link at all, copy Settings.json somewhere else and pass `--settings <copy>`.
+
+# Community results
+
+People can share an anonymized result for their microphone, and the app shows what others with the same mic measured. There is no server: the results live in public GitHub issues and a GitHub Action turns them into a static file.
+
+## How sharing works
+
+1. On the results page, "Share with the community" opens the **Mic result** issue form (`.github/ISSUE_TEMPLATE/mic-result.yml`) with the Summary field already filled in.
+2. The Summary is a `CommunitySummary` (`src/community/types.ts`): the mic profile (model, type, pattern, where you speak into it), the analysis numbers of the session's takes (levels, SNR, tone per band, room tones) and the suggested settings. No audio, device names, take names, dates or ids.
+3. The person reviews it, ticks "I understand this issue is public" and submits with their own GitHub account. The issue gets the `mic-result` label.
+
+## How the index is built
+
+`tools/community/aggregate.ts` (`npm run community:aggregate`):
+
+1. Fetches every issue labelled `mic-result` (open and closed) through the GitHub REST API, 100 per page. Pull requests are skipped. `GITHUB_TOKEN` is used when set (higher rate limit).
+2. Reads the ```` ```json ```` block under `### Summary` in each issue body and checks it strictly (`src/community/validate.ts`): known keys only, allowed enums, numbers in sane ranges, 1–5 takes, at most 12 EQ bands. Anything malformed is ignored.
+3. Aggregates (`src/community/aggregate.ts`): identical summaries count once; reports are grouped by the normalized model (`micKey`, so "Fifine K688" and "fifine-k688" are the same mic); reports with an empty model or without a raw control take (2/8/15 cm) are left out. Per mic: typical raw SNR and noise floor (median, 25th and 75th percentile), median tone deviation per band from each report's best raw control take, votes for the best distance, SNR gain of the processed take, median suggested EQ (notches excluded) and the share of noisy rooms.
+4. Writes `public/community/mics.json` (the app fetches it as `community/mics.json`). When nothing but the timestamp would change, the file is left alone.
+
+The workflow `.github/workflows/community.yml` runs the script when a `mic-result` issue is opened, edited, labelled, reopened or closed, once a day and on demand, and commits `public/community/mics.json` when it changed.
+
+To drop a report from the stats, edit the issue's Summary, or remove the `mic-result` label and run the workflow again.
+
+## Running locally
+
+```sh
+# From GitHub (unauthenticated: 60 requests per hour)
+npm run community:aggregate
+
+# With a token, or against a fork
+GITHUB_TOKEN=... COMMUNITY_REPO=you/voice-check-bench npm run community:aggregate
+
+# Offline: a JSON array of issue-like objects, e.g. [{ "body": "### Summary\n\n```json\n{...}\n```" }]
+npm run community:aggregate -- --from-file issues.json
+```
+
+The script prints how many issues it read, how many summaries were valid and how many mics are in the index. Do not commit a `mics.json` built from test data.

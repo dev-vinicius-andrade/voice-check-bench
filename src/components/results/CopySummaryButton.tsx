@@ -4,7 +4,7 @@ import { useBench } from '../../store/benchStore'
 import { useMicProfile, useSuggestion } from '../../store/hooks'
 import type { Take } from '../../types'
 import { downloadFile } from './download'
-import { anonymizedSummary } from './roomNoise'
+import { anonymizedSummary } from '../../community/summary'
 
 const IDLE = 'Copy anonymized summary'
 

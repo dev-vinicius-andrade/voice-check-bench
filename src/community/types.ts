@@ -24,9 +24,11 @@ export interface CommunitySummary {
       noise: number
       snr: number
       rel: number[]
-      bandSnr: number[]
+      /** Entries are null (NaN in memory) when the take had no usable silence window. */
+      bandSnr: (number | null)[]
       tones: NoiseTone[]
-      noiseKind: NoiseKind
+      /** null for takes recorded before noise diagnosis existed. */
+      noiseKind: NoiseKind | null
       spread: number
       sibP95: number
     }

@@ -1,0 +1,40 @@
+name: Mic result
+description: Share an anonymized Voice Check Bench result for your microphone
+title: "Mic result: "
+labels: ["mic-result"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing! Results from many people with the same microphone become typical numbers that everyone sees in the app.
+
+        **What is shared** (the Summary below, filled in by Voice Check Bench):
+        - your mic profile: model, type, pickup pattern, where you speak into it
+        - analysis numbers of your takes: speech and noise levels, SNR, tone per band, room tones
+        - the suggested settings (gate, EQ, compressor)
+
+        **What is not shared:** no audio, no device names, no take names, no dates.
+
+        **This issue is public.** Anyone can read it, and it is posted with your GitHub account. Review the Summary before you submit.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Filled in by Voice Check Bench ("Share with the community"). If it is empty, paste the summary you copied from the results page.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      placeholder: Room, mic arm, interface, anything that helps
+    validations:
+      required: false
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Consent
+      options:
+        - label: I understand this issue is public
+          required: true
