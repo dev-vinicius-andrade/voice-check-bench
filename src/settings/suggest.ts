@@ -73,7 +73,7 @@ export function suggest(base: Take, dist: string): Suggestion | null {
         ? `The raw take is hot (${a.speechMed.toFixed(0)} dBFS). Lower the Wave XLR gain about ${Math.round(a.speechMed + 20)} dB and record the control takes again.`
         : ''
   const noiseHint = noisy
-    ? `The input is noisy: the room/input noise (${a.noise.toFixed(0)} dBFS) is only ${a.snr.toFixed(0)} dB under your voice. No gate or EQ setting can separate them, and the gate would cut quiet words. Find the noise source first (ground-loop hum, a fan, speakers playing into the mic, too much gain), then record the control takes again. Aim for at least 30 dB.`
+    ? `The input is noisy: the room/input noise (${a.noise.toFixed(0)} dBFS) is only ${a.snr.toFixed(0)} dB under your voice. No gate or EQ setting can separate them, and the gate would cut quiet words. Lower the noise first: turn the back of the mic toward the noise source (fans, a server, speakers), speak closer, switch off what you can, or turn on a noise remover (Elgato Noise Removal, Voice Focus or NVIDIA Broadcast) before the EQ instead of the gate. Then record the control takes again. Aim for at least 30 dB.`
     : ''
   return {
     base,
