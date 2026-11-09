@@ -10,3 +10,9 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 6. `[x]` **Results screen** — Medium. `components/results/*` (ResultsHeader, VerdictAlert, StatTiles, BandChart, CompareTable, ChecksList, SuggestedSettings, TakesList). Exact design in SPEC UI 3. Depends: 4.
 7. `[x]` **Wave Link tool + docs** — Medium. Harden `tools/apply-reaplugs.py` (running-check only for the real file; preserve CRLF + 2-space indent; `--show`; `--self-test` that round-trips the current file byte-identically); add `tools/README.md`; root `README.md` (what it is, run, workflow, tool usage). Depends: 1.
 8. `[x]` **Integration check** — orchestrator. Full flow in the browser, light/dark, 400 px, reload persistence, build/lint/test.
+
+## v0.2 — Noisy-room mode (SPEC "Noisy-room mode")
+9. `[ ]` **Noise diagnosis** — Careful. analyze.ts (speechBands, noiseBands, bandSnr, tones, noiseKind), diagnose.ts (tones, bandsnr checks), bestControl weighting, testSignals fixture update, tests incl. `_test/control-2-cm-raw.wav` (server + ceiling fan: expect tones near 200, 770–790, 1560 Hz; noiseKind tonal; snr < 20). Depends: types.
+10. `[ ]` **Noisy-room suggestions** — Careful. suggest.ts per SPEC (chain, ReaFIR plan, notches, no boosts in noisy bands, compressor/expander), text/JSON, tests. Depends: types (uses Analysis fields; tests use fakeAnalysis with explicit values).
+11. `[ ]` **Room noise UI** — Medium. Setup room reading + placement tip, step tip, results RoomNoisePanel + BeforeAfterCard, SuggestedSettings chain + ReaFIR steps. Depends: types.
+12. `[ ]` **Integration** — orchestrator. Real WAV check, browser check, commit.

@@ -32,7 +32,26 @@ export interface Analysis {
   hum: HumPeak[]
   sibMed: number
   sibP95: number
+  // ---- noisy-room diagnosis (empty arrays / NaN when the take has no usable silence window) ----
+  /** Average speech power per BANDS entry, dB (same scale as noiseBands, so they can be subtracted). */
+  speechBands: number[]
+  /** Average noise power per BANDS entry from the silence window, dB. */
+  noiseBands: number[]
+  /** speechBands - noiseBands per band: where the voice beats the room (> 20 good, < 10 noise wins). */
+  bandSnr: number[]
+  /** Steady tonal peaks in the silence window (fans, servers, whine), strongest first, at most 6. */
+  tones: NoiseTone[]
+  noiseKind: NoiseKind
 }
+
+export interface NoiseTone {
+  hz: number
+  /** dB above the local median of the noise spectrum. */
+  db: number
+}
+
+/** quiet: noise < -60 dBFS or SNR >= 30. hum: mains peaks dominate. tonal: fan/server tones. broadband: air, hiss, fans without clear tones. */
+export type NoiseKind = 'quiet' | 'hum' | 'tonal' | 'broadband'
 
 export interface AnalysisError {
   error: string
@@ -45,7 +64,7 @@ export const isAnalysisError = (a: AnalysisResult): a is AnalysisError => 'error
 export type CheckId =
   | 'level' | 'peaks' | 'noise' | 'silence' | 'hum'
   | 'rumble' | 'boom' | 'warmth' | 'mud' | 'body' | 'definition' | 'presence' | 'sibilance' | 'air'
-  | 'harsh' | 'consistency'
+  | 'harsh' | 'consistency' | 'tones' | 'bandsnr'
 
 export interface Check {
   id: CheckId
@@ -93,6 +112,7 @@ export interface StepDef {
 }
 
 export interface EqBand {
+  /** 'Band' with a narrow bandwidth (< 0.3 oct) and a deep cut is a notch for a fan/server tone. */
   type: 'Low Shelf' | 'Band' | 'High Shelf'
   freq: number
   gain: number
@@ -111,6 +131,20 @@ export interface Suggestion {
   eq: EqBand[]
   comp: { threshold: number; ratio: number; attack: number; release: number; knee: number; wet: number; limit: boolean }
   deess: boolean
+  /** True when SNR < 25 dB: the chain becomes noise reduction → EQ → compressor → soft gate. */
+  noisyRoom: boolean
+  /** Noise-reduction plugin to add first in the chain (manual setup: profiles can't be written to Wave Link). Null when the room is quiet. */
+  noiseReduction: NoiseReductionPlan | null
+  /** Ordered chain to set up in Wave Link, e.g. ['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate']. */
+  chain: string[]
+}
+
+export interface NoiseReductionPlan {
+  plugin: 'ReaFIR'
+  /** Step-by-step instructions (mode Subtract, capture profile while silent, reduction amount, FFT size). */
+  steps: string[]
+  /** Other options if ReaFIR is not wanted (Elgato Noise Removal, Voice Focus, NVIDIA Broadcast). */
+  alternatives: string[]
 }
 
 export interface DeviceChoice {

@@ -57,3 +57,25 @@ After the processed step the results open with A = processed, B = best control, 
 - Full guided flow works in Chrome with a real mic; takes and UI state survive a reload.
 - Settings export matches the prototype; `tools/apply-reaplugs.py --show` decodes, round-trip test passes.
 - Works in light and dark, and at 400 px wide without horizontal scroll.
+
+## Noisy-room mode (v0.2)
+Goal: the best result a person can get in a bad room (servers, fans, AC, street) without changing the room. A bad room is the normal case, not an error.
+
+**Diagnosis (audio/analyze.ts, audio/diagnose.ts).** From the existing silence window and speech spectra:
+- `speechBands` / `noiseBands`: average power per BANDS entry (divide summed spectra by block count so both are on the same scale), `bandSnr = speechBands - noiseBands`.
+- `tones`: peaks in the silence spectrum 90 Hz–8 kHz at least 8 dB above the local median (±1/3 octave), merged within 3 %, strongest first, max 6. Mains (50/60/100/120 Hz ±2 %) are reported by `hum`, not here.
+- `noiseKind`: quiet (noise < -60 dBFS or SNR ≥ 30) · hum (strongest hum peak ≥ 10 dB and no strong tones) · tonal (≥ 1 tone ≥ 12 dB) · broadband.
+- New checks: `tones` (warn ≥ 1 tone ≥ 12 dB; fix: notch suggestions + aim the back of the mic at the source) and `bandsnr` (bad when the voice bands 640 Hz–5 kHz average SNR < 15 dB, warn < 25).
+- `bestControl` weights SNR more when the room is noisy: penalty `max(0, 40 - snr) / 2` becomes `max(0, 40 - snr)` when any control take has SNR < 25.
+
+**Suggestions (settings/suggest.ts).** `noisyRoom = snr < 25`. Then:
+- chain `['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate']` (quiet room: `['ReaGate', 'ReaEQ', 'ReaComp']`).
+- `noiseReduction` = ReaFIR plan: add ReaFIR first; Mode **Subtract**; FFT size 4096; stay silent and tick **Automatically build noise profile** for ~3 s, then untick; start with the curve lowered so reduction ≈ 10–12 dB (stronger for SNR < 15) and back off if the voice turns watery/robotic. Alternatives: Elgato Noise Removal, Voice Focus (ai-coustics), NVIDIA Broadcast.
+- ReaEQ: notches for each tone ≥ 12 dB (type Band, bw 0.1 oct, gain -6 to -12 dB by tone strength, max 3 notches); no boosts in bands whose `bandSnr` < 12 dB (clamp that band's gain to ≤ 0); high shelf capped at +2 dB; if the 5–16 kHz bands have SNR < 10, a high shelf of -2 to -4 dB instead.
+- ReaComp: ratio 2.5, threshold `speechMed - 4`, makeup aims for -20 dBFS but never more than `-(noise after reduction) - 45` so the room is not pumped up.
+- ReaGate as soft expander: threshold = estimated noise after reduction + 6 dB (estimate: `noise - 10`), dry -10 dB, hold 200 ms, release 300 ms.
+- `noiseHint` stays; text/JSON include the chain, the ReaFIR steps and alternatives.
+
+**UI.** Setup: live "Room" reading next to the meter while silent (quiet / some noise / noisy by level), and a placement tip ("point the back of the mic at the loudest noise source; the K688 is cardioid"). Steps: same tip under the lead on control steps. Results: a "Room noise" panel (noise level and kind, tones list as chips, per-band SNR bars with 10/20 dB guides) and, when the session has a processed take, a "Before / after" card: SNR raw control (same distance) → processed, and voice-band SNR change. Suggested settings render the chain order and the ReaFIR steps as a numbered list.
+
+**Tool.** No format change: notches are ordinary ReaEQ bands; ReaFIR is added and set up by hand.
