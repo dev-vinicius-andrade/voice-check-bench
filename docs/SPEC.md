@@ -103,3 +103,36 @@ Contract: `Screen` in src/types.ts adds 'home' | 'how' | 'community' | 'privacy'
 - **Community:** list of `mics.json` entries (model, reports, typical raw SNR, most voted distance, noisy-room share), search box, empty state, "How to share" + link to the issues list (`${repo}/issues?q=label:mic-result`).
 - **Privacy:** what stays local (audio, takes in IndexedDB, prefs in localStorage; how to delete: Delete all), what a shared issue contains (public; mic profile + numbers + suggestion; no audio/device names/dates), how to remove a report (close the issue / remove the label / contact), no analytics, no cookies.
 - **Footer (every page):** "Made by Vinicius Andrade" → andradev.io; icon links GitHub, LinkedIn, Stack Overflow, email (mailto shown as text too); "Source on GitHub" → repo; "Report an issue" → issues.
+
+## Plain language (v0.5)
+Audience: people who know nothing about audio. Every screen leads with plain words and actions; numbers and terms are optional detail.
+
+**Message keys, not text.** Framework-free modules return `{ key: string; params?: Record<string, string | number> }` (type `Msg`, src/plain/types.ts). The UI renders them with i18n (v0.6). English source strings live in `src/i18n/locales/en.json`.
+
+**Clarity score (src/plain/score.ts)** — `clarityScore(a: Analysis): { score: number; main: 'noise' | 'level' | 'tone' | 'none' }`. Penalties, then `score = round(clamp(100 − Σ, 0, 100))`:
+- noise: `clamp((30 − snr) × 1.5, 0, 45)`; +5 if any tone ≥ 12 dB or hum ≥ 12 dB.
+- level: speech median outside [−26, −16] dBFS → `min(15, 2 × distance)`; clipping → +15.
+- tone: `min(25, 1.2 × Σ_{bands 1..7} max(0, |dev| − 3))`.
+- consistency: spread > 8 → `min(10, 1.5 × (spread − 8))`.
+`main` = largest of noise / level / tone penalty (≥ 8), else 'none'.
+Headline key by score: ≥ 85 `score.clear` ("Clear and clean") · 70–84 `score.good` ("Good — small things to polish") · 50–69 `score.ok.<main>` ("Understandable, but the room is loud" / "…but your volume needs fixing" / "…but your voice sounds a bit off") · < 50 `score.hard.<main>`. Plus a one-sentence explanation key per headline.
+
+**Three everyday ratings (src/plain/ratings.ts)**, each `{ id, status: Status, label: Msg, explain: Msg }`:
+- Background noise — snr ≥ 30 "Quiet" (good) · 20–30 "Noticeable" (warn) · < 20 "Loud" (bad); explain by noiseKind: tonal "A fan or machine is easy to hear." · hum "A low electrical hum is audible." · broadband "A steady hiss or room noise is audible." · quiet "Your pauses are clean."
+- Your volume — "Good" · "Too quiet" · "Too loud" · "Distorting" (clipping) from the level/peaks checks.
+- Sound of your voice — largest |deviation| over bands 1..8: ≤ 3 dB "Natural"; else by band and sign: boom/warmth high "Boomy" · mud high "Boxy" · body low "Hollow" · definition/presence low "Muffled" · presence high "Harsh" · sibilance high (or harsh S peaks) "Sharp S sounds" · sibilance+air low "Dull" · boom+warmth low "Thin"; prefix "A bit" for 3–6 dB, "Very" for > 6. Explain keys in everyday words ("Too much bass, a little muffled.").
+
+**What to do next (src/plain/actions.ts)** — `nextActions(a, ctx): Action[]`, max 3, `{ id, text: Msg, cost: 'free' | 'minutes', impact: number, how?: 'settings' | 'placement' | 'gain' }`, sorted by impact desc, free before paid on ties, no duplicates:
+- noisy (snr < 25): placement tip by mic pattern (impact = noise penalty), "Move closer: about one fist away" (only if best distance > current or not 2 cm), "Switch off fans or machines you can while recording", "Turn on noise reduction with our ready-made settings" (how: settings).
+- level: too quiet "Turn the input volume (gain) up a little" · too loud/distorting "Turn the input volume (gain) down a little" (how: gain).
+- tone: boomy "Back off a little — bass builds up when you're very close" · muffled "Speak straight into the mic" (address-aware) · sharp S "Angle the mic slightly off to the side of your mouth"; plus "Use our ready-made EQ settings" (how: settings) when tone penalty ≥ 8.
+- hum: "Plug your audio interface into a different USB port (back of the computer)".
+
+**Everyday distances:** 2 cm "about a finger's width" · 8 cm "about one fist" · 15 cm "about an open hand" — shown with the number.
+
+**Glossary (src/plain/glossary.ts + `<Term id>` component):** gain, noise, SNR ("how much louder your voice is than the room"), dB, EQ, noise reduction, compressor, gate, sibilance, proximity effect, cardioid — one sentence + an everyday analogy each.
+
+**Results layout:** score ring + headline + explanation → three rating cards → "What to do next" (each with "Show me how" opening the right panel: placement tips, the settings walk-through, or gain help) → collapsed "Show the technical details" containing everything that exists today. Steps/setup/pages use the same plain register (no unexplained jargon; numbers secondary).
+
+## Languages and localization (v0.6)
+i18next + react-i18next; locales `en` (source) and `pt-BR`; detection order: `?lang=` → saved choice (localStorage `vcb-lang`) → `navigator.languages` → en. Switcher in the top bar. Numbers/dates via `Intl` with the active locale (`-27,4 dBFS` in pt-BR); exported JSON and the Python tool stay locale-neutral. Plurals via i18next (`count`). Distances: cm, plus inches for `en-US`. Region setting (auto from locale, editable on setup): mains frequency 50 or 60 Hz — the hum check and hum advice use it. Reading passage per locale (original texts with plosives, sibilants and nasals; pt-BR keeps the current one). Product and plugin names and parameter labels (Wave Link, ReaFIR, Threshold, Ratio…) are never translated. Community data stays numeric and locale-free.

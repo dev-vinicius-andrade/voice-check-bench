@@ -25,3 +25,10 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 ## v0.4 — Site pages (SPEC "Site pages")
 16. `[ ]` **Routing, nav, footer, demo** — Careful. Hash routing in the store, TopBar nav, Footer, demo session loader + banner.
 17. `[ ]` **Content pages** — Medium. Home, How it works, Community, Privacy.
+
+## v0.5 — Plain language / v0.6 — Localization (SPEC "Plain language", "Languages and localization")
+18. `[ ]` **Plain engine** — Careful. src/plain/{types,score,ratings,actions,glossary}.ts + tests; returns message keys; English strings in src/i18n/locales/en.json (plain namespace).
+19. `[ ]` **i18n infrastructure** — Medium. i18next setup, detection, switcher, Intl helpers, region/mains setting. After task 16.
+20. `[ ]` **Plain results UI** — Medium. After 18, 19.
+21. `[ ]` **Plain wizard, setup, pages + string extraction** — Medium. After 19.
+22. `[ ]` **pt-BR translation, reading passages, engine text keys (diagnose/suggest)** — Careful. After 20, 21.
