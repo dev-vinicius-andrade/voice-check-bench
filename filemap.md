@@ -7,3 +7,15 @@
 - `tools/apply-reaplugs.py` — writes exported settings into Wave Link Settings.json
 - `package.json` — scripts and dependencies
 - `src/` — app source (filled in by the plan tasks)
+- `index.html` — Vite entry HTML, font links, root div
+- `vite.config.ts` — Vite plugins (React, Tailwind) and Vitest config
+- `tsconfig.json` — TS project references
+- `tsconfig.app.json` — strict TS config for `src/`
+- `tsconfig.node.json` — TS config for `vite.config.ts`
+- `eslint.config.js` — flat ESLint config (ts, react-hooks, react-refresh)
+- `src/main.tsx` — React root: MUI providers, CSS layers, App
+- `src/App.tsx` — top-level app component (placeholder)
+- `src/index.css` — CSS layer order and Tailwind import
+- `src/theme.ts` — MUI light/dark theme and `monoFont`
+- `src/smoke.test.ts` — trivial Vitest smoke test
+- `public/worklets/` — AudioWorklet scripts served as static files
