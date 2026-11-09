@@ -11,8 +11,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <StyledEngineProvider enableCssLayer>
       <ThemeProvider theme={theme} defaultMode="system">
-        <CssBaseline />
+        {/* Must render before CssBaseline: the first @layer statement fixes the layer order. */}
         <GlobalStyles styles="@layer theme, base, mui, components, utilities;" />
+        <CssBaseline />
         <App />
       </ThemeProvider>
     </StyledEngineProvider>

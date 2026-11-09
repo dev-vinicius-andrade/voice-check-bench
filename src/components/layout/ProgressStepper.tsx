@@ -34,15 +34,15 @@ export function ProgressStepper() {
     screen === 'setup' ? 0 : screen === 'results' ? items.length - 1 : typeof step === 'number' ? step + 1 : -1
 
   return (
-    <nav aria-label="Progress" className="min-w-0 overflow-x-auto">
-      <Stepper nonLinear activeStep={active} sx={{ minWidth: 'max-content', py: 0.5 }}>
+    <nav aria-label="Progress" className="min-w-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
+      <Stepper nonLinear activeStep={active} sx={{ minWidth: 'max-content', py: 0.5, '& .MuiStepConnector-root': { minWidth: 12 } }}>
         {items.map((it, i) => (
-          <Step key={it.label} completed={it.done}>
+          <Step key={it.label} completed={it.done} sx={{ px: 0.5 }}>
             <StepButton
               onClick={() => goTo(it.screen, it.step)}
               aria-label={it.label}
               aria-current={i === active ? 'step' : undefined}
-              sx={{ py: 0.5 }}
+              sx={{ py: 0.5, px: 1, m: 0 }}
             >
               {compact && i !== active ? null : it.label}
             </StepButton>

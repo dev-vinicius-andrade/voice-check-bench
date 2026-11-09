@@ -13,7 +13,8 @@ export const theme = createTheme({
   colorSchemes: {
     light: {
       palette: {
-        primary: { main: ACCENT, dark: '#8f9548', contrastText: '#121212' },
+        // #b4b96b is too pale on white for text and outlines; a deeper olive keeps the look and passes contrast.
+        primary: { main: '#7d8233', light: ACCENT, dark: '#5f6326', contrastText: '#ffffff' },
         secondary: { main: '#222222', contrastText: '#ffffff' },
         info: { main: '#3f8aa1' },
         success: { main: '#6f7a14' },
