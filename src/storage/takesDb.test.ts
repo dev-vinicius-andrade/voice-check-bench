@@ -50,3 +50,12 @@ describe('normalizeRecord', () => {
     expect(normalizeRecord(null)).toBeNull()
   })
 })
+
+describe('mic profile on takes', () => {
+  it('keeps a valid mic profile and sanitizes bad fields', () => {
+    const base = { id: 1, name: 't', session: 's1', step: 'c2', device: 'd', sampleRate: 48000, samples: new Float32Array(4), created: 'x' }
+    expect(normalizeRecord({ ...base, mic: { model: 'Any Mic', kind: 'dynamic', pattern: 'cardioid', address: 'end' } })?.mic).toEqual({ model: 'Any Mic', kind: 'dynamic', pattern: 'cardioid', address: 'end' })
+    expect(normalizeRecord({ ...base, mic: { model: 'X', kind: 'laser', pattern: 1 } })?.mic).toEqual({ model: 'X', kind: 'unknown', pattern: 'unknown', address: 'unknown' })
+    expect(normalizeRecord(base)?.mic).toBeUndefined()
+  })
+})

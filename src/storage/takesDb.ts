@@ -1,5 +1,5 @@
 // IndexedDB persistence for takes (same DB/store names as the prototype). Fails soft to memory.
-import type { StepKey, StoredTake } from '../types'
+import type { MicProfile, StepKey, StoredTake } from '../types'
 
 const DB_NAME = 'voice-check-bench'
 const DB_VERSION = 1
@@ -39,13 +39,27 @@ export function normalizeRecord(raw: unknown): StoredTake | null {
     sampleRate,
     samples,
     created: typeof raw.created === 'string' ? raw.created : new Date(raw.id).toISOString(),
+    ...(toMic(raw.mic) ? { mic: toMic(raw.mic)! } : {}),
   }
+}
+
+const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
+const MIC_PATTERNS: readonly MicProfile['pattern'][] = ['cardioid', 'supercardioid', 'omni', 'figure8', 'unknown']
+const MIC_ADDRESSES: readonly MicProfile['address'][] = ['end', 'side', 'unknown']
+
+/** Validates a stored mic profile; null when absent or malformed. */
+function toMic(raw: unknown): MicProfile | null {
+  if (!isObject(raw) || typeof raw.model !== 'string') return null
+  const kind = MIC_KINDS.find((k) => k === raw.kind) ?? 'unknown'
+  const pattern = MIC_PATTERNS.find((p) => p === raw.pattern) ?? 'unknown'
+  const address = MIC_ADDRESSES.find((a) => a === raw.address) ?? 'unknown'
+  return { model: raw.model, kind, pattern, address }
 }
 
 /** Copies only the StoredTake fields, so an in-memory `analysis` is never persisted. */
 function toRecord(t: StoredTake): StoredTake {
-  const { id, name, session, step, device, sampleRate, samples, created } = t
-  return { id, name, session, step, device, sampleRate, samples, created }
+  const { id, name, session, step, device, sampleRate, samples, created, mic } = t
+  return { id, name, session, step, device, sampleRate, samples, created, ...(mic ? { mic } : {}) }
 }
 
 function memoryDb(): TakesDb {
