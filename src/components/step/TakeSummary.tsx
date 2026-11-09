@@ -3,6 +3,7 @@ import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { countByStatus, diagnose, f1, topIssues } from '../../audio/diagnose'
+import { failureHint, quickStats } from '../../audio/quickStats'
 import { deviations } from '../../audio/reference'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError } from '../../types'
@@ -49,11 +50,15 @@ export function TakeSummary({ take }: TakeSummaryProps) {
   )
 
   if (isAnalysisError(a)) {
+    const q = quickStats(take.samples, take.sampleRate)
+    const db = (v: number) => (Number.isFinite(v) ? `${v.toFixed(0)} dBFS` : '—')
     return (
       <Paper className="grid gap-2.5 px-4 py-3.5" sx={{ borderLeft: 4, borderLeftColor: BORDER.bad }}>
         <Typography sx={{ fontWeight: 700 }}>This take could not be analyzed</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {a.error} Press record to try again.
+        <Typography variant="body2">{failureHint(q)}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+          {q.duration.toFixed(1)} s · peak {db(q.peakDb)} · silence {db(q.silenceDb)} · reading {db(q.readingDb)} · input{' '}
+          {take.device || '—'}
         </Typography>
         <div>{play('Play it back')}</div>
       </Paper>
