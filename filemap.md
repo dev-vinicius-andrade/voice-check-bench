@@ -17,7 +17,7 @@
 - `tsconfig.node.json` — TS config for `vite.config.ts`
 - `eslint.config.js` — flat ESLint config (ts, react-hooks, react-refresh)
 - `src/main.tsx` — React root: MUI providers, CSS layers, App
-- `src/App.tsx` — top-level app component (placeholder)
+- `src/App.tsx` — app shell: mounts bootstrap + shortcuts, TopBar, current screen, status snackbar
 - `src/index.css` — CSS layer order and Tailwind import
 - `src/theme.ts` — MUI light/dark theme and `monoFont`
 - `src/audio/dsp.ts` — FFT, Hann cache, power spectrum, `db`/`adb`, `pct`/`median`
@@ -41,3 +41,41 @@
 - `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs and `vcb-devs` device choice with shape validation
 - `src/storage/prefs.test.ts` — prefs round trip, corrupt JSON, blocked storage
 - `src/storage/takesDb.test.ts` — in-memory fallback and prototype record normalization
+- `src/components/results/ResultsScreen.tsx` — results page: heading, analysis + takes grid (two columns ≥ 980 px), empty state
+- `src/components/results/AnalysisPanel.tsx` — A/B chips, chart view toggle, analysis error alert, sections for take A
+- `src/components/results/VerdictAlert.tsx` — "Fix first: …" / "Balanced" verdict with silence note and first fix
+- `src/components/results/StatTiles.tsx` — speech, noise, SNR, issue-count tiles with B values
+- `src/components/results/BandChart.tsx` — SVG octave deviation chart (A, A + B, A − B) with ±3/±6 zones and legend
+- `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
+- `src/components/results/ChecksList.tsx` — problem checks, passing checks in a collapsed accordion
+- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel, copy/download as text or JSON
+- `src/components/results/PluginCard.tsx` — one plugin's key/value settings card
+- `src/components/results/TakesPanel.tsx` — takes grouped by session, Delete all with second-click confirm, New session / free take
+- `src/components/results/TakeRow.tsx` — take row: name, levels, A/B toggles, play, delete
+- `src/components/results/download.ts` — `downloadFile()` and `shortName()` helpers
+- `src/components/common/LevelMeter.tsx` — thin live input meter (-60..0 dBFS, success/warning/error)
+- `src/components/common/DeviceSelect.tsx` — input device select (TextField select)
+- `src/components/layout/TopBar.tsx` — brand mark + name and the progress stepper
+- `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Processed · Results stepper (clickable)
+- `src/components/layout/StatusSnackbar.tsx` — global status Snackbar/Alert
+- `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic card, start/results buttons
+- `src/components/setup/SetupTakeList.tsx` — the 4 guided takes and the input each uses
+- `src/components/setup/MicCard.tsx` — enable mic, raw/fx device selects with Test, live meter
+- `src/components/step/StepScreen.tsx` — step / free-take screen composition, head split for TwoToneHeading
+- `src/components/step/DistanceRuler.tsx` — SVG mouth-to-mic ruler (0–16 cm)
+- `src/components/step/InputBar.tsx` — current input, meter, Change → device select, Enable microphone
+- `src/components/step/RecordingCue.tsx` — idle / silence countdown / reading timer / analyzing cue + progress
+- `src/components/step/ReadingText.tsx` — Portuguese reading passage, dimmed until reading
+- `src/components/step/RecordButton.tsx` — 88 px record/stop button + Space hint
+- `src/components/step/TakeSummary.tsx` — mini summary of the step take (verdict, stats, play)
+- `src/components/step/StepNav.tsx` — Back / Skip / Next navigation
+- `src/store/api.ts` — store contract: `BenchState`, `BenchActions`, `BenchSelectors`
+- `src/store/engine.ts` — lazily created `AudioEngine` singleton `getEngine()` (mocked in tests)
+- `src/store/benchStore.ts` — zustand `useBench` store: bootstrap, mic/devices, recording, navigation, A/B, deletes; persists UI prefs; `initialBenchState()`
+- `src/store/selectors.ts` — pure selectors: slots, best control, fxDist, step take, A/B, suggestion, take groups, canGoNext
+- `src/store/hooks.ts` — render-safe selector hooks (`useSlots`, `useBestControl`, `useSuggestion`, `useTakeGroups`, …)
+- `src/store/benchStore.test.ts` — navigation, A/B, delete, recording, enableMic, bootstrap (fake engine)
+- `src/store/selectors.test.ts` — slots latest-wins, fxDist, suggestion fallback order, groups, canGoNext
+- `src/hooks/useLevel.ts` — rAF input level in dBFS while the mic is on (~30 fps state updates)
+- `src/hooks/useBootstrap.ts` — runs `bootstrap()` once on mount
+- `src/hooks/useRecordingShortcuts.ts` — step screen keys: Space toggles recording, Enter = Next

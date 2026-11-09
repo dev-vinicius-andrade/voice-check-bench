@@ -1,19 +1,25 @@
-import Chip from '@mui/material/Chip'
-import Typography from '@mui/material/Typography'
-
-const screens = ['Setup', 'Step', 'Results']
+import { ResultsScreen } from './components/results/ResultsScreen'
+import { SetupScreen } from './components/setup/SetupScreen'
+import { StepScreen } from './components/step/StepScreen'
+import { StatusSnackbar } from './components/layout/StatusSnackbar'
+import { TopBar } from './components/layout/TopBar'
+import { useBootstrap } from './hooks/useBootstrap'
+import { useRecordingShortcuts } from './hooks/useRecordingShortcuts'
+import { useBench } from './store/benchStore'
 
 export default function App() {
+  useBootstrap()
+  useRecordingShortcuts()
+  const screen = useBench((s) => s.screen)
   return (
-    <main className="p-6">
-      <Typography variant="h4" component="h1" align="center">
-        Voice Check Bench
-      </Typography>
-      <div className="flex gap-2 justify-center p-6">
-        {screens.map((name) => (
-          <Chip key={name} label={name} variant="outlined" />
-        ))}
-      </div>
-    </main>
+    <>
+      <TopBar />
+      <main className="px-4 py-8 sm:py-10">
+        {screen === 'setup' && <SetupScreen />}
+        {screen === 'step' && <StepScreen />}
+        {screen === 'results' && <ResultsScreen />}
+      </main>
+      <StatusSnackbar />
+    </>
   )
 }

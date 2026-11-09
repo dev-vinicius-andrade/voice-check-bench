@@ -6,7 +6,7 @@ export const STEPS: StepDef[] = [
   { key: 'c2', kind: 'Control test', cm: 2, dist: '2 cm', dev: 'raw', title: 'Control · 2 cm · raw', head: 'Record at 2 cm, raw mic', lead: 'Mouth about 2 cm from the grille, speaking straight into the top of the K688. This shows how much bass the mic adds up close.' },
   { key: 'c8', kind: 'Control test', cm: 8, dist: '8 cm', dev: 'raw', title: 'Control · 8 cm · raw', head: 'Record at 8 cm, raw mic', lead: 'About a fist between your mouth and the mic, still straight into the top. Same voice volume as before.' },
   { key: 'c15', kind: 'Control test', cm: 15, dist: '15 cm', dev: 'raw', title: 'Control · 15 cm · raw', head: 'Record at 15 cm, raw mic', lead: "An open hand's length away, straight into the top. Same voice volume as before." },
-  { key: 'fx', kind: 'With your effects', cm: null, dist: null, dev: 'fx', title: 'Processed · {d} · Record Mix', head: 'Record with your Wave Link effects', lead: 'Same text at your best distance: {d}. This take goes through the Record Mix, so it shows what your effects add.' },
+  { key: 'fx', kind: 'With your effects', cm: null, dist: null, dev: 'fx', title: 'Processed · {d} · Record Mix', head: 'Record it again, with your effects', lead: 'Same text at your best distance: {d}. This take goes through the Record Mix, so it shows what your effects add.' },
 ]
 
 /** Auto-pick an input for each device kind by its label. */
