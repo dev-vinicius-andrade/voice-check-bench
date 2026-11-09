@@ -61,6 +61,7 @@
 - `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic card, start/results buttons
 - `src/components/setup/SetupTakeList.tsx` — the 4 guided takes and the input each uses
 - `src/components/setup/MicCard.tsx` — enable mic, raw/fx device selects with Test, live meter
+- `src/components/setup/DevicePickRow.tsx` — one input choice per row: title, select + Test, meter when listening
 - `src/components/step/StepScreen.tsx` — step / free-take screen composition, head split for TwoToneHeading
 - `src/components/step/DistanceRuler.tsx` — SVG mouth-to-mic ruler (0–16 cm)
 - `src/components/step/InputBar.tsx` — current input, meter, Change → device select, Enable microphone
