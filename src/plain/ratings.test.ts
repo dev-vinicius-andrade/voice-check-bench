@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
 import type { Analysis } from '../types'
 import { noiseRating, plainRatings, voiceRating, voiceState, volumeRating } from './ratings'
-import { voiceAnalysis } from './testFixtures'
+import { processedPair, voiceAnalysis } from './testFixtures'
 
 describe('noise rating', () => {
   it('maps SNR to quiet / noticeable / loud', () => {
@@ -102,5 +102,37 @@ describe('voice rating', () => {
 describe('plainRatings', () => {
   it('returns noise, volume and voice in that order', () => {
     expect(plainRatings(fakeAnalysis()).map((r) => r.id)).toEqual(['noise', 'volume', 'voice'])
+  })
+})
+
+describe('over-processing (v0.8)', () => {
+  it('says "Cut to silence" instead of "Quiet" when the pauses are digital silence', () => {
+    const bad = noiseRating(fakeAnalysis({ snr: 57, noise: -100, zeroRatio: 0.4, gateSwitches: 23 }))
+    expect(bad).toEqual({
+      id: 'noise',
+      status: 'bad',
+      label: { key: 'plain.rating.noise.label.cutToSilence' },
+      explain: { key: 'plain.rating.noise.explain.cutToSilence' },
+    })
+    expect(noiseRating(fakeAnalysis({ gateSwitches: 8 })).status).toBe('warn')
+    expect(noiseRating(fakeAnalysis({ gateSwitches: 8 })).label.key).toBe('plain.rating.noise.label.cutToSilence')
+    // a light trace of digital silence is not over-processing
+    expect(noiseRating(fakeAnalysis({ zeroRatio: 0.01, gateSwitches: 2 })).label.key).toBe('plain.rating.noise.label.quiet')
+    // a loud room stays "Loud"
+    expect(noiseRating(fakeAnalysis({ snr: 12, noiseKind: 'broadband', gateSwitches: 8 })).label.key).toBe('plain.rating.noise.label.loud')
+  })
+
+  it('the voice rating reports thin or harsh from the regressions against the raw take', () => {
+    expect(voiceRating(fakeAnalysis(), ['thin'])).toMatchObject({ status: 'bad', label: { key: 'plain.rating.voice.label.strong.thin' } })
+    expect(voiceRating(fakeAnalysis(), ['quieter', 'harsh'])).toMatchObject({ status: 'bad', label: { key: 'plain.rating.voice.label.strong.harsh' } })
+    expect(voiceRating(fakeAnalysis(), ['quieter', 'chopped']).label.key).toBe('plain.rating.voice.label.natural')
+    const { raw, fx } = processedPair({ rel: fakeAnalysis().rel })
+    expect(plainRatings(fx, { raw })[2].label.key).toBe('plain.rating.voice.label.natural')
+    const pair = processedPair()
+    expect(plainRatings(pair.fx, { raw: pair.raw }).map((r) => r.label.key)).toEqual([
+      'plain.rating.noise.label.cutToSilence',
+      'plain.rating.volume.label.tooQuiet',
+      'plain.rating.voice.label.strong.thin',
+    ])
   })
 })

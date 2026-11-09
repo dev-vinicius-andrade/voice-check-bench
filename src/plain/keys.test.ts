@@ -6,7 +6,7 @@ import { everydayDistance } from './distances'
 import { GLOSSARY, GLOSSARY_IDS } from './glossary'
 import { plainRatings, ratingTitle } from './ratings'
 import { clarityScore } from './score'
-import { fixtureAnalyses, mic } from './testFixtures'
+import { fixtureAnalyses, mic, processedPair } from './testFixtures'
 import type { Msg } from './types'
 
 /** Walks the locale JSON by dotted key; undefined when the path is missing or not a string. */
@@ -40,6 +40,11 @@ function collectMsgs(): Msg[] {
       }
     }
   }
+  // a processed take scored against its raw control (regressions, compressor Wet)
+  const { raw, fx } = processedPair()
+  const s = clarityScore(fx, { raw })
+  out.push(s.headline, s.explain, ...plainRatings(fx, { raw }).flatMap((r) => [r.label, r.explain]))
+  for (const x of nextActions(fx, { mic: mic(), hasSuggestion: true, raw })) out.push(x.text)
   for (const g of GLOSSARY) out.push(g.term, g.meaning, g.analogy)
   for (const d of ['2 cm', '8 cm', '15 cm', '30 cm']) out.push(everydayDistance(d))
   return out
@@ -68,7 +73,9 @@ describe('en.json plain namespace', () => {
     expect(GLOSSARY.map((g) => g.id)).toEqual([...GLOSSARY_IDS])
     for (const family of [
       'plain.score.clear', 'plain.score.good', 'plain.score.ok.noise', 'plain.score.ok.level', 'plain.score.ok.tone', 'plain.score.hard.noise',
-      'plain.score.hard.level', 'plain.score.hard.tone',
+      'plain.score.hard.level', 'plain.score.hard.tone', 'plain.score.overprocessed', 'plain.score.explain.overprocessed',
+      'plain.rating.noise.label.cutToSilence', 'plain.rating.noise.explain.cutToSilence',
+      'plain.action.noiseRemovalDown', 'plain.action.compWet',
       'plain.rating.noise.label.quiet', 'plain.rating.noise.label.noticeable', 'plain.rating.noise.label.loud',
       'plain.rating.noise.explain.tonal', 'plain.rating.noise.explain.hum', 'plain.rating.noise.explain.broadband', 'plain.rating.noise.explain.quiet',
       'plain.rating.volume.label.distorting', 'plain.rating.volume.label.tooQuiet', 'plain.rating.volume.label.tooLoud', 'plain.rating.volume.label.good',

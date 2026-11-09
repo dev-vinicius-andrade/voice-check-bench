@@ -1,5 +1,7 @@
 // "What to do next": up to 3 concrete actions, biggest impact first (SPEC "Plain language (v0.5)"). Pure.
+import { overprocessedStatus } from '../audio/diagnose'
 import type { Analysis, MicProfile } from '../types'
+import { compareProcessed } from './compare'
 import { distanceCm } from './distances'
 import { volumeState, voiceState } from './ratings'
 import { penalties, strongestHum } from './score'
@@ -13,6 +15,8 @@ export interface ActionContext {
   currentDist?: string | null
   /** True when suggested settings exist (the "ready-made settings" actions need them). */
   hasSuggestion: boolean
+  /** Raw control of the same session when the analysed take is the processed one (v0.8 regressions). */
+  raw?: Analysis | null
 }
 
 export const MAX_ACTIONS = 3
@@ -29,6 +33,8 @@ const FANS_SHARE = 0.6
 const MIN_IMPACT = 1
 /** Tone penalty from which the ready-made EQ settings are offered. */
 const EQ_MIN_PENALTY = 8
+/** Level lost to the effects above this many dB adds "raise the compressor's Wet". */
+export const WET_DROP_DB = 6
 
 const placementKey = (m: MicProfile): string =>
   m.pattern === 'cardioid' || m.pattern === 'supercardioid' ? m.pattern : 'other'
@@ -48,10 +54,26 @@ export function rankActions(actions: readonly Action[], max = MAX_ACTIONS): Acti
     .map(({ x }) => x)
 }
 
+/**
+ * Over-processed take (digital silence / gate flipping) or effects that made it worse than the raw take:
+ * "turn noise removal down" first, then "raise the compressor's Wet" when the voice lost more than 6 dB.
+ */
+function overprocessingActions(a: Analysis, ctx: ActionContext, overPenalty: number): Action[] {
+  const cmp = ctx.raw ? compareProcessed(ctx.raw, a) : null
+  if (overprocessedStatus(a) === 'good' && !cmp?.regressions.length) return []
+  const impact = Math.max(overPenalty, MIN_IMPACT)
+  const out: Action[] = [{ id: 'noiseRemovalDown', text: msg('noiseRemovalDown'), cost: 'minutes', impact, how: 'settings' }]
+  if (cmp && cmp.levelDrop > WET_DROP_DB) {
+    out.push({ id: 'compWet', text: msg('compWet', { db: Math.round(cmp.levelDrop) }), cost: 'minutes', impact, how: 'settings' })
+  }
+  return out
+}
+
 export function nextActions(a: Analysis, ctx: ActionContext): Action[] {
-  const p = penalties(a)
+  const p = penalties(a, { raw: ctx.raw })
   const voice = voiceState(a)
   const volume = volumeState(a)
+  const lead = overprocessingActions(a, ctx, p.overprocessed)
   const out: Action[] = []
 
   // noisy room
@@ -68,13 +90,15 @@ export function nextActions(a: Analysis, ctx: ActionContext): Action[] {
       out.push({ id: 'moveCloser', text: msg('moveCloser', { cm: FIST_CM }), cost: 'free', impact: p.noise * MOVE_CLOSER_SHARE, how: 'placement' })
     }
     out.push({ id: 'fans', text: msg('fans'), cost: 'free', impact: p.noise * FANS_SHARE })
-    if (ctx.hasSuggestion) {
+    // never "turn on noise reduction" while it is already cutting the voice
+    if (ctx.hasSuggestion && !lead.length) {
       out.push({ id: 'noiseReduction', text: msg('noiseReduction'), cost: 'minutes', impact: p.noise, how: 'settings' })
     }
   }
 
-  // volume
-  if (volume.label !== 'good') {
+  // volume (the compressor's Wet makes up for level the effects took away)
+  const wet = lead.some((x) => x.id === 'compWet')
+  if (volume.label !== 'good' && !(wet && volume.label === 'tooQuiet')) {
     const up = volume.label === 'tooQuiet'
     out.push({ id: up ? 'gainUp' : 'gainDown', text: msg(up ? 'gainUp' : 'gainDown'), cost: 'free', impact: Math.max(p.level, MIN_IMPACT), how: 'gain' })
   }
@@ -88,5 +112,5 @@ export function nextActions(a: Analysis, ctx: ActionContext): Action[] {
     out.push({ id: 'eqSettings', text: msg('eqSettings'), cost: 'minutes', impact: p.tone, how: 'settings' })
   }
 
-  return rankActions(out.filter((x) => x.impact > 0))
+  return [...lead, ...rankActions(out.filter((x) => x.impact > 0), MAX_ACTIONS - lead.length)]
 }

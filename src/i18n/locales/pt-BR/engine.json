@@ -30,6 +30,13 @@
         "roughBad": "Não achamos 3 s de silêncio limpo; a estimativa é aproximada. Dá para ouvir chiado, ventiladores ou barulho do ambiente nas pausas.",
         "fix": "Afaste-se dos ventiladores do PC, diminua o gain e fale mais perto, ou suba o Threshold do ReaGate."
       },
+      "overprocessed": {
+        "title": "Processamento excessivo",
+        "value": "{{zero, number(maximumFractionDigits: 0)}} % de silêncio digital · {{switches, number(maximumFractionDigits: 0)}} cortes a cada 10 s",
+        "good": "A remoção de ruído e o gate não mexem na sua voz.",
+        "bad": "Partes da gravação viram silêncio total e o som fica ligando e desligando, então as palavras saem picotadas.",
+        "fix": "A remoção de ruído ou o gate está forte demais e está cortando sua voz — diminua."
+      },
       "silence": {
         "title": "Janela de silêncio",
         "value": "som nos primeiros 3 s",
@@ -176,14 +183,6 @@
       "noisy": "A entrada está ruidosa: o ruído do ambiente/entrada ({{noise, number(maximumFractionDigits: 0)}} dBFS) fica só {{snr, number(maximumFractionDigits: 0)}} dB abaixo da sua voz. Nenhum ajuste de gate ou EQ consegue separar os dois, e o gate cortaria palavras ditas mais baixo. Tire o máximo do ambiente:",
       "noisyNext": "Fale mais perto e desligue o que puder; depois configure o passo de redução de ruído abaixo, antes do EQ. Refaça as gravações de controle para conferir: quanto mais perto de 30 dB, mais limpo.",
       "condenser": "Microfones condensadores captam mais do ambiente: fique mais perto e diminua o gain.",
-      "reafir": {
-        "add": "No Wave Link → seu microfone → Effects, adicione \"ReaFIR (ReaPlugs Edition)\" e arraste-o para o topo.",
-        "mode": "Mode: Subtract. FFT size: 4096.",
-        "profile": "Fique em silêncio, marque \"Automatically build noise profile\" por uns 3 segundos e depois desmarque.",
-        "curve": "Arraste a curva inteira para baixo até o ambiente cair cerca de 10–12 dB. Se sua voz ficar aguada ou robótica, volte um pouco.",
-        "curveStrong": "Arraste a curva inteira para baixo até o ambiente cair cerca de 15 dB. Se sua voz ficar aguada ou robótica, volte um pouco.",
-        "order": "Deixe ReaEQ, ReaComp e ReaGate abaixo do ReaFIR, nessa ordem."
-      },
       "alternative": {
         "elgato": "Elgato Noise Removal (no Wave Link)",
         "voiceFocus": "Voice Focus da ai-coustics (no Wave Link)",

@@ -7,10 +7,12 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useCommunityMic } from '../../community/useCommunity'
 import { fmtNum } from '../../i18n/format'
+import { compareProcessed, type ProcessedComparison } from '../../plain/compare'
 import { useBench } from '../../store/benchStore'
 import { useMicProfile } from '../../store/hooks'
 import type { Take } from '../../types'
-import { beforeAfterPair, yourRawAnalysis } from './roomNoise'
+import { RegressionsAlert } from './RegressionsAlert'
+import { beforeAfterPair, fakeQuiet, yourRawAnalysis } from './roomNoise'
 
 /** SNR gains below this many dB count as "no real change" (same as the before/after card). */
 const MIN_GAIN = 3
@@ -36,19 +38,26 @@ export function PlainSummaries({ A }: { A: Take }) {
   const inputs = useBench(useShallow((s) => ({ takes: s.takes, session: s.session, fxDist: s.fxDist })))
   const { model } = useMicProfile()
   const community = useCommunityMic(model)
-  const lines = useMemo(() => {
+  const { lines, cmp } = useMemo(() => {
     const out: string[] = []
     const pair = beforeAfterPair(inputs.takes, A, inputs.session, inputs.fxDist)
-    const gain = pair ? pair.fx.analysis.snr - pair.raw.analysis.snr : Number.NaN
-    if (Number.isFinite(gain)) out.push(t(`results.summary.beforeAfter.${beforeAfterKey(gain)}`, { db: fmtNum(gain, 0) }))
+    // effects that made the voice worse get a warning list instead of a "the room got quieter" line
+    const c: ProcessedComparison | null = pair ? compareProcessed(pair.raw.analysis, pair.fx.analysis) : null
+    const gain = pair && !c?.regressions.length ? pair.fx.analysis.snr - pair.raw.analysis.snr : Number.NaN
+    if (pair && Number.isFinite(gain)) {
+      out.push(fakeQuiet(pair.fx.analysis)
+        ? t('results.summary.beforeAfter.floor')
+        : t(`results.summary.beforeAfter.${beforeAfterKey(gain)}`, { db: fmtNum(gain, 0) }))
+    }
     const mine = community ? yourRawAnalysis(inputs.takes, A) : null
     const diff = community && mine ? community.rawSnr.median - mine.snr : Number.NaN
     if (Number.isFinite(diff)) out.push(t(`results.summary.community.${communityKey(diff)}`, { db: fmtNum(Math.abs(diff), 0) }))
-    return out
+    return { lines: out, cmp: c?.regressions.length ? c : null }
   }, [inputs, A, community, t])
-  if (!lines.length) return null
+  if (!lines.length && !cmp) return null
   return (
     <Paper className="grid gap-1.5 px-4 py-3" data-testid="plain-summaries">
+      {cmp && <RegressionsAlert cmp={cmp} />}
       {lines.map((line) => (
         <Typography key={line} variant="body2">{line}</Typography>
       ))}

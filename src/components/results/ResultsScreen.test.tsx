@@ -7,7 +7,7 @@ import { DEMO_SESSION, buildDemoTakes } from '../../demo/demoTakes'
 import { useDemo } from '../../demo/demoSession'
 import { prepareResults, useBench } from '../../store/benchStore'
 import { theme } from '../../theme'
-import type { Take } from '../../types'
+import { isAnalysisError, type Take } from '../../types'
 import { GainHow } from './HowPanels'
 import { ResultsScreen } from './ResultsScreen'
 
@@ -78,6 +78,39 @@ describe('ResultsScreen (plain-first layout)', () => {
     expect(screen.getByRole('button', { name: 'Show the technical details' }).getAttribute('aria-expanded')).toBe('true')
     expect(await screen.findByText('Checks for A')).toBeTruthy()
     expect(localStorage.getItem('vcb-results-details')).toBe('1')
+  })
+
+  it('an over-processed take: lower score than without effects, the over-processing headline and a warning list (v0.8)', async () => {
+    const takes = demo.map((t): Take => {
+      if (t.step !== 'fx' || isAnalysisError(t.analysis)) return t
+      const a = t.analysis
+      const rel = a.rel.map((v, i) => (i === 1 || i === 2 ? v - 20 : i === 6 ? v + 10 : v))
+      return { ...t, analysis: { ...a, rel, noise: -100, snr: a.speechMed - 18 + 100, speechMed: a.speechMed - 18, zeroRatio: 0.4, gateSwitches: 23 } }
+    })
+    useBench.setState({ takes })
+    renderResults()
+    await act(async () => undefined)
+
+    expect(screen.getByText("Too much processing: it's cutting your voice")).toBeTruthy()
+    const line = screen.getByTestId('score-before-after').textContent ?? ''
+    const [before, after] = (line.match(/\d+/g) ?? []).map(Number)
+    expect(after).toBeLessThan(before)
+    expect(screen.getByText('Cut to silence')).toBeTruthy()
+    const alert = screen.getByTestId('regressions-alert')
+    expect(within(alert).getByText('Your effects are making your voice worse')).toBeTruthy()
+    expect(within(alert).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      // vs the raw control at the processed distance (8 cm, quieter than the demo's processed take before the cut)
+      expect.stringMatching(/^Your voice got much quieter \(\d+ dB\)$/),
+      'The bass is gone, so your voice sounds thin',
+      'The upper tones got harsh and tiring',
+      'Pauses are cut to total silence, which chops your words',
+    ])
+    expect(screen.queryByText(/quieter next to your voice/)).toBeNull()
+    const steps = within(screen.getByTestId('next-actions')).getAllByRole('listitem').map((li) => li.textContent ?? '')
+    expect(steps[0]).toContain('Turn noise removal down')
+    // one raw reference everywhere: the Wet action makes up exactly the level drop the warning lists
+    const drop = within(alert).getAllByRole('listitem')[0].textContent?.match(/\d+/)?.[0]
+    expect(steps[1]).toContain(`Raise the compressor's Wet by about ${drop} dB`)
   })
 })
 

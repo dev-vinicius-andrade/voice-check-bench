@@ -39,8 +39,8 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 25. `[x]` **OBS and app-only paths** — Medium.
 
 ## v0.8 — Over-processing safety (SPEC "Over-processing safety")
-26. `[ ]` **Detect over-processing** — Careful. analyze clamps + zeroRatio/gateSwitches, overprocessed check, processed-vs-raw comparison, score/actions/headline, en+pt-BR keys. Test with the real processed WAV.
-27. `[ ]` **Safer suggestions and guide** — Medium. ReaFIR 6 dB start, preferAi ordering, makeup note, processed step at best distance, guide copy en+pt-BR.
+26. `[x]` **Detect over-processing** — Careful. analyze clamps + zeroRatio/gateSwitches, overprocessed check, processed-vs-raw comparison, score/actions/headline, en+pt-BR keys. Test with the real processed WAV.
+27. `[x]` **Safer suggestions and guide** — Medium. ReaFIR 6 dB start, preferAi ordering, makeup note, processed step at best distance, guide copy en+pt-BR.
 
 ## v0.9 — Voice goals (SPEC "Voice goals") / v1.0 — Profiles (SPEC "Profiles")
 28. `[ ]` **Goal engine** — Careful. VoiceGoal types, targetDeviations, goal threaded through diagnose/plain/suggest/bestControl, perceived-issue fusion, nasal EQ band, tests.

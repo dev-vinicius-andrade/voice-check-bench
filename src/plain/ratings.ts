@@ -1,7 +1,9 @@
 // The three everyday ratings: background noise, your volume, sound of your voice (SPEC "Plain language (v0.5)"). Pure.
+import { overprocessedStatus } from '../audio/diagnose'
 import { deviations } from '../audio/reference'
 import type { Analysis, NoiseKind, Status } from '../types'
-import { LEVEL_HI, LEVEL_LO } from './score'
+import { compareProcessed, type Regression } from './compare'
+import { LEVEL_HI, LEVEL_LO, type ScoreOptions } from './score'
 import type { Msg, Rating, RatingId } from './types'
 
 export type VoiceLabel = 'natural' | 'boomy' | 'boxy' | 'hollow' | 'muffled' | 'harsh' | 'sharpS' | 'dull' | 'thin'
@@ -20,8 +22,21 @@ export function noiseWording(a: Analysis): NoiseKind {
   return kind === null || kind === 'quiet' ? 'broadband' : kind
 }
 
+/** Below this SNR the room is loud whatever else happens, so "Loud" wins over "Cut to silence". */
+const LOUD_SNR = 20
+
 export function noiseRating(a: Analysis): Rating {
   const snr = a.snr
+  // digital silence from noise removal or a gate reads as a perfect room: say what really happened
+  const over = overprocessedStatus(a)
+  if (over !== 'good' && !(snr < LOUD_SNR)) {
+    return {
+      id: 'noise',
+      status: over,
+      label: { key: 'plain.rating.noise.label.cutToSilence' },
+      explain: { key: 'plain.rating.noise.explain.cutToSilence' },
+    }
+  }
   const [status, label]: [Status, string] = snr >= 30 ? ['good', 'quiet'] : snr >= 20 ? ['warn', 'noticeable'] : ['bad', 'loud']
   return {
     id: 'noise',
@@ -78,8 +93,19 @@ export function voiceState(a: Analysis): { status: Status; label: VoiceLabel; st
   return { status: strong ? 'bad' : 'warn', label: bandLabel(wi, dev > 0), strength: strong ? 'strong' : 'mild', dev }
 }
 
-export function voiceRating(a: Analysis): Rating {
-  const { status, label, strength } = voiceState(a)
+/**
+ * Voice state of a processed take with its regressions against the raw take: losing the bass (thin) or
+ * pushing the upper tones (harsh) by that much is a strong change, so it overrides a milder or different label.
+ */
+export function voiceStateWithRegressions(a: Analysis, regressions: readonly Regression[]): ReturnType<typeof voiceState> {
+  const v = voiceState(a)
+  const label: VoiceLabel | null = regressions.includes('thin') ? 'thin' : regressions.includes('harsh') ? 'harsh' : null
+  if (!label || (v.label === label && v.strength === 'strong')) return v
+  return { ...v, status: 'bad', label, strength: 'strong' }
+}
+
+export function voiceRating(a: Analysis, regressions: readonly Regression[] = []): Rating {
+  const { status, label, strength } = voiceStateWithRegressions(a, regressions)
   return {
     id: 'voice',
     status,
@@ -91,6 +117,8 @@ export function voiceRating(a: Analysis): Rating {
 /** Card title for a rating ("Background noise", "Your volume", "Sound of your voice"). */
 export const ratingTitle = (id: RatingId): Msg => ({ key: `plain.rating.${id}.title` })
 
-export function plainRatings(a: Analysis): Rating[] {
-  return [noiseRating(a), volumeRating(a), voiceRating(a)]
+/** The three ratings; pass `raw` when `a` is the processed take so the voice rating sees what the effects broke. */
+export function plainRatings(a: Analysis, opts: ScoreOptions = {}): Rating[] {
+  const regressions = opts.raw ? compareProcessed(opts.raw, a).regressions : []
+  return [noiseRating(a), volumeRating(a), voiceRating(a, regressions)]
 }

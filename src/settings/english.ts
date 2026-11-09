@@ -1,8 +1,11 @@
 // English text of engine messages for locale-neutral exports (settings sheet, settings JSON). Pure, no i18next:
-// reads src/i18n/locales/en/engine.json and fills `{{name}}` / `{{name, number(…)}}` placeholders the way the
+// reads src/i18n/locales/en/engine.json (+ suggest.json, `suggestx.*`) and fills `{{name}}` / `{{name, number(…)}}` placeholders the way the
 // pre-i18n code did (toFixed, '+' for positive signed values, no digit grouping), so exports stay byte-identical.
-import en from '../i18n/locales/en/engine.json'
+import engine from '../i18n/locales/en/engine.json'
+import suggestx from '../i18n/locales/en/suggest.json'
 import type { Msg } from '../plain/types'
+
+const en = { ...engine, ...suggestx }
 
 /** Renders a Msg to text: useMsg() in the UI, englishText for exports. */
 export type MsgTranslator = (m: Msg) => string

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
 import type { AnalysisResult, StepKey, Take } from '../types'
 import type { BenchState } from './api'
-import { initialBenchState, patchMicProfile, useBench } from './benchStore'
+import { initialBenchState, patchMicProfile, reconcileFxDist, useBench } from './benchStore'
 import { DEFAULT_MIC } from '../mics/catalog'
 import { analyze } from '../audio/analyze'
 import { englishText } from '../settings/english'
@@ -225,6 +225,35 @@ describe('recording', () => {
     vi.advanceTimersByTime(30)
     expect(st().takes[1].name).toBe('Mine')
     expect(st().freeTakeName).toBe('')
+  })
+})
+
+describe('processed take distance', () => {
+  // best control: the 2 cm take (the others are boomy)
+  const controls = () => [mkTake(1, 's1', 'c2'), mkTake(2, 's1', 'c8', fakeAnalysis({ rel: BOOMY_REL })), mkTake(3, 's1', 'c15', fakeAnalysis({ rel: BOOMY_REL }))]
+
+  it('drops an fxDist that is not the best control distance, unless the person chose it', () => {
+    const takes = controls()
+    expect(reconcileFxDist({ takes, session: 's1', fxDist: '15 cm' }, false)).toEqual({ fxDist: null })
+    expect(reconcileFxDist({ takes, session: 's1', fxDist: '15 cm' }, true)).toEqual({})
+    expect(reconcileFxDist({ takes, session: 's1', fxDist: '2 cm' }, false)).toEqual({})
+    expect(reconcileFxDist({ takes, session: 's1', fxDist: null }, false)).toEqual({})
+    // no best control yet: nothing to compare with
+    expect(reconcileFxDist({ takes: [], session: 's1', fxDist: '15 cm' }, false)).toEqual({})
+  })
+
+  it('resets fxDist when the best control changes, keeps an explicit choice', () => {
+    st().newSession()
+    reset({ takes: controls(), fxDist: '2 cm' })
+    st().deleteTake(1)
+    expect(st().fxDist).toBeNull()
+    st().newSession()
+    reset({ takes: controls() })
+    st().setFxDist('2 cm')
+    st().deleteTake(1)
+    expect(st().fxDist).toBe('2 cm')
+    st().newSession()
+    expect(st().fxDist).toBeNull()
   })
 })
 

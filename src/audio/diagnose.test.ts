@@ -19,7 +19,7 @@ const toEn = (c: Check) => ({
 const diagEn = (a: Analysis) => diagnose(a).map(toEn)
 
 const ALL_IDS: CheckId[] = [
-  'level', 'peaks', 'noise', 'silence', 'hum', 'tones', 'bandsnr',
+  'level', 'peaks', 'noise', 'overprocessed', 'silence', 'hum', 'tones', 'bandsnr',
   'rumble', 'boom', 'warmth', 'mud', 'body', 'definition', 'presence', 'sibilance', 'air',
   'harsh', 'consistency',
 ]
@@ -39,8 +39,8 @@ describe('diagnose', () => {
     }
   })
 
-  it('emits all 18 checks in order when every optional check applies', () => {
-    const a = fakeAnalysis({ quietBroken: true, hum: [{ hz: 50, db: 3 }, { hz: 60, db: 8 }], sibP95: -4 })
+  it('emits all 19 checks in order when every optional check applies', () => {
+    const a = fakeAnalysis({ quietBroken: true, hum: [{ hz: 50, db: 3 }, { hz: 60, db: 8 }], sibP95: -4, zeroRatio: 0.01 })
     const checks = diagEn(a)
     expect(checks.map((c) => c.id)).toEqual(ALL_IDS)
   })
@@ -123,6 +123,33 @@ describe('noisy-room checks', () => {
     const ids = diagEn(fakeAnalysis({ noiseBands: Array(9).fill(NaN), tones: [] })).map((c) => c.id)
     expect(ids).not.toContain('tones')
     expect(ids).not.toContain('bandsnr')
+  })
+})
+
+describe('over-processing check', () => {
+  const over = (zeroRatio: number, gateSwitches: number) => diagEn(fakeAnalysis({ zeroRatio, gateSwitches })).find((c) => c.id === 'overprocessed')
+
+  it('is skipped when there is no digital silence and no gate flipping', () => {
+    expect(over(0, 0)).toBeUndefined()
+  })
+
+  it('grades zeroRatio > 0.15 / gateSwitches > 12 bad, > 0.05 / > 6 warn', () => {
+    expect(over(0.01, 2)).toMatchObject({ status: 'good', title: 'Over-processing', value: '1 % digital silence · 2 cuts per 10 s', fix: '' })
+    expect(over(0.05, 6)?.status).toBe('good')
+    expect(over(0.051, 0)?.status).toBe('warn')
+    expect(over(0, 6.1)?.status).toBe('warn')
+    expect(over(0.15, 12)?.status).toBe('warn')
+    expect(over(0.151, 0)?.status).toBe('bad')
+    expect(over(0.4, 23.5)).toMatchObject({
+      status: 'bad',
+      value: '40 % digital silence · 24 cuts per 10 s',
+      fix: 'Noise removal or the gate is too strong and is cutting your voice — reduce it.',
+    })
+  })
+
+  it('sits right after the noise check', () => {
+    const ids = diagEn(fakeAnalysis({ zeroRatio: 0.3, quietBroken: true })).map((c) => c.id)
+    expect(ids.slice(2, 5)).toEqual(['noise', 'overprocessed', 'silence'])
   })
 })
 

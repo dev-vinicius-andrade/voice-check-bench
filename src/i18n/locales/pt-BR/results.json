@@ -50,7 +50,8 @@
         "quarter": "Seus efeitos deixaram o ambiente {{db}} dB mais baixo em relação à sua voz — mais ou menos um quarto do volume.",
         "half": "Seus efeitos deixaram o ambiente {{db}} dB mais baixo em relação à sua voz — mais ou menos metade do volume.",
         "some": "Seus efeitos deixaram o ambiente {{db}} dB mais baixo em relação à sua voz.",
-        "little": "Seus efeitos ainda quase não mudaram o ruído do ambiente. Os passos de redução de ruído nos detalhes técnicos podem ajudar."
+        "little": "Seus efeitos ainda quase não mudaram o ruído do ambiente. Os passos de redução de ruído nos detalhes técnicos podem ajudar.",
+        "floor": "Suas pausas viram silêncio digital, então não dá para saber quanto ruído da sala foi removido de verdade."
       },
       "community": {
         "behind": "Quem tem este microfone costuma ter a voz uns {{db}} dB mais acima do ruído do ambiente do que você tem agora.",
@@ -122,7 +123,15 @@
       "voiceBandSnr": "SNR na faixa da voz",
       "noiseFloor": "Ruído de fundo",
       "lowered": "Seus efeitos baixaram o ambiente em {{db}} dB",
-      "little": "A redução de ruído fez pouca diferença — confira o perfil do ReaFIR"
+      "little": "A redução de ruído fez pouca diferença — confira o perfil do ReaFIR",
+      "floor": "Suas pausas viram silêncio digital, então não dá para saber quanto ruído da sala foi removido de verdade."
+    },
+    "regressions": {
+      "title": "Seus efeitos estão piorando sua voz",
+      "quieter": "Sua voz ficou bem mais baixa ({{db}} dB)",
+      "thin": "Os graves sumiram, então sua voz ficou fina",
+      "harsh": "Os agudos ficaram ásperos e cansativos",
+      "chopped": "As pausas viram silêncio total, e isso picota suas palavras"
     },
     "community": {
       "title": "Pessoas com este microfone",

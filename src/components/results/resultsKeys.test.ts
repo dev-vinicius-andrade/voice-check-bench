@@ -38,7 +38,8 @@ const DYNAMIC = [
   ...['quiet', 'hum', 'tonal', 'broadband'].map((k) => `results.noiseKind.${k}`),
   ...['free', 'minutes'].map((k) => `results.next.cost.${k}`),
   ...['good', 'warn', 'bad'].map((k) => `results.checks.${k}`),
-  ...['belowQuarter', 'quarter', 'half', 'some', 'little'].map((k) => `results.summary.beforeAfter.${k}`),
+  ...['belowQuarter', 'quarter', 'half', 'some', 'little', 'floor'].map((k) => `results.summary.beforeAfter.${k}`),
+  ...['quieter', 'thin', 'harsh', 'chopped'].map((k) => `results.regressions.${k}`),
   ...['behind', 'ahead', 'same'].map((k) => `results.summary.community.${k}`),
 ]
 

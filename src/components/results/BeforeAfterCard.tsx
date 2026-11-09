@@ -6,9 +6,11 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { fmtNum, fmtSigned } from '../../i18n/format'
+import { compareProcessed } from '../../plain/compare'
 import { useBench } from '../../store/benchStore'
 import type { Take } from '../../types'
-import { beforeAfterPair, voiceBandSnr } from './roomNoise'
+import { RegressionsAlert } from './RegressionsAlert'
+import { beforeAfterPair, fakeQuiet, voiceBandSnr } from './roomNoise'
 import { useTakeName } from './useTakeName'
 
 /** Below this SNR gain (dB) the effects did not really lower the room. */
@@ -21,12 +23,14 @@ interface RowProps {
   unit: string
   /** true when a higher value is better (SNR); false for the noise floor. */
   higherIsBetter: boolean
+  /** false when the change cannot be judged (pauses cut to digital silence): the difference stays neutral. */
+  judge: boolean
 }
 
-function Row({ label, raw, fx, unit, higherIsBetter }: RowProps) {
+function Row({ label, raw, fx, unit, higherIsBetter, judge }: RowProps) {
   const ok = Number.isFinite(raw) && Number.isFinite(fx)
   const d = fx - raw
-  const color = !ok || Math.abs(d) < 1 ? 'text.secondary' : d > 0 === higherIsBetter ? 'success.main' : 'error.main'
+  const color = !ok || !judge || Math.abs(d) < 1 ? 'text.secondary' : d > 0 === higherIsBetter ? 'success.main' : 'error.main'
   return (
     <div className="contents">
       <Typography component="dt" variant="body2">{label}</Typography>
@@ -48,10 +52,13 @@ export function BeforeAfterCard({ A }: { A: Take }) {
   const tn = useTakeName()
   const inputs = useBench(useShallow((s) => ({ takes: s.takes, session: s.session, fxDist: s.fxDist })))
   const pair = useMemo(() => beforeAfterPair(inputs.takes, A, inputs.session, inputs.fxDist), [inputs, A])
-  if (!pair) return null
+  const cmp = useMemo(() => (pair ? compareProcessed(pair.raw.analysis, pair.fx.analysis) : null), [pair])
+  if (!pair || !cmp) return null
   const raw = pair.raw.analysis
   const fx = pair.fx.analysis
   const gain = fx.snr - raw.snr
+  // a digital-silence floor makes the SNR jump without any real noise removal: never call that an improvement
+  const judge = !fakeQuiet(fx)
   return (
     <Paper component="section" aria-label={t('results.beforeAfter.title')} className="grid gap-2 px-3 py-2.5">
       <div>
@@ -61,11 +68,15 @@ export function BeforeAfterCard({ A }: { A: Take }) {
         </Typography>
       </div>
       <dl className="m-0 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">
-        <Row label={t('results.beforeAfter.snr')} raw={raw.snr} fx={fx.snr} unit="dB" higherIsBetter />
-        <Row label={t('results.beforeAfter.voiceBandSnr')} raw={voiceBandSnr(raw)} fx={voiceBandSnr(fx)} unit="dB" higherIsBetter />
-        <Row label={t('results.beforeAfter.noiseFloor')} raw={raw.noise} fx={fx.noise} unit="dBFS" higherIsBetter={false} />
+        <Row label={t('results.beforeAfter.snr')} raw={raw.snr} fx={fx.snr} unit="dB" higherIsBetter judge={judge} />
+        <Row label={t('results.beforeAfter.voiceBandSnr')} raw={voiceBandSnr(raw)} fx={voiceBandSnr(fx)} unit="dB" higherIsBetter judge={judge} />
+        <Row label={t('results.beforeAfter.noiseFloor')} raw={raw.noise} fx={fx.noise} unit="dBFS" higherIsBetter={false} judge={judge} />
       </dl>
-      {gain >= MIN_GAIN ? (
+      {cmp.regressions.length ? (
+        <RegressionsAlert cmp={cmp} />
+      ) : !judge ? (
+        <Alert severity="warning">{t('results.beforeAfter.floor')}</Alert>
+      ) : gain >= MIN_GAIN ? (
         <Alert severity="success">{t('results.beforeAfter.lowered', { db: fmtNum(gain, 0) })}</Alert>
       ) : (
         <Alert severity="warning">{t('results.beforeAfter.little')}</Alert>

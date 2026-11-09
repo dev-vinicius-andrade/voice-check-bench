@@ -85,6 +85,8 @@ export function fakeAnalysis(over: Partial<Analysis> = {}): Analysis {
     bandSnr: speechBands.map((v, i) => v - noiseBands[i]),
     tones: [],
     noiseKind: 'quiet',
+    zeroRatio: 0,
+    gateSwitches: 0,
     ...over,
   }
 }

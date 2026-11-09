@@ -1,4 +1,6 @@
 // Pure helpers for the room-noise results: band SNR checks, before/after pair.
+import { FLOOR_DB } from '../../audio/analyze'
+import { overprocessedStatus } from '../../audio/diagnose'
 import { bestControl, sessionSlots } from '../../session/bestControl'
 import { pickSuggestionBase } from '../../settings/suggest'
 import { isAnalysisError, type Analysis, type Take } from '../../types'
@@ -14,6 +16,12 @@ export const hasBandSnr = (a: Analysis): boolean =>
 export const voiceBandSnr = (a: Analysis): number =>
   hasBandSnr(a) ? VOICE_BANDS.reduce((sum, i) => sum + a.bandSnr[i], 0) / VOICE_BANDS.length : Number.NaN
 
+/**
+ * True when the take's pauses are digital silence (noise at the -100 dBFS floor, or noise removal / a gate cutting
+ * to silence): its SNR then says nothing about how much room noise was removed.
+ */
+export const fakeQuiet = (a: Analysis): boolean => a.noise <= FLOOR_DB + 0.5 || overprocessedStatus(a) !== 'good'
+
 export interface BeforeAfter {
   raw: Take & { analysis: Analysis }
   fx: Take & { analysis: Analysis }
@@ -22,15 +30,22 @@ export interface BeforeAfter {
 const valid = (t: Take | null | undefined): t is Take & { analysis: Analysis } => !!t && !isAnalysisError(t.analysis)
 
 /**
- * Processed take of A's guided session vs the raw control at the processed distance (else the best control).
- * fxDist only applies to the current session; older sessions use their best control's distance.
+ * The one raw reference of A's guided session (v0.8), used everywhere a processed take is compared: the raw control
+ * at the processed distance if it exists and is analyzable, else the best control. fxDist only applies to the current
+ * session; older sessions use their best control's distance.
  */
+export function rawReference(takes: readonly Take[], A: Take, session: string, fxDist: string | null): (Take & { analysis: Analysis }) | null {
+  if (A.session === 'free') return null
+  const raw = pickSuggestionBase(sessionSlots(takes, A.session), A.session === session ? fxDist : null)
+  return valid(raw) ? raw : null
+}
+
+/** Processed take of A's guided session vs its raw reference (see rawReference). */
 export function beforeAfterPair(takes: readonly Take[], A: Take, session: string, fxDist: string | null): BeforeAfter | null {
   if (A.session === 'free') return null
-  const slots = sessionSlots(takes, A.session)
-  const fx = slots[3]
-  const raw = pickSuggestionBase(slots, A.session === session ? fxDist : null)
-  return valid(fx) && valid(raw) ? { raw, fx } : null
+  const fx = sessionSlots(takes, A.session)[3]
+  const raw = rawReference(takes, A, session, fxDist)
+  return valid(fx) && raw ? { raw, fx } : null
 }
 
 const RAW_STEPS = new Set(['c2', 'c8', 'c15'])

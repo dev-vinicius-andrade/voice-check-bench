@@ -200,14 +200,19 @@ describe('suggest in a noisy room (SNR < 25)', () => {
     expect(s?.chain).toEqual(['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate'])
     const nr = s?.noiseReduction
     expect(nr?.plugin).toBe('ReaFIR')
-    expect(nr?.steps).toHaveLength(5)
+    expect(nr?.steps).toHaveLength(6)
     expect(en(nr?.steps[0])).toBe('In Wave Link → your mic → Effects, add "ReaFIR (ReaPlugs Edition)" and drag it to the top.')
     expect(en(nr?.steps[1])).toBe('Mode: Subtract. FFT size: 4096.')
     expect(en(nr?.steps[2])).toMatch(/Automatically build noise profile/)
-    expect(en(nr?.steps[3])).toMatch(/about 10–12 dB/)
+    expect(en(nr?.steps[3])).toBe(
+      'Drag the whole curve down a little (about 6 dB), then talk and listen. Stop at the first watery or robotic sound; if it never sounds clean, use an AI noise remover instead.',
+    )
+    expect(en(nr?.steps[5])).toBe('After noise removal your voice may get quieter: raise ReaComp Wet by the same amount (the results show how much).')
     expect(nr?.alternatives.map(englishText)).toEqual(['Elgato Noise Removal (in Wave Link)', 'Voice Focus by ai-coustics (in Wave Link)', 'NVIDIA Broadcast — Noise Removal (RTX GPUs)'])
-    // voice less than 15 dB over the room: stronger reduction
-    expect(en(suggest(mkTake(noisyRoom({ snr: 12 })), '8 cm')?.noiseReduction?.steps[3])).toMatch(/about 15 dB\./)
+    // never a fixed 15 dB room drop, also when the voice is close to the room
+    const loud = suggest(mkTake(noisyRoom({ snr: 12 })), '8 cm')?.noiseReduction
+    expect(en(loud?.steps[3])).toContain('6 dB')
+    expect(loud?.steps.map(englishText).join(' ')).not.toContain('15 dB')
     expect(suggest(mkTake(noisyRoom({ snr: 24.9 })), '8 cm')?.noisyRoom).toBe(true)
     expect(suggest(mkTake(noisyRoom({ snr: 25 })), '8 cm')?.noisyRoom).toBe(false)
   })
@@ -291,13 +296,39 @@ describe('suggest in a noisy room (SNR < 25)', () => {
     expect(en(suggest(onTake, '8 cm', mic('dynamic'))?.noiseHint).endsWith(hint)).toBe(false)
   })
 
+  it('preferAi: AI noise removal first when the voice is less than 15 dB over the room', () => {
+    const at = (snr: number) => suggest(mkTake(noisyRoom({ snr })), '8 cm')
+    expect(at(12)?.noiseReduction?.preferAi).toBe(true)
+    expect(at(14.9)?.noiseReduction?.preferAi).toBe(true)
+    expect(at(15)?.noiseReduction?.preferAi).toBe(false)
+    expect(at(20)?.noiseReduction?.preferAi).toBe(false)
+    const s = at(12)
+    if (!s) throw new Error('no suggestion')
+    // the chain keeps ReaFIR; the sheet marks it optional and lists the AI options before it
+    expect(s.chain).toEqual(['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate'])
+    expect(s.gate.dry).toBe(-10)
+    const t = suggestionToText(s)
+    expect(t).toContain('Effects order: ReaFIR (optional) → ReaEQ → ReaComp → ReaGate')
+    const tryFirst = t.indexOf('Try first (AI noise removal): Elgato Noise Removal (in Wave Link), Voice Focus by ai-coustics (in Wave Link), NVIDIA Broadcast — Noise Removal (RTX GPUs). If your voice sounds clean with one of them, skip ReaFIR.')
+    const reafir = t.indexOf('ReaFIR (noise reduction, optional: only if the AI option does not sound clean)\n  1. In Wave Link')
+    expect(tryFirst).toBeGreaterThan(0)
+    expect(reafir).toBeGreaterThan(tryFirst)
+    expect(t).not.toContain('Alternatives:')
+    expect(t).not.toContain('15 dB')
+    const j = suggestionToJson(s)
+    expect(j.noiseReduction?.preferAi).toBe(true)
+    expect(suggestionToJson(at(20)!).noiseReduction?.preferAi).toBe(false)
+  })
+
   it('text sheet: chain order, ReaFIR steps, alternatives and notches', () => {
     const s = suggest(mkTake(noisyRoom()), '8 cm')
     if (!s) throw new Error('no suggestion')
     const t = suggestionToText(s)
     expect(t).toContain('Effects order: ReaFIR → ReaEQ → ReaComp → ReaGate\n\nReaFIR (noise reduction)\n  1. In Wave Link')
     expect(t).toContain('  2. Mode: Subtract. FFT size: 4096.')
+    expect(t).toContain('  4. Drag the whole curve down a little (about 6 dB), then talk and listen.')
     expect(t).toContain('  5. Keep ReaEQ, ReaComp and ReaGate below ReaFIR, in that order.')
+    expect(t).toContain('  6. After noise removal your voice may get quieter: raise ReaComp Wet by the same amount (the results show how much).')
     expect(t).toContain('  Alternatives: Elgato Noise Removal (in Wave Link), Voice Focus by ai-coustics (in Wave Link), NVIDIA Broadcast — Noise Removal (RTX GPUs)')
     expect(t).toMatch(/Type Band \(notch\) · Frequency 6200 Hz · Gain -12\.0 dB · Bandwidth 0\.10 oct {3}\(Fan\/machine tone \+30\.0 dB\)/)
     expect(t).toContain('  Ratio: 2.5:1')
@@ -314,7 +345,7 @@ describe('suggest in a noisy room (SNR < 25)', () => {
     expect(Object.keys(j).slice(-4)).toEqual(['deess', 'noisyRoom', 'noiseReduction', 'chain'])
     expect(j.noisyRoom).toBe(true)
     expect(j.chain).toEqual(['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate'])
-    expect(Object.keys(j.noiseReduction ?? {})).toEqual(['plugin', 'steps', 'alternatives'])
+    expect(Object.keys(j.noiseReduction ?? {})).toEqual(['plugin', 'steps', 'alternatives', 'preferAi'])
     expect(JSON.parse(JSON.stringify(j))).toEqual(j)
   })
 })

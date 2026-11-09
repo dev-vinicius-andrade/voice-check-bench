@@ -30,12 +30,12 @@
 - `src/audio/reference.ts` — `BANDS` reference curve, `deviations()`, `QUIET_SEC`/`MAX_SEC`
 - `src/audio/quickStats.ts` — duration/peak/silence/reading levels of a raw take; `failureId`/`FAILURE_IDS` + `failureHint` (Msg `engine.failure.*`) for failed analyses
 - `src/audio/wav.ts` — 16-bit mono WAV encoder + safe file names (Download WAV)
-- `src/audio/analyze.ts` — `analyze(samples, sampleRate, { mains? })`: levels, noise, speech mask, spectra, hum (local mains family first), sibilance, per-band speech/noise SNR, `findTones`, `classifyNoise` (noiseKind); `NOT_ENOUGH_SPEECH_KEY`
+- `src/audio/analyze.ts` — `analyze(samples, sampleRate, { mains? })`: levels, noise, speech mask, spectra, hum (local mains family first), sibilance, per-band speech/noise SNR, `findTones`, `classifyNoise` (noiseKind); frame levels/noise clamped at `FLOOR_DB` (−100), `digitalSilence()` → `zeroRatio` / `gateSwitches` from exact-zero runs (v0.8); `NOT_ENOUGH_SPEECH_KEY`
 - `src/audio/mains.ts` — mains frequency: `MainsSetting` (50 | 60 | 'auto'), 60 Hz regions, `regionOf`, `mainsForLocale`, `resolveMains`, `humFrequencies`
 - `src/audio/mains.test.ts` — locale region → 50/60 Hz, auto resolution, hum family order and preference
 - `src/audio/eqCurve.ts` — `eqResponseDb(bands, freqs)`: summed RBJ biquad magnitude (dB) of ReaEQ Low Shelf / Band / High Shelf bands (bandwidth in octaves) at 48 kHz, `biquad`, `logFreqs(n, lo, hi)`
 - `src/audio/eqCurve.test.ts` — flat without bands, +3 dB band peak, shelf plateaus, dB summing, narrow 0.1 oct notch
-- `src/audio/diagnose.ts` — `diagnose()` checks with ids (incl. tones, bandsnr; generic mic copy) as Msg keys `engine.check.*` (numbers as params), `countByStatus`, `topIssues`, `f1`
+- `src/audio/diagnose.ts` — `diagnose()` checks with ids (incl. overprocessed after noise, tones, bandsnr; generic mic copy), `overprocessedStatus` + thresholds as Msg keys `engine.check.*` (numbers as params), `countByStatus`, `topIssues`, `f1`
 - `src/audio/testSignals.ts` — test-only seeded PRNG, synthetic take (optional steady tones), `fakeAnalysis` fixture
 - `src/audio/dsp.test.ts` — FFT bin, Hann, percentile tests
 - `src/audio/analyze.test.ts` — analyze() on synthetic takes, silence-window and error paths, tones/bandSnr/noiseKind
@@ -44,8 +44,8 @@
 - `src/session/steps.ts` — `STEPS` wizard definition (English data; title names stored takes), `DEV_MATCH`, `DEV_NAME`, `fillDistance`; UI copy keys `stepKey`/`stepText` (`wizard.steps.<key>.*`); `stepOf`, `takeDist` (distance of a guided take, for its on-screen name)
 - `src/session/bestControl.ts` — `sessionSlots()` and `bestControl()` control-take picker (SNR penalty doubles in a noisy room)
 - `src/session/bestControl.test.ts` — slots, best control scoring, steps helpers
-- `src/settings/suggest.ts` — `suggest()` (quiet room; noisy room: ReaFIR plan, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase()`, `isNotch()`; hints/steps/EQ reasons as Msg (`engine.suggest.*`); `suggestionToText(s, t?, baseName?)` (English without `t`, `engine.sheet.*`) / `suggestionToJson` (English), `joinMsgs`
-- `src/settings/english.ts` — `englishText(msg)`: English text of engine messages for exports (byte-identical to the pre-i18n sheet), `MsgTranslator`
+- `src/settings/suggest.ts` — `suggest()` (quiet room; noisy room: ReaFIR plan starting at about 6 dB + ReaComp Wet note, `preferAi` when SNR < 15, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase()`, `isNotch()`; hints/steps/EQ reasons as Msg (`engine.suggest.*`, ReaFIR steps `suggestx.reafir.*`); `suggestionToText(s, t?, baseName?)` (English without `t`, `engine.sheet.*`; preferAi: "Try first" AI options, ReaFIR optional) / `suggestionToJson` (English), `joinMsgs`
+- `src/settings/english.ts` — `englishText(msg)`: English text of engine messages (engine.json + suggest.json) for exports (byte-identical to the pre-i18n sheet), `MsgTranslator`
 - `src/settings/sheet.test.ts` — sheet/JSON byte-identical to `golden/sheets.json`, i18next en renders the same, localized pt-BR copy
 - `src/settings/sheetFixtures.ts` · `src/settings/golden/sheets.json` — test-only suggestion fixtures and their pre-i18n sheet/JSON output
 - `src/settings/suggest.test.ts` — clamps, EQ rounding, gain hints, JSON shape, text sheet; noisy room: chain, ReaFIR plan, notches, band-SNR boosts, gate/comp, condenser hint
@@ -68,17 +68,19 @@
 - `src/mics/catalog.ts` — `MIC_CATALOG` known models (kind/pattern/address), `DEFAULT_MIC`, `findMic`, `addressTip`/`placementTip` (Msg `engine.mic.*`), `MIC_OTHER_LABEL`
 - `src/mics/catalog.test.ts` — catalog lookup and tip keys/texts
 - `src/plain/types.ts` — plain-language contract: `Msg` (key + params), `ClarityScore`, `Rating`, `Action` (cost, impact, how)
-- `src/plain/score.ts` — `clarityScore()` (noise/level/tone/consistency penalties, main issue, headline/explain keys), `penalties`, `mainIssue`, `scoreBand`
-- `src/plain/ratings.ts` — `plainRatings()` background noise / your volume / sound of your voice, `voiceState`, `volumeState`, `noiseWording`, `ratingTitle`
-- `src/plain/actions.ts` — `nextActions()` up to 3 "what to do next" actions (mic-aware placement/address, impact order, free before paid), `rankActions`
+- `src/plain/score.ts` — `clarityScore(a, { raw? })` (noise/level/tone/consistency/over-processing penalties, main issue, headline/explain keys), `penalties`, `overprocessingPenalty`, `mainIssue`, `scoreBand`
+- `src/plain/compare.ts` — `compareProcessed(raw, fx)`: regressions of a processed take (quieter, thin, harsh, chopped) and the level drop (v0.8)
+- `src/plain/ratings.ts` — `plainRatings(a, { raw? })` background noise (incl. cut to silence) / your volume / sound of your voice (incl. regressions), `voiceState`, `volumeState`, `noiseWording`, `ratingTitle`
+- `src/plain/actions.ts` — `nextActions()` up to 3 "what to do next" actions (mic-aware placement/address, impact order, free before paid; over-processed → "turn noise removal down" / compressor Wet first), `rankActions`
 - `src/plain/glossary.ts` — `GLOSSARY` term/meaning/analogy keys, `glossaryEntry(id)`
 - `src/plain/distances.ts` — `everydayDistance()` (finger / fist / open hand), `distanceCm()`
 - `src/plain/testFixtures.ts` — test-only analyses (exact band deviations, noisy room, fixture set) and mic builder
-- `src/plain/score.test.ts` · `ratings.test.ts` · `actions.test.ts` · `distances.test.ts` — formulas, label mapping, action order/limits, distances and glossary
+- `src/plain/score.test.ts` · `ratings.test.ts` · `actions.test.ts` · `compare.test.ts` · `distances.test.ts` — formulas, label mapping, action order/limits, distances and glossary
 - `src/plain/keys.test.ts` — every key the plain engine returns exists in en.json with its `{{params}}`; banned words
 - `src/i18n/locales/en.json` — English source strings; `plain` namespace (score, rating, action, distance, glossary)
 - `src/i18n/locales/en/results.json` — English results-screen strings (`results.*`: plain layout, technical details, settings, takes)
 - `src/i18n/locales/{en,pt-BR}/engine.json` — `engine.*` strings for the framework-free modules: checks, suggestion hints/steps/reasons, settings sheet, failure hints, mic tips + mains select, take groups, status lines (numbers formatted in-string with `{{v, number(…)}}`)
+- `src/i18n/locales/{en,pt-BR}/suggest.json` — `suggestx.*` suggestion strings (ReaFIR plan steps, preferAi sheet lines); also read by `englishText`
 - `src/i18n/locales/pt-BR/{plain,common,results,wizard,pages}.json` — Brazilian Portuguese translations, same keys and `{{params}}` as en (pt plural forms `_one/_many/_other`, ordinal `_ordinal_other`)
 - `src/i18n/localeParity.test.ts` — every en/<area>.json key exists in pt-BR/<area>.json and vice versa, identical `{{params}}`, all plural forms each locale needs for `{{count}}` keys, no empty strings
 - `src/storage/prefs.test.ts` — prefs round trip (incl. mic profile), corrupt JSON, blocked storage
@@ -87,7 +89,7 @@
 - `src/components/results/ResultsScreen.test.tsx` — render test on the demo session: score ring, three ratings, ≤ 3 actions, details collapsed, details open state remembered
 - `src/components/results/resultsKeys.test.ts` — every `t('results.…')` / `<Trans i18nKey>` key in the results components exists in en/results.json (plus dynamic key families)
 - `src/components/results/PlainResults.tsx` — plain-first layout for take A: score → ratings → next actions → plain summaries → technical details; "Show me how" (settings) opens the details and scrolls to the suggested settings
-- `src/components/results/usePlainResults.ts` — clarity score, ratings and next actions (+ ActionContext: take/profile mic, best and current distance, suggestion) for A; `stepDist()`
+- `src/components/results/usePlainResults.ts` — clarity score, ratings and next actions (+ ActionContext: take/profile mic, best and current distance, suggestion, raw reference when A is processed) for A; `stepDist()`
 - `src/components/results/ScoreHero.tsx` — SVG score ring (success ≥ 70 / warning 50–69 / error < 50), "Your voice today", headline + explanation
 - `src/components/results/RatingCards.tsx` — the three everyday rating cards (title, status-coloured label, explanation)
 - `src/components/results/NextActions.tsx` — numbered "What to do next" list with cost chip and "Show me how" (placement/gain panels inline, settings → #/guide, plus "See the values only" → details)
@@ -102,13 +104,14 @@
 - `src/components/results/StatTiles.tsx` — speech, noise, SNR, issue-count tiles with B values
 - `src/components/results/RoomNoisePanel.tsx` — room noise of A: floor, noise kind chip, steady tones, per-band SNR chart
 - `src/components/results/BandSnrChart.tsx` — SVG per-octave voice-over-room SNR bars (0–50 dB) with 10/20 dB guides
-- `src/components/results/BeforeAfterCard.tsx` — raw control vs processed take of A's session: SNR, voice-band SNR, noise floor, verdict
+- `src/components/results/BeforeAfterCard.tsx` — raw control vs processed take of A's session: SNR, voice-band SNR, noise floor, verdict (regressions warning, no gain claimed from a digital-silence floor)
+- `src/components/results/RegressionsAlert.tsx` — warning listing what the effects made worse (v0.8)
 - `src/components/results/CopySummaryButton.tsx` — "Copy anonymized summary" (clipboard, falls back to voice-check-summary.json)
 - `src/components/results/ShareCommunityButton.tsx` — "Share with the community": opens the pre-filled GitHub issue form; copies the summary when it does not fit in the link
 - `src/components/results/SummaryActions.tsx` — copy + share buttons with the public-issue note and the paste note
 - `src/components/results/CommunityMicCard.tsx` — "People with this mic": your best raw control vs community SNR, best distance, deviations and typical EQ
 - `src/components/results/CommunityDeviationChart.tsx` — SVG paired per-octave deviation bars (you vs community median)
-- `src/components/results/roomNoise.ts` — band SNR helpers, `beforeAfterPair`, `yourRawAnalysis` (best raw control for community comparisons)
+- `src/components/results/roomNoise.ts` — band SNR helpers, `rawReference` (the one raw take processed takes are compared with), `beforeAfterPair`, `fakeQuiet` (digital-silence floor), `yourRawAnalysis` (best raw control for community comparisons)
 - `src/components/results/roomNoise.test.ts` — band SNR helpers, before/after pairing
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart (A, A + B, A − B) with ±3/±6 zones and legend
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
@@ -168,7 +171,7 @@
 - `src/components/step/StepNav.tsx` — Back / Skip / Next navigation
 - `src/store/api.ts` — store contract: `BenchState` (incl. `mains`), `BenchActions`, `BenchSelectors`, `StatusMessage` (Msg), `TakeGroup`
 - `src/store/engine.ts` — lazily created `AudioEngine` singleton `getEngine()` (mocked in tests)
-- `src/store/benchStore.ts` — zustand `useBench` store: bootstrap, mic/devices, recording, navigation, A/B, deletes, mic profile (`patchMicProfile`, copied onto new takes); persists UI prefs (demo A/B saved as none); site-page `goTo` leaves wizard state alone; never saves session 'demo' takes; status lines as Msg (`engine.status.*`); `setMains` (re-analyzes all takes); `initialBenchState()` (screen 'home'), `prepareResults()`
+- `src/store/benchStore.ts` — zustand `useBench` store: bootstrap, mic/devices, recording, navigation, A/B, deletes, mic profile (`patchMicProfile`, copied onto new takes); persists UI prefs (demo A/B saved as none); site-page `goTo` leaves wizard state alone; never saves session 'demo' takes; status lines as Msg (`engine.status.*`); `setMains` (re-analyzes all takes); `initialBenchState()` (screen 'home'), `prepareResults()`, `reconcileFxDist()` (fxDist dropped when it no longer matches the best control distance unless chosen with `setFxDist`)
 - `src/store/selectors.ts` — pure selectors: slots, best control, fxDist, step take, A/B, suggestion, take groups, canGoNext
 - `src/store/hooks.ts` — render-safe selector hooks (`useSlots`, `useBestControl`, `useSuggestion`, `useTakeGroups`, `useMicProfile`, …)
 - `src/store/benchStore.test.ts` — navigation, A/B, delete, recording, enableMic, bootstrap, mic profile, mains setting (fake engine)
@@ -183,7 +186,7 @@
 - `src/components/guide/GuideStepper.tsx` — vertical progress checklist (MUI Stepper): "Done, next" / "Back", jump to any step, all-done message
 - `src/components/guide/StepText.tsx` — step lead + numbered actions (numbers match replica callouts) + `StepNote`
 - `src/components/guide/guideFormat.ts` — `StepAction`, `calloutsOf`, value formatters for typed plugin values (dB, ms, Hz without separator, oct)
-- `src/components/guide/waveLinkSteps.ts` — `waveLinkSteps(s)` ordered Wave Link steps (effects → add + panel steps per chain plugin: ReaFIR setup/profile/reduce, one ReaEQ step per band or "flat", ReaComp, ReaGate → low cut → test), `offEffects(s)`
+- `src/components/guide/waveLinkSteps.ts` — `waveLinkSteps(s)` ordered Wave Link steps (effects → add + panel steps per chain plugin: ReaFIR setup/profile/reduce, one ReaEQ step per band or "flat", ReaComp, ReaGate → low cut → listen check (noisy) → test; AI step before ReaFIR when preferAi), `guideChain(s, choice)`, `offEffects(s, choice)` (Elgato Noise Removal kept on when picked)
 - `src/components/guide/WaveLinkGuide.tsx` — Wave Link + ReaPlugs path: step titles/bodies with the WaveLinkEffects replica, "Apply automatically instead" aside
 - `src/components/guide/WaveLinkPanels.tsx` — ReaFIR / ReaEQ band / ReaComp / ReaGate steps: instructions with the person's values + replica panels with callouts
 - `src/components/guide/ApplyAutomatically.tsx` — aside explaining `tools/apply-reaplugs.py` (Wave Link closed, backup, ReaFIR by hand)
@@ -191,7 +194,9 @@
 - `src/components/guide/ObsGuide.tsx` — OBS Studio path (Audio Mixer → ⋮ → Filters, built-in filters, VST ReaPlugs alternatives)
 - `src/components/guide/NvidiaGuide.tsx` — NVIDIA Broadcast path (install, Noise Removal, pick its mic in apps)
 - `src/components/guide/AppsGuide.tsx` — Discord/Teams/Zoom path (noise suppression, echo cancellation, automatic gain, free physical actions from nextActions)
-- `src/components/guide/TestStep.tsx` — last step of every path: record the processed take (goes to the fx step)
+- `src/components/guide/TestStep.tsx` — last step of every path: record the processed take at the best take's distance (goes to the fx step)
+- `src/components/guide/AiNoiseStep.tsx` — "Try AI noise removal first" step (preferAi): Elgato Noise Removal / NVIDIA Broadcast options, "Use ReaFIR instead"
+- `src/components/guide/nrChoice.ts` — `NrChoice` ('ai-elgato' | 'ai-nvidia' | 'reafir'), `loadNrChoice`/`saveNrChoice` (localStorage `vcb-nr-choice`, fails soft), `useNrChoice()`
 - `src/components/guide/waveLinkSteps.test.ts` · `GuidePaths.test.tsx` · `HostPicker.test.tsx` · `guideKeys.test.ts` — step lists from fixture suggestions (noisy/quiet, EQ bands), OBS mapping, rendered paths, host persistence, guide keys exist
 - `src/i18n/locales/{en,pt-BR}/guide.json` — `guide.*` strings (guide screen, host picker, Wave Link/OBS/NVIDIA/app paths, entry buttons)
 - `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)

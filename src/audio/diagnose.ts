@@ -11,6 +11,21 @@ export const f1 = (v: number): string => (v > 0 ? '+' : '') + v.toFixed(1)
 
 const msg = (key: string, params?: Msg['params']): Msg => (params ? { key, params } : { key })
 
+/** Over-processing thresholds (SPEC v0.8): share of exact-zero samples and silence/sound flips per 10 s. */
+export const OVER_ZERO_BAD = 0.15
+export const OVER_ZERO_WARN = 0.05
+export const OVER_SWITCH_BAD = 12
+export const OVER_SWITCH_WARN = 6
+
+/** Noise removal or a gate cutting the voice: bad when zeroRatio > 0.15 or gateSwitches > 12, warn above 0.05 / 6. */
+export function overprocessedStatus(a: Pick<Analysis, 'zeroRatio' | 'gateSwitches'>): Status {
+  const z = a.zeroRatio ?? 0
+  const g = a.gateSwitches ?? 0
+  if (z > OVER_ZERO_BAD || g > OVER_SWITCH_BAD) return 'bad'
+  if (z > OVER_ZERO_WARN || g > OVER_SWITCH_WARN) return 'warn'
+  return 'good'
+}
+
 /** Band checks in BANDS order (index 1..8); rumble (index 0) has its own rule. */
 const BAND_CHECKS: readonly CheckId[] = ['boom', 'warmth', 'mud', 'body', 'definition', 'presence', 'sibilance', 'air']
 
@@ -42,6 +57,11 @@ export function diagnose(a: Analysis): Check[] {
     const s: Status = n < -70 ? 'good' : n < -58 ? 'warn' : 'bad'
     const detail = a.noiseFromQuiet ? (s === 'good' ? 'good' : 'bad') : s === 'good' ? 'roughGood' : 'roughBad'
     add('noise', s, msg('engine.check.noise.value', { noise: n, snr: a.snr }), detail, 'fix')
+  }
+  // over-processing: skipped when there is no digital silence and no gate flipping at all
+  if ((a.zeroRatio ?? 0) > 0 || (a.gateSwitches ?? 0) > 0) {
+    const s = overprocessedStatus(a)
+    add('overprocessed', s, msg('engine.check.overprocessed.value', { zero: (a.zeroRatio ?? 0) * 100, switches: a.gateSwitches ?? 0 }), s === 'good' ? 'good' : 'bad', 'fix')
   }
   if (a.quietBroken) {
     add('silence', 'warn', msg('engine.check.silence.value'), 'detail', 'fix')

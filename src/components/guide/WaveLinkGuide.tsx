@@ -1,17 +1,19 @@
-// Wave Link + ReaPlugs path: effects list → add and set each plugin of the chain → hardware low cut → test.
+// Wave Link + ReaPlugs path: effects list → [AI noise removal first] → add and set each plugin of the chain
+// → hardware low cut → [listen check] → test.
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import type { Suggestion } from '../../types'
-import { chainOf } from '../results/pluginCards'
+import { AiNoiseStep } from './AiNoiseStep'
 import { ApplyAutomatically } from './ApplyAutomatically'
 import { GuideStepper, type GuideStep } from './GuideStepper'
 import { calloutsOf, hz, type StepAction } from './guideFormat'
+import { useNrChoice, type NrChoice } from './nrChoice'
 import { WaveLinkEffects } from './replicas/WaveLinkEffects'
 import { StepNote, StepText } from './StepText'
 import { TestStep } from './TestStep'
 import { CompStep, EqStep, GateStep, ReaFirStep } from './WaveLinkPanels'
-import { offEffects, waveLinkSteps, type WaveLinkStep } from './waveLinkSteps'
+import { effectiveChoice, guideChain, offEffects, waveLinkSteps, type WaveLinkStep } from './waveLinkSteps'
 
 function title(t: TFunction, s: Suggestion, x: WaveLinkStep): string {
   switch (x.kind) {
@@ -28,10 +30,17 @@ function title(t: TFunction, s: Suggestion, x: WaveLinkStep): string {
   }
 }
 
-function Body({ s, x }: { s: Suggestion; x: WaveLinkStep }) {
+interface BodyProps {
+  s: Suggestion
+  x: WaveLinkStep
+  choice: NrChoice | null
+  onChoose: (c: NrChoice) => void
+}
+
+function Body({ s, x, choice, onChoose }: BodyProps) {
   const { t } = useTranslation()
-  const chain = chainOf(s)
-  const off = offEffects(s)
+  const chain = guideChain(s, choice)
+  const off = offEffects(s, choice)
   switch (x.kind) {
     case 'effects':
       return (
@@ -44,6 +53,8 @@ function Body({ s, x }: { s: Suggestion; x: WaveLinkStep }) {
           <WaveLinkEffects chain={chain} off={off} callouts={off.map((name) => ({ n: 3, target: `toggle-${name}` }))} />
         </>
       )
+    case 'ai':
+      return <AiNoiseStep choice={choice} onChoose={onChoose} />
     case 'add': {
       const p = { plugin: x.plugin, n: x.position, total: chain.length, order: chain.join(' → ') }
       const actions: StepAction[] = [
@@ -62,7 +73,7 @@ function Body({ s, x }: { s: Suggestion; x: WaveLinkStep }) {
       )
     }
     case 'reafir':
-      return <ReaFirStep s={s} phase={x.phase ?? 'setup'} />
+      return <ReaFirStep phase={x.phase ?? 'setup'} />
     case 'eq':
       return <EqStep s={s} band={x.band ?? 0} />
     case 'eqFlat':
@@ -78,6 +89,8 @@ function Body({ s, x }: { s: Suggestion; x: WaveLinkStep }) {
           <WaveLinkEffects chain={chain} off={off} lowcut={s.lowcut} callouts={[{ n: 1, target: 'lowcut' }]} />
         </>
       )
+    case 'listen':
+      return <StepText lead={t('guide.wl.listen.lead')} actions={[]} />
     case 'test':
       return <TestStep />
   }
@@ -85,14 +98,17 @@ function Body({ s, x }: { s: Suggestion; x: WaveLinkStep }) {
 
 export function WaveLinkGuide({ s }: { s: Suggestion }) {
   const { t } = useTranslation()
+  const [saved, setChoice] = useNrChoice()
+  const choice = effectiveChoice(s, saved)
   const steps = useMemo(
-    (): GuideStep[] => waveLinkSteps(s).map((x) => ({ id: x.id, title: title(t, s, x), body: <Body s={s} x={x} /> })),
-    [s, t],
+    (): GuideStep[] =>
+      waveLinkSteps(s, choice).map((x) => ({ id: x.id, title: title(t, s, x), body: <Body s={s} x={x} choice={choice} onChoose={setChoice} /> })),
+    [s, t, choice, setChoice],
   )
   return (
     <div className="grid gap-4">
       <GuideStepper title={t('guide.host.option.wavelink.name')} steps={steps} />
-      <ApplyAutomatically manualReaFir={chainOf(s).includes('ReaFIR')} />
+      <ApplyAutomatically manualReaFir={guideChain(s, choice).includes('ReaFIR')} />
     </div>
   )
 }

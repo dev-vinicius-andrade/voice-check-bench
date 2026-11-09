@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { isAnalysisError, type Analysis } from '../types'
-import { analyze } from './analyze'
+import { FLOOR_DB, analyze, digitalSilence } from './analyze'
+import { diagnose } from './diagnose'
 import { BANDS } from './reference'
-import { syntheticTake } from './testSignals'
+import { prng, syntheticTake } from './testSignals'
 
 const ERROR = 'Not enough speech detected. Speak louder or closer, or check the selected input.'
 
@@ -166,5 +167,72 @@ describe('analyze noisy-room diagnosis', () => {
     expect(a.noiseBands.every(Number.isNaN)).toBe(true)
     expect(a.bandSnr.every(Number.isNaN)).toBe(true)
     expect(a.tones).toEqual([])
+  })
+})
+
+describe('over-processing signals (v0.8)', () => {
+  it('a natural take has no digital silence and no gate flips', () => {
+    const a = analyze(syntheticTake({ noiseDb: -60 }), 48000) as Analysis
+    expect(a.zeroRatio).toBe(0)
+    expect(a.gateSwitches).toBe(0)
+  })
+
+  it('clamps the noise floor at -100 dBFS on digital silence and measures cut-outs', () => {
+    const x = syntheticTake({ noiseDb: -60 })
+    const sr = 48000
+    x.fill(0, 0, 3 * sr) // silence window cut to digital zero
+    for (let s = 3 * sr; s < x.length; s += sr / 2) x.fill(0, s, s + sr / 10) // 100 ms cut every 500 ms
+    const a = analyze(x, sr) as Analysis
+    expect(isAnalysisError(a)).toBe(false)
+    expect(a.noise).toBe(FLOOR_DB)
+    expect(Number.isFinite(a.snr)).toBe(true)
+    expect(a.snr).toBeCloseTo(a.speechMed - FLOOR_DB, 6)
+    expect(a.zeroRatio).toBeGreaterThan(0.3)
+    expect(a.gateSwitches).toBeGreaterThan(12)
+  })
+
+  it('counts exact-zero runs: >= 10 ms for zeroRatio, starts of >= 20 ms runs per 10 s for gateSwitches', () => {
+    const sr = 1000
+    const x = new Float32Array(10 * sr).fill(0.1)
+    x.fill(0, 1000, 1005) // 5 ms: quantization-length zeros, ignored
+    x.fill(0, 2000, 2015) // 15 ms: digital silence, not a cut-out
+    x.fill(0, 3000, 3025) // 25 ms: a cut-out
+    x.fill(0, 9900) // 100 ms at the end: a cut-out
+    expect(digitalSilence(x, sr)).toEqual({ zeroRatio: (15 + 25 + 100) / 10000, gateSwitches: 2 })
+    expect(digitalSilence(x.subarray(0, 5 * sr), sr).gateSwitches).toBe(2) // 1 start in 5 s
+    expect(digitalSilence(new Float32Array(0), sr)).toEqual({ zeroRatio: 0, gateSwitches: 0 })
+  })
+
+  it('a very quiet room (-80 to -95 dBFS) with speech pauses, quantized to 16 bit, is not flagged', () => {
+    const sr = 48000
+    for (const noiseDb of [-80, -88, -95]) {
+      const x = syntheticTake({ noiseDb })
+      const room = syntheticTake({ noiseDb, speechDb: -300 })
+      for (let s = 3 * sr; s < x.length; s += sr) x.set(room.subarray(s, s + 0.3 * sr), s) // 300 ms pause every second
+      for (let i = 0; i < x.length; i++) x[i] = Math.round(x[i] * 32768) / 32768
+      expect(x.some((v) => v === 0)).toBe(true) // quantization does leave single zero samples
+      const a = analyze(x, sr) as Analysis
+      expect(isAnalysisError(a)).toBe(false)
+      expect([a.zeroRatio, a.gateSwitches]).toEqual([0, 0])
+      expect(diagnose(a).find((c) => c.id === 'overprocessed')).toBeUndefined()
+    }
+  })
+
+  it('30 % of the take in 50–300 ms zero gaps is flagged', () => {
+    const sr = 48000
+    const x = syntheticTake({ noiseDb: -60 })
+    const rnd = prng(7)
+    let zeroed = 0
+    for (let s = Math.round(0.1 * sr); zeroed < 0.3 * x.length && s < x.length; ) {
+      const len = Math.round((0.05 + 0.25 * rnd()) * sr)
+      x.fill(0, s, s + len)
+      zeroed += Math.min(len, x.length - s)
+      s += len + Math.round((0.15 + 0.4 * rnd()) * sr)
+    }
+    const a = analyze(x, sr) as Analysis
+    expect(isAnalysisError(a)).toBe(false)
+    expect(a.zeroRatio).toBeGreaterThan(0.25)
+    expect(a.gateSwitches).toBeGreaterThan(12)
+    expect(diagnose(a).find((c) => c.id === 'overprocessed')?.status).toBe('bad')
   })
 })

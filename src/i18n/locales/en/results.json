@@ -50,7 +50,8 @@
         "quarter": "Your effects made the room {{db}} dB quieter next to your voice — about a quarter as loud.",
         "half": "Your effects made the room {{db}} dB quieter next to your voice — about half as loud.",
         "some": "Your effects made the room {{db}} dB quieter next to your voice.",
-        "little": "Your effects barely changed the room noise yet. The noise reduction steps in the technical details can help."
+        "little": "Your effects barely changed the room noise yet. The noise reduction steps in the technical details can help.",
+        "floor": "Your pauses are cut to digital silence, so this can't show how much room noise was really removed."
       },
       "community": {
         "behind": "People with this mic usually get about {{db}} dB more voice over the room noise than you do right now.",
@@ -122,7 +123,15 @@
       "voiceBandSnr": "Voice-band SNR",
       "noiseFloor": "Noise floor",
       "lowered": "Your effects lowered the room by {{db}} dB",
-      "little": "Noise reduction made little difference — check the ReaFIR profile"
+      "little": "Noise reduction made little difference — check the ReaFIR profile",
+      "floor": "Your pauses are cut to digital silence, so this can't show how much room noise was really removed."
+    },
+    "regressions": {
+      "title": "Your effects are making your voice worse",
+      "quieter": "Your voice got much quieter ({{db}} dB)",
+      "thin": "The bass is gone, so your voice sounds thin",
+      "harsh": "The upper tones got harsh and tiring",
+      "chopped": "Pauses are cut to total silence, which chops your words"
     },
     "community": {
       "title": "People with this mic",

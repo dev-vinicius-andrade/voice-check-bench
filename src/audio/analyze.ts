@@ -9,6 +9,13 @@ export const SPEECH_MARGINS = [15, 10, 6] as const
 
 export const NOT_ENOUGH_SPEECH =
   'Not enough speech detected. Speak louder or closer, or check the selected input.'
+/** Frame levels and the noise floor never go below this, dBFS (digital silence would read -240 and make SNR meaningless). */
+export const FLOOR_DB = -100
+/** Over-processing: exact-zero runs this long (s) count as digital silence (zeroRatio)... */
+export const ZERO_RUN_SEC = 0.01
+/** ...and runs this long (s) count as the processing cutting out (gateSwitches). */
+export const GATE_RUN_SEC = 0.02
+
 /** Message key for NOT_ENOUGH_SPEECH (the only analysis error), for the UI. */
 export const NOT_ENOUGH_SPEECH_KEY = 'engine.analysis.notEnoughSpeech'
 
@@ -38,7 +45,7 @@ export function analyze(x: Float32Array, sampleRate: number, opts: AnalyzeOption
   for (let f = 0; f < nF; f++) {
     let s = 0
     for (let i = f * win; i < (f + 1) * win; i++) s += x[i] * x[i]
-    fr[f] = adb(Math.sqrt(s / win))
+    fr[f] = Math.max(FLOOR_DB, adb(Math.sqrt(s / win)))
   }
 
   const qa = Math.round(0.6 / 0.05)
@@ -50,10 +57,10 @@ export function analyze(x: Float32Array, sampleRate: number, opts: AnalyzeOption
   // noise: median of the silence window, but never trust it if the quietest 10% of the whole take is clearly lower
   const globalNoise = pct(fr, 0.1)
   const noiseFromQuiet = quiet.length >= 10
-  let noise = noiseFromQuiet ? median(quiet) : globalNoise
+  let noise = Math.max(FLOOR_DB, noiseFromQuiet ? median(quiet) : globalNoise)
   let quietLoud = false
   if (noiseFromQuiet && noise > globalNoise + 6) {
-    noise = globalNoise
+    noise = Math.max(FLOOR_DB, globalNoise)
     quietLoud = true
   }
 
@@ -192,7 +199,35 @@ export function analyze(x: Float32Array, sampleRate: number, opts: AnalyzeOption
     bandSnr,
     tones,
     noiseKind,
+    ...digitalSilence(x, sr),
   }
+}
+
+/**
+ * Digital silence left by noise removal or a gate cutting everything: runs of exact-zero samples.
+ * zeroRatio = share of samples inside zero runs of at least ZERO_RUN_SEC (short zeros from quantizing a very quiet
+ * room don't count); gateSwitches = zero runs of at least GATE_RUN_SEC that start, per 10 s (each one = the
+ * processing slamming shut).
+ */
+export function digitalSilence(x: Float32Array, sampleRate: number): { zeroRatio: number; gateSwitches: number } {
+  if (!x.length || !(sampleRate > 0)) return { zeroRatio: 0, gateSwitches: 0 }
+  const minRun = Math.max(1, Math.round(ZERO_RUN_SEC * sampleRate))
+  const minGate = Math.max(1, Math.round(GATE_RUN_SEC * sampleRate))
+  let inRuns = 0
+  let starts = 0
+  let run = 0
+  const close = (): void => {
+    if (run >= minRun) inRuns += run
+    if (run >= minGate) starts++
+    run = 0
+  }
+  for (let i = 0; i < x.length; i++) {
+    if (x[i] === 0) run++
+    else if (run) close()
+  }
+  close()
+  const duration = x.length / sampleRate
+  return { zeroRatio: inRuns / x.length, gateSwitches: (starts * 10) / duration }
 }
 
 /** Sum of spectrum bins in [lo, hi) Hz, with the same bin range as the band energies above. */

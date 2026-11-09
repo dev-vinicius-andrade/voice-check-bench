@@ -75,12 +75,19 @@ const NOISY_CHAIN = ['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate']
 /** A narrow, deep Band cut for a fan/server tone (see EqBand). */
 export const isNotch = (e: Pick<EqBand, 'type' | 'bw'>): boolean => e.type === 'Band' && e.bw < 0.3
 
-/** Manual ReaFIR setup (profiles can't be written to Wave Link). Stronger reduction when the voice is < 15 dB over the room. */
+/** Below this SNR (dB) the voice is too close to the room for ReaFIR alone: AI noise removal is tried first. */
+const PREFER_AI_SNR = 15
+
+/**
+ * Manual ReaFIR setup (profiles can't be written to Wave Link). The reduction starts gently (about 6 dB, then listen),
+ * never a fixed room drop: too much reduction cuts the voice. `preferAi`: AI noise removal first, ReaFIR as the fallback.
+ */
 function reafirPlan(snr: number): NoiseReductionGuide {
   return {
     plugin: 'ReaFIR',
-    steps: ['add', 'mode', 'profile', snr < 15 ? 'curveStrong' : 'curve', 'order'].map((k) => sm(`reafir.${k}`)),
+    steps: ['add', 'mode', 'profile', 'reduce', 'order', 'wet'].map((k) => msg(`suggestx.reafir.${k}`)),
     alternatives: ['elgato', 'voiceFocus', 'nvidia'].map((k) => sm(`alternative.${k}`)),
+    preferAi: snr < PREFER_AI_SNR,
   }
 }
 
@@ -194,9 +201,16 @@ export function suggestionToText(s: Suggestion, t: MsgTranslator = englishText, 
   )
   if (s.noiseHint.length) L.push(x('first', { text: joinMsgs(s.noiseHint, t) }), '')
   if (s.gainHint) L.push(x('first', { text: t(s.gainHint) }), '')
-  L.push(x('hardware'), `  Lowcut Filter: on, ${s.lowcut} Hz`, '', x('order', { chain: s.chain.join(' → ') }), '')
   const nr = s.noiseReduction
-  if (nr) L.push(x('noiseReduction', { plugin: nr.plugin }), ...nr.steps.map((m, i) => `  ${i + 1}. ${t(m)}`), '  ' + x('alternatives', { list: nr.alternatives.map(t).join(', ') }), '')
+  const ai = !!nr?.preferAi
+  const optional = t(msg('suggestx.sheet.optional'))
+  const chain = s.chain.map((p) => (ai && p === nr?.plugin ? `${p} ${optional}` : p))
+  L.push(x('hardware'), `  Lowcut Filter: on, ${s.lowcut} Hz`, '', x('order', { chain: chain.join(' → ') }), '')
+  const steps = nr ? nr.steps.map((m, i) => `  ${i + 1}. ${t(m)}`) : []
+  const list = nr ? nr.alternatives.map(t).join(', ') : ''
+  if (nr && ai)
+    L.push(t(msg('suggestx.sheet.tryFirst', { list })), '', t(msg('suggestx.sheet.noiseReductionOptional', { plugin: nr.plugin })), ...steps, '')
+  else if (nr) L.push(x('noiseReduction', { plugin: nr.plugin }), ...steps, '  ' + x('alternatives', { list }), '')
   const g = s.gate
   const c = s.comp
   const sections: Record<string, () => void> = {
@@ -221,6 +235,7 @@ const planToJson = (nr: NoiseReductionGuide): NoiseReductionPlan => ({
   plugin: nr.plugin,
   steps: nr.steps.map(englishText),
   alternatives: nr.alternatives.map(englishText),
+  preferAi: nr.preferAi,
 })
 
 /** Object for Download .json: base replaced by basedOn/speechDbfs/noiseDbfs, prototype key order, then noisyRoom/noiseReduction/chain. Text is English. */

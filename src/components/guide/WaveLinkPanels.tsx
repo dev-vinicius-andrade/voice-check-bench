@@ -1,8 +1,8 @@
 // Panel steps of the Wave Link path: instructions with the person's values + the matching plugin replica.
 import { useTranslation } from 'react-i18next'
-import { fmtInput, fmtNum } from '../../i18n/format'
+import { fmtInput } from '../../i18n/format'
 import { isNotch } from '../../settings/suggest'
-import { isAnalysisError, type Suggestion } from '../../types'
+import type { Suggestion } from '../../types'
 import { useMsg } from '../common/MsgText'
 import { calloutsOf, db, ms, num, oct, signedDb, type StepAction } from './guideFormat'
 import { ReaCompPanel } from './replicas/ReaCompPanel'
@@ -12,8 +12,8 @@ import { ReaGatePanel } from './replicas/ReaGatePanel'
 import { StepNote, StepText } from './StepText'
 import type { ReaFirPhase } from './waveLinkSteps'
 
-/** Stronger reduction when the voice is less than 15 dB over the room (matches the suggestion's ReaFIR plan). */
-const STRONG_SNR = 15
+/** ReaFIR reduction starts gently, then the person listens (matches the suggestion's ReaFIR plan; never a fixed 15 dB). */
+const START_REDUCTION_DB = 6
 
 function useField() {
   const { t } = useTranslation()
@@ -25,12 +25,9 @@ function useField() {
   }
 }
 
-export function ReaFirStep({ s, phase }: { s: Suggestion; phase: ReaFirPhase }) {
+export function ReaFirStep({ phase }: { phase: ReaFirPhase }) {
   const { t } = useTranslation()
   const f = useField()
-  const a = s.base.analysis
-  const snr = isAnalysisError(a) ? NaN : a.snr
-  const amount = snr < STRONG_SNR ? db(15) : `${fmtNum(10, 0)}–${db(12)}`
   const actions: StepAction[] =
     phase === 'setup'
       ? [f.choose('Mode', 'Subtract', 'mode'), f.choose('FFT size', '4096', 'fftSize')]
@@ -41,7 +38,11 @@ export function ReaFirStep({ s, phase }: { s: Suggestion; phase: ReaFirPhase }) 
             { text: t('guide.wl.reafir.profile.a3') },
             { text: t('guide.wl.reafir.profile.a4'), target: 'buildProfile' },
           ]
-        : [{ text: t('guide.wl.reafir.reduce.a1', { amount }), target: 'graph' }, { text: t('guide.wl.reafir.reduce.a2') }]
+        : [
+            { text: t('guide.wl.reafir.reduce.a1', { amount: db(START_REDUCTION_DB) }), target: 'graph' },
+            { text: t('guide.wl.reafir.reduce.a2') },
+            { text: t('guide.wl.reafir.reduce.a3') },
+          ]
   return (
     <>
       <StepText lead={t(`guide.wl.reafir.${phase}.lead`)} actions={actions} />
@@ -95,7 +96,7 @@ export function CompStep({ s }: { s: Suggestion }) {
   ]
   return (
     <>
-      <StepText lead={t('guide.wl.comp.lead')} actions={actions} />
+      <StepText lead={t('guide.wl.comp.lead')} actions={actions} notes={s.noiseReduction && <StepNote>{t('guide.wl.comp.afterNr')}</StepNote>} />
       <ReaCompPanel comp={c} callouts={calloutsOf(actions)} />
     </>
   )

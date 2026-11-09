@@ -56,6 +56,7 @@
       "a1": "Go back to the check.",
       "a2": "Record the last take, the one with your effects.",
       "a3": "Look at the score before and after.",
+      "dist": "Record at the same distance as your best take: {{dist}}.",
       "button": "Record the take with effects"
     },
     "wl": {
@@ -89,8 +90,9 @@
         "reduce": {
           "title": "ReaFIR: turn the room down",
           "lead": "The curve now shows your room. Lowering it removes that sound.",
-          "a1": "Drag the whole curve down until the room drops about {{amount}}.",
-          "a2": "If your voice sounds watery or robotic, move it back up a little."
+          "a1": "Drag the whole curve down a little: about {{amount}}.",
+          "a2": "Talk and listen. Stop at the first watery or robotic sound.",
+          "a3": "If it never sounds clean, use an AI noise remover instead (Elgato Noise Removal or NVIDIA Broadcast)."
         }
       },
       "eq": {
@@ -106,7 +108,8 @@
       },
       "comp": {
         "title": "ReaComp: even out your volume",
-        "lead": "It turns loud moments down, so your quiet and loud words end up closer."
+        "lead": "It turns loud moments down, so your quiet and loud words end up closer.",
+        "afterNr": "After noise removal your voice may get quieter: raise Wet by the same amount (the results show how much)."
       },
       "gate": {
         "title": "ReaGate: quiet the pauses",
@@ -118,6 +121,37 @@
         "lead": "The low cut removes rumble (desk bumps, traffic) before it reaches the effects.",
         "a1": "In Wave Link, click your mic and find the Lowcut switch (with the mic settings, not in Effects).",
         "a2": "Switch Lowcut on and pick {{hz}}."
+      },
+      "ai": {
+        "title": "Try AI noise removal first",
+        "lead": "Your voice is close to the noise of your room. Here an AI noise remover usually keeps your voice cleaner than ReaFIR. Try one of these first.",
+        "skip": "Talk and listen. If it sounds clean, skip ReaFIR.",
+        "elgato": {
+          "title": "Option 1: Elgato Noise Removal (in Wave Link)",
+          "a1": "In Wave Link → your mic → Effects, switch on Elgato Noise Removal.",
+          "a2": "Drag it to the top, so it comes first.",
+          "pick": "Use Elgato Noise Removal"
+        },
+        "nvidia": {
+          "title": "Option 2: NVIDIA Broadcast (RTX graphics cards)",
+          "a1": "Open NVIDIA Broadcast → Microphone, pick your mic as Source and switch on Noise Removal.",
+          "a2": "In Wave Link and in your apps, choose \"Microphone (NVIDIA Broadcast)\" as the mic.",
+          "pick": "Use NVIDIA Broadcast"
+        },
+        "reafir": {
+          "title": "Use ReaFIR instead",
+          "lead": "If neither sounds clean, or you can't use them: switch off Elgato Noise Removal and the Noise Removal in NVIDIA Broadcast, then follow the ReaFIR steps.",
+          "pick": "Use ReaFIR instead"
+        },
+        "chosen": {
+          "elgato": "The next steps skip ReaFIR. Elgato Noise Removal stays on, first in the list.",
+          "nvidia": "The next steps skip ReaFIR. Keep Elgato Noise Removal off: use only one noise remover.",
+          "reafir": "The next steps set up ReaFIR."
+        }
+      },
+      "listen": {
+        "title": "Listen check",
+        "lead": "Talk for 10 seconds and play it back: if words get cut or sound underwater, turn noise removal down."
       },
       "auto": {
         "title": "Apply automatically instead",

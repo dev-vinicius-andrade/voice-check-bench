@@ -56,6 +56,7 @@
       "a1": "Volte para o teste.",
       "a2": "Grave o último take, aquele com seus efeitos.",
       "a3": "Veja a nota de antes e depois.",
+      "dist": "Grave na mesma distância do seu melhor take: {{dist}}.",
       "button": "Gravar o take com efeitos"
     },
     "wl": {
@@ -89,8 +90,9 @@
         "reduce": {
           "title": "ReaFIR: abaixe o ambiente",
           "lead": "A curva agora mostra seu ambiente. Abaixar a curva remove esse som.",
-          "a1": "Arraste a curva inteira para baixo até o ambiente cair cerca de {{amount}}.",
-          "a2": "Se sua voz ficar aguada ou robótica, suba um pouco de volta."
+          "a1": "Arraste a curva inteira um pouco para baixo: cerca de {{amount}}.",
+          "a2": "Fale e escute. Pare no primeiro som aguado ou robótico.",
+          "a3": "Se nunca ficar limpo, use um removedor de ruído com IA (Elgato Noise Removal ou NVIDIA Broadcast)."
         }
       },
       "eq": {
@@ -106,7 +108,8 @@
       },
       "comp": {
         "title": "ReaComp: deixe seu volume mais uniforme",
-        "lead": "Ele abaixa os momentos mais altos, para suas palavras baixas e altas ficarem mais próximas."
+        "lead": "Ele abaixa os momentos mais altos, para suas palavras baixas e altas ficarem mais próximas.",
+        "afterNr": "Depois de remover o ruído, sua voz pode ficar mais baixa: aumente o Wet na mesma quantidade (os resultados mostram quanto)."
       },
       "gate": {
         "title": "ReaGate: silencie as pausas",
@@ -118,6 +121,37 @@
         "lead": "O corte de graves (Lowcut) remove ronco (batidas na mesa, trânsito) antes de chegar nos efeitos.",
         "a1": "No Wave Link, clique no seu microfone e encontre a chave Lowcut (nas configurações do microfone, não em Effects).",
         "a2": "Ligue o Lowcut e escolha {{hz}}."
+      },
+      "ai": {
+        "title": "Tente primeiro a remoção de ruído com IA",
+        "lead": "Sua voz está perto do ruído do seu ambiente. Aqui, um removedor de ruído com IA costuma deixar sua voz mais limpa que o ReaFIR. Tente uma destas opções primeiro.",
+        "skip": "Fale e escute. Se ficar limpo, pule o ReaFIR.",
+        "elgato": {
+          "title": "Opção 1: Elgato Noise Removal (no Wave Link)",
+          "a1": "No Wave Link → seu microfone → Effects, ligue o Elgato Noise Removal.",
+          "a2": "Arraste-o para o topo, para ele vir primeiro.",
+          "pick": "Usar o Elgato Noise Removal"
+        },
+        "nvidia": {
+          "title": "Opção 2: NVIDIA Broadcast (placas de vídeo RTX)",
+          "a1": "Abra o NVIDIA Broadcast → Microphone, escolha seu microfone em Source e ligue o Noise Removal.",
+          "a2": "No Wave Link e nos seus apps, escolha \"Microphone (NVIDIA Broadcast)\" como microfone.",
+          "pick": "Usar o NVIDIA Broadcast"
+        },
+        "reafir": {
+          "title": "Usar o ReaFIR",
+          "lead": "Se nenhuma ficar limpa, ou se você não puder usá-las: desligue o Elgato Noise Removal e o Noise Removal do NVIDIA Broadcast e siga os passos do ReaFIR.",
+          "pick": "Usar o ReaFIR"
+        },
+        "chosen": {
+          "elgato": "Os próximos passos pulam o ReaFIR. O Elgato Noise Removal fica ligado, em primeiro na lista.",
+          "nvidia": "Os próximos passos pulam o ReaFIR. Deixe o Elgato Noise Removal desligado: use só um removedor de ruído.",
+          "reafir": "Os próximos passos configuram o ReaFIR."
+        }
+      },
+      "listen": {
+        "title": "Teste de escuta",
+        "lead": "Fale por 10 segundos e ouça de volta: se palavras forem cortadas ou soarem como debaixo d'água, diminua a remoção de ruído."
       },
       "auto": {
         "title": "Aplicar automaticamente",

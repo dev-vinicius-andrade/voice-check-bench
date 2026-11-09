@@ -61,7 +61,7 @@ describe('steps', () => {
 
   it('fills the distance placeholder', () => {
     expect(fillDistance(STEPS[3].title, '8 cm')).toBe('Processed · 8 cm · Record Mix')
-    expect(fillDistance(STEPS[3].lead, '2 cm')).toContain('best distance: 2 cm.')
+    expect(fillDistance(STEPS[3].lead, '2 cm')).toContain('same distance as your best take: 2 cm.')
   })
 
   it('matches device labels', () => {

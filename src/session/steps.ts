@@ -6,7 +6,7 @@ export const STEPS: StepDef[] = [
   { key: 'c2', kind: 'Control test', cm: 2, dist: '2 cm', dev: 'raw', title: 'Control · 2 cm · raw', head: 'Record at 2 cm, raw mic', lead: 'Mouth about 2 cm from the mic, speaking on-axis (straight into the capsule). This shows how much bass the mic adds up close.' },
   { key: 'c8', kind: 'Control test', cm: 8, dist: '8 cm', dev: 'raw', title: 'Control · 8 cm · raw', head: 'Record at 8 cm, raw mic', lead: 'About a fist between your mouth and the mic, still speaking on-axis. Same voice volume as before.' },
   { key: 'c15', kind: 'Control test', cm: 15, dist: '15 cm', dev: 'raw', title: 'Control · 15 cm · raw', head: 'Record at 15 cm, raw mic', lead: "An open hand's length away, still on-axis. Same voice volume as before." },
-  { key: 'fx', kind: 'With your effects', cm: null, dist: null, dev: 'fx', title: 'Processed · {d} · Record Mix', head: 'Record it again, with your effects', lead: 'Same text at your best distance: {d}. This take goes through the Record Mix, so it shows what your effects add.' },
+  { key: 'fx', kind: 'With your effects', cm: null, dist: null, dev: 'fx', title: 'Processed · {d} · Record Mix', head: 'Record it again, with your effects', lead: 'Record at the same distance as your best take: {d}. Same text; this take goes through the Record Mix, so it shows what your effects add.' },
 ]
 
 /** Auto-pick an input for each device kind by its label. */

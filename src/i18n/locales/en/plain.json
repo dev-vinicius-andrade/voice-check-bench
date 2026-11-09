@@ -15,6 +15,7 @@
         "tone": "Hard to follow: your voice doesn't sound like you",
         "none": "Hard to follow: several small things add up"
       },
+      "overprocessed": "Too much processing: it's cutting your voice",
       "explain": {
         "clear": "Your voice comes through clearly, and the room stays out of the way.",
         "good": "You sound good. A couple of small changes will make it even better.",
@@ -29,7 +30,8 @@
           "level": "Your volume is far off, so listeners will struggle or hear crackles.",
           "tone": "Your voice is far from natural, so words are harder to make out.",
           "none": "Many small problems add up. Start with the first tip."
-        }
+        },
+        "overprocessed": "Noise removal or the gate is so strong that it chops your words and changes how you sound."
       }
     },
     "rating": {
@@ -38,13 +40,15 @@
         "label": {
           "quiet": "Quiet",
           "noticeable": "Noticeable",
-          "loud": "Loud"
+          "loud": "Loud",
+          "cutToSilence": "Cut to silence"
         },
         "explain": {
           "quiet": "Your pauses are clean.",
           "tonal": "You can clearly hear a fan or machine.",
           "hum": "A low electrical hum is audible.",
-          "broadband": "A steady hiss or room noise is audible."
+          "broadband": "A steady hiss or room noise is audible.",
+          "cutToSilence": "Your pauses are cut to total silence, which chops the start and end of your words."
         }
       },
       "volume": {
@@ -119,7 +123,9 @@
       },
       "angleMic": "Angle the mic slightly off to the side of your mouth",
       "eqSettings": "Use our ready-made EQ settings",
-      "usbPort": "Plug your audio interface into a different USB port (back of the computer)"
+      "usbPort": "Plug your audio interface into a different USB port (back of the computer)",
+      "noiseRemovalDown": "Turn noise removal down",
+      "compWet": "Raise the compressor's Wet by about {{db}} dB"
     },
     "distance": {
       "finger": "about a finger's width",

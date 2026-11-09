@@ -1,0 +1,17 @@
+{
+  "suggestx": {
+    "reafir": {
+      "add": "No Wave Link → seu microfone → Effects, adicione \"ReaFIR (ReaPlugs Edition)\" e arraste-o para o topo.",
+      "mode": "Mode: Subtract. FFT size: 4096.",
+      "profile": "Fique em silêncio, marque \"Automatically build noise profile\" por uns 3 segundos e depois desmarque.",
+      "reduce": "Arraste a curva inteira um pouco para baixo (cerca de 6 dB), depois fale e escute. Pare no primeiro som aguado ou robótico; se nunca ficar limpo, use um removedor de ruído com IA.",
+      "order": "Deixe ReaEQ, ReaComp e ReaGate abaixo do ReaFIR, nessa ordem.",
+      "wet": "Depois de remover o ruído, sua voz pode ficar mais baixa: aumente o Wet do ReaComp na mesma quantidade (os resultados mostram quanto)."
+    },
+    "sheet": {
+      "tryFirst": "Tente primeiro (remoção de ruído com IA): {{list}}. Se sua voz ficar limpa com uma delas, pule o ReaFIR.",
+      "noiseReductionOptional": "{{plugin}} (redução de ruído, opcional: só se a opção com IA não ficar limpa)",
+      "optional": "(opcional)"
+    }
+  }
+}

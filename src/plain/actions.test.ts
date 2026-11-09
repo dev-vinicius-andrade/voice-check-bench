@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
 import type { MicPattern } from '../types'
 import { nextActions, rankActions, type ActionContext } from './actions'
-import { mic, noisyAnalysis, voiceAnalysis } from './testFixtures'
+import { mic, noisyAnalysis, processedPair, voiceAnalysis } from './testFixtures'
 import type { Action } from './types'
 
 const ctx = (over: Partial<ActionContext> = {}): ActionContext => ({ mic: mic(), hasSuggestion: true, ...over })
@@ -104,5 +104,41 @@ describe('rankActions', () => {
   it('orders by impact, then free before paid, then input order', () => {
     const xs = rankActions([act('eqSettings', 10, 'minutes'), act('angleMic', 10), act('backOff', 10), act('fans', 11)], 4)
     expect(ids(xs)).toEqual(['fans', 'angleMic', 'backOff', 'eqSettings'])
+  })
+})
+
+describe('over-processing actions (v0.8)', () => {
+  it('puts "turn noise removal down" first and the compressor Wet second when the voice lost > 6 dB', () => {
+    const { raw, fx } = processedPair()
+    const xs = nextActions(fx, ctx({ raw }))
+    expect(xs.slice(0, 2)).toEqual([
+      { id: 'noiseRemovalDown', text: { key: 'plain.action.noiseRemovalDown' }, cost: 'minutes', impact: 75, how: 'settings' },
+      { id: 'compWet', text: { key: 'plain.action.compWet', params: { db: 18 } }, cost: 'minutes', impact: 75, how: 'settings' },
+    ])
+    expect(xs.length).toBeLessThanOrEqual(3)
+    // the Wet replaces "turn the gain up"
+    expect(ids(xs)).not.toContain('gainUp')
+  })
+
+  it('no Wet action when the level drop is 6 dB or less', () => {
+    const { raw, fx } = processedPair({ speechMed: -30 })
+    const xs = nextActions(fx, ctx({ raw }))
+    expect(xs[0].id).toBe('noiseRemovalDown')
+    expect(ids(xs)).not.toContain('compWet')
+  })
+
+  it('an over-processed take alone (no raw take) still gets "turn noise removal down" first', () => {
+    const xs = nextActions(fakeAnalysis({ zeroRatio: 0.3 }), ctx())
+    expect(ids(xs)).toEqual(['noiseRemovalDown'])
+  })
+
+  it('never says "turn on noise reduction" while it is cutting the voice', () => {
+    const noisyFx = noisyAnalysis({ zeroRatio: 0.3 })
+    expect(ids(nextActions(noisyFx, ctx({ currentDist: '15 cm' })))).toEqual(['noiseRemovalDown', 'placement', 'moveCloser'])
+    expect(ids(nextActions(noisyAnalysis(), ctx({ currentDist: '15 cm' })))).toContain('noiseReduction')
+  })
+
+  it('nothing changes for a processed take that kept the voice intact', () => {
+    expect(nextActions(fakeAnalysis(), ctx({ raw: fakeAnalysis() }))).toEqual([])
   })
 })

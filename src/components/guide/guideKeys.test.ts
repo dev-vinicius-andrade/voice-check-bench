@@ -27,7 +27,9 @@ describe('guide i18n keys', () => {
       ...HOSTS.flatMap((h) => [`guide.host.option.${h}.name`, `guide.host.option.${h}.text`]),
       ...['wavelink', 'obs', 'apps'].map((h) => `guide.host.unsure.${h}`),
       ...['setup', 'profile', 'reduce'].flatMap((p) => [`guide.wl.reafir.${p}.title`, `guide.wl.reafir.${p}.lead`]),
-      ...['effects', 'eqFlat', 'comp', 'gate', 'lowcut'].map((k) => `guide.wl.${k}.title`),
+      ...['effects', 'ai', 'eqFlat', 'comp', 'gate', 'lowcut', 'listen'].map((k) => `guide.wl.${k}.title`),
+      ...['elgato', 'nvidia'].flatMap((k) => ['title', 'a1', 'a2', 'pick'].map((p) => `guide.wl.ai.${k}.${p}`)),
+      ...['elgato', 'nvidia', 'reafir'].map((k) => `guide.wl.ai.chosen.${k}`),
       ...['install', 'enable', 'use'].flatMap((k) => [`guide.nvidia.${k}.title`, `guide.nvidia.${k}.lead`]),
     ]
     expect(keys.filter((k) => typeof lookup(k) !== 'string')).toEqual([])

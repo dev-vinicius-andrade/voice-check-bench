@@ -15,6 +15,7 @@
         "tone": "Difícil de entender: sua voz não parece sua",
         "none": "Difícil de entender: vários detalhes se somam"
       },
+      "overprocessed": "Processamento demais: está cortando sua voz",
       "explain": {
         "clear": "Sua voz chega clara, e o ambiente não atrapalha.",
         "good": "Você soa bem. Umas mudanças pequenas vão deixar ainda melhor.",
@@ -29,7 +30,8 @@
           "level": "Seu volume está muito fora, então quem ouve vai sofrer ou ouvir estalos.",
           "tone": "Sua voz está longe do natural, então fica mais difícil entender as palavras.",
           "none": "Muitos probleminhas se somam. Comece pela primeira dica."
-        }
+        },
+        "overprocessed": "A remoção de ruído ou o gate está tão forte que picota suas palavras e muda o som da sua voz."
       }
     },
     "rating": {
@@ -38,13 +40,15 @@
         "label": {
           "quiet": "Silencioso",
           "noticeable": "Dá para notar",
-          "loud": "Alto"
+          "loud": "Alto",
+          "cutToSilence": "Cortado para silêncio total"
         },
         "explain": {
           "quiet": "Suas pausas estão limpas.",
           "tonal": "Dá para ouvir bem um ventilador ou uma máquina.",
           "hum": "Dá para ouvir um zumbido elétrico grave.",
-          "broadband": "Dá para ouvir um chiado constante ou o barulho do ambiente."
+          "broadband": "Dá para ouvir um chiado constante ou o barulho do ambiente.",
+          "cutToSilence": "Suas pausas viram silêncio total, e isso corta o começo e o fim das suas palavras."
         }
       },
       "volume": {
@@ -119,7 +123,9 @@
       },
       "angleMic": "Incline o microfone um pouco para o lado da sua boca",
       "eqSettings": "Use as nossas configurações de EQ prontas",
-      "usbPort": "Ligue sua interface de áudio em outra porta USB (na parte de trás do computador)"
+      "usbPort": "Ligue sua interface de áudio em outra porta USB (na parte de trás do computador)",
+      "noiseRemovalDown": "Diminua a remoção de ruído",
+      "compWet": "Aumente o Wet do compressor em cerca de {{db}} dB"
     },
     "distance": {
       "finger": "mais ou menos a largura de um dedo",

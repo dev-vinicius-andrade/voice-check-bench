@@ -11,13 +11,15 @@ export interface Msg {
 }
 
 /** The biggest problem behind the clarity score, or 'none' when no penalty reaches 8. */
-export type MainIssue = 'noise' | 'level' | 'tone' | 'none'
+export type MainIssue = 'overprocessed' | 'noise' | 'level' | 'tone' | 'none'
 
 export interface ScorePenalties {
   noise: number
   level: number
   tone: number
   consistency: number
+  /** Over-processing (v0.8): digital silence / gate flipping, plus 10 per regression against the raw take. */
+  overprocessed: number
 }
 
 export interface ClarityScore {
@@ -48,6 +50,7 @@ export type ActionId =
   | 'gainUp' | 'gainDown'
   | 'backOff' | 'speakInto' | 'angleMic' | 'eqSettings'
   | 'usbPort'
+  | 'noiseRemovalDown' | 'compWet'
 
 export interface Action {
   id: ActionId

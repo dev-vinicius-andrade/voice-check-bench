@@ -30,6 +30,13 @@
         "roughBad": "No clean 3 s silence found; estimate is rough. Hiss, fans or room noise are audible in pauses.",
         "fix": "Move away from PC fans, lower gain and speak closer, or tighten ReaGate threshold."
       },
+      "overprocessed": {
+        "title": "Over-processing",
+        "value": "{{zero, number(maximumFractionDigits: 0)}} % digital silence · {{switches, number(maximumFractionDigits: 0)}} cuts per 10 s",
+        "good": "Noise removal and the gate leave your voice alone.",
+        "bad": "Parts of the take are cut to total silence and the sound keeps switching on and off, so words get chopped.",
+        "fix": "Noise removal or the gate is too strong and is cutting your voice — reduce it."
+      },
       "silence": {
         "title": "Silence window",
         "value": "sound in first 3 s",
@@ -176,14 +183,6 @@
       "noisy": "The input is noisy: the room/input noise ({{noise, number(maximumFractionDigits: 0)}} dBFS) is only {{snr, number(maximumFractionDigits: 0)}} dB under your voice. No gate or EQ setting can separate them, and the gate would cut quiet words. Get the most out of the room:",
       "noisyNext": "Speak closer and switch off what you can, then set up the noise-reduction step below before the EQ. Re-record the control takes to check: the closer to 30 dB, the cleaner.",
       "condenser": "Condenser mics pick up more of the room: stay closer and lower the gain.",
-      "reafir": {
-        "add": "In Wave Link → your mic → Effects, add \"ReaFIR (ReaPlugs Edition)\" and drag it to the top.",
-        "mode": "Mode: Subtract. FFT size: 4096.",
-        "profile": "Stay silent, tick \"Automatically build noise profile\" for about 3 seconds, then untick it.",
-        "curve": "Drag the whole curve down until the room drops about 10–12 dB. If your voice turns watery or robotic, back off.",
-        "curveStrong": "Drag the whole curve down until the room drops about 15 dB. If your voice turns watery or robotic, back off.",
-        "order": "Keep ReaEQ, ReaComp and ReaGate below ReaFIR, in that order."
-      },
       "alternative": {
         "elgato": "Elgato Noise Removal (in Wave Link)",
         "voiceFocus": "Voice Focus by ai-coustics (in Wave Link)",

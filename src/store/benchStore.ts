@@ -112,6 +112,19 @@ export function patchMicProfile(cur: MicProfile, patch: Partial<MicProfile>): Mi
   return { ...cur, ...traits, ...set }
 }
 
+/** True after setFxDist (an explicit choice of the processed distance); cleared by a new session. In memory only. */
+let fxDistChosen = false
+
+/**
+ * The processed take is recorded at the best control distance: an fxDist that no longer matches it (restored from a
+ * previous visit, or the best changed after re-recording a control take) is dropped, unless the person chose it.
+ */
+export function reconcileFxDist(s: Pick<BenchState, 'takes' | 'session' | 'fxDist'>, chosen: boolean): Partial<BenchState> {
+  if (chosen || s.fxDist === null) return {}
+  const best = bestControl(sessionSlots(s.takes, s.session))
+  return best && best.dist !== s.fxDist ? { fxDist: null } : {}
+}
+
 /** Prototype prepareResults(): processed + best control → A/B diff; else keep A if valid, else latest. */
 export function prepareResults(s: BenchState): Partial<BenchState> {
   const slots = sessionSlots(s.takes, s.session)
@@ -188,6 +201,7 @@ export const useBench = create<BenchStore>()((set, get) => {
         lastTakeId: take.id,
         ...(step ? {} : { freeTakeName: '' }),
       })
+      set(reconcileFxDist(get(), fxDistChosen))
       // demo takes live in memory only
       if (take.session !== DEMO_SESSION) dbDo((db) => db.put(take))
     } finally {
@@ -221,6 +235,7 @@ export const useBench = create<BenchStore>()((set, get) => {
           await yieldToLoop()
         }
         set({ takes, storageAvailable: db.available })
+        set(reconcileFxDist(get(), fxDistChosen))
         get().goTo(ui.screen, step)
         // ready last: listeners (hash routing, demo loader) see the restored screen
         set({ ready: true })
@@ -385,23 +400,29 @@ export const useBench = create<BenchStore>()((set, get) => {
       // the results screen shows the latest analyzed take when A is gone (prototype renderResults)
       const fallbackA = A === null && s.screen === 'results' ? (latestValid(takes)?.id ?? null) : A
       set({ takes, A: fallbackA, B: B === fallbackA ? null : B, lastTakeId: s.lastTakeId === id ? null : s.lastTakeId })
+      set(reconcileFxDist(get(), fxDistChosen))
       if (s.takes.find((t) => t.id === id)?.session !== DEMO_SESSION) dbDo((db) => db.remove(id))
     },
 
     deleteAll() {
+      fxDistChosen = false
       set({ takes: [], A: null, B: null, session: 's' + Date.now(), fxDist: null, lastTakeId: null })
       dbDo((db) => db.clear())
     },
 
     newSession() {
       if (get().recorder.phase !== 'idle') return
+      fxDistChosen = false
       set({ session: 's' + Date.now(), fxDist: null })
       get().goTo('step', 0)
     },
 
     startFreeTake: () => get().goTo('step', 'free'),
     setFreeTakeName: (freeTakeName) => set({ freeTakeName }),
-    setFxDist: (fxDist) => set({ fxDist }),
+    setFxDist(fxDist) {
+      fxDistChosen = true
+      set({ fxDist })
+    },
     setMicProfile(patch) {
       const micProfile = patchMicProfile(get().micProfile, patch)
       saveMicProfile(micProfile)
@@ -421,6 +442,7 @@ export const useBench = create<BenchStore>()((set, get) => {
         }
         // takes recorded meanwhile were already analyzed with the new setting
         set({ takes: get().takes.map((t) => ({ ...t, analysis: analyses.get(t.id) ?? t.analysis })) })
+        set(reconcileFxDist(get(), fxDistChosen))
       })()
     },
     setStatus: (msg, error = false) => set({ status: { msg, error } }),

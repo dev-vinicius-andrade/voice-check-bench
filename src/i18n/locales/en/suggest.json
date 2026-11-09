@@ -1,0 +1,17 @@
+{
+  "suggestx": {
+    "reafir": {
+      "add": "In Wave Link → your mic → Effects, add \"ReaFIR (ReaPlugs Edition)\" and drag it to the top.",
+      "mode": "Mode: Subtract. FFT size: 4096.",
+      "profile": "Stay silent, tick \"Automatically build noise profile\" for about 3 seconds, then untick it.",
+      "reduce": "Drag the whole curve down a little (about 6 dB), then talk and listen. Stop at the first watery or robotic sound; if it never sounds clean, use an AI noise remover instead.",
+      "order": "Keep ReaEQ, ReaComp and ReaGate below ReaFIR, in that order.",
+      "wet": "After noise removal your voice may get quieter: raise ReaComp Wet by the same amount (the results show how much)."
+    },
+    "sheet": {
+      "tryFirst": "Try first (AI noise removal): {{list}}. If your voice sounds clean with one of them, skip ReaFIR.",
+      "noiseReductionOptional": "{{plugin}} (noise reduction, optional: only if the AI option does not sound clean)",
+      "optional": "(optional)"
+    }
+  }
+}

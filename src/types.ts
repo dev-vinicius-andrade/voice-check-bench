@@ -45,9 +45,9 @@ export interface Analysis {
   tones: NoiseTone[]
   noiseKind: NoiseKind
   // ---- over-processing signals (v0.8) ----
-  /** Share of samples that are exactly 0 (digital silence from a gate or noise remover cutting everything). 0..1 */
+  /** Share of samples inside runs of exact zeros lasting ≥ 10 ms (digital silence from a gate or noise remover; isolated quantization zeros don't count). 0..1 */
   zeroRatio: number
-  /** Times per 10 s the signal flips between silence (< -80 dBFS) and sound on 20 ms frames: high = choppy. */
+  /** Zero-sample runs ≥ 20 ms that start, per 10 s (each start = the processing slammed shut): high = choppy. */
   gateSwitches: number
 }
 

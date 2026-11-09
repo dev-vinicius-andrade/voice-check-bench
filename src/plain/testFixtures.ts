@@ -20,6 +20,20 @@ export const voiceAnalysis = (i: number, d: number, over: Partial<Analysis> = {}
 export const noisyAnalysis = (over: Partial<Analysis> = {}): Analysis =>
   fakeAnalysis({ noise: -42, snr: 10, tones: [{ hz: 1040, db: 16 }], noiseKind: 'tonal', ...over })
 
+/**
+ * A raw control in a noisy room and its over-processed version (noise removal far too strong): 18 dB quieter,
+ * bass gone (boom/warmth deviation -15.7), presence pushed (+14.3), 40 % digital silence, 23 gate flips per 10 s.
+ */
+export function processedPair(over: Partial<Analysis> = {}): { raw: Analysis; fx: Analysis } {
+  const raw = noisyAnalysis({ noise: -36, speechMed: -24, snr: 12 })
+  const rel = BANDS.map((b) => b.ref)
+  rel[1] -= 20
+  rel[2] -= 20
+  rel[6] += 10
+  const fx = fakeAnalysis({ noise: -100, speechMed: -42, snr: 58, rel, zeroRatio: 0.4, gateSwitches: 23, ...over })
+  return { raw, fx }
+}
+
 export const mic = (over: Partial<MicProfile> = {}): MicProfile => ({
   model: 'Test mic', kind: 'dynamic', pattern: 'cardioid', address: 'end', ...over,
 })
@@ -53,5 +67,9 @@ export function fixtureAnalyses(): Analysis[] {
   list.push(fakeAnalysis({ clip: 5, speechMed: -45, spread: 30, snr: 12, noiseKind: 'broadband' })) // hard.level
   list.push(fakeAnalysis({ rel: wild, spread: 14 })) // ok.tone
   list.push(fakeAnalysis({ rel: wild, spread: 30, snr: 14, speechMed: -36, noiseKind: 'broadband' })) // hard.tone
+  // over-processing (v0.8): good / warn / bad check, cut-to-silence noise rating, overprocessed headline
+  list.push(fakeAnalysis({ zeroRatio: 0.01, gateSwitches: 2 }))
+  list.push(fakeAnalysis({ gateSwitches: 8 }))
+  list.push(processedPair().fx)
   return list
 }

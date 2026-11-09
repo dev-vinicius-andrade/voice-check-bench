@@ -6,8 +6,10 @@ import { NOT_ENOUGH_SPEECH_KEY } from '../audio/analyze'
 import { diagnose } from '../audio/diagnose'
 import { FAILURE_IDS, failureHint, type QuickStats } from '../audio/quickStats'
 import { fakeAnalysis } from '../audio/testSignals'
-import en from '../i18n/locales/en/engine.json'
-import pt from '../i18n/locales/pt-BR/engine.json'
+import enEngine from '../i18n/locales/en/engine.json'
+import enSuggest from '../i18n/locales/en/suggest.json'
+import ptEngine from '../i18n/locales/pt-BR/engine.json'
+import ptSuggest from '../i18n/locales/pt-BR/suggest.json'
 import { MIC_OTHER_LABEL, addressTip, placementTip } from '../mics/catalog'
 import { fixtureAnalyses, voiceAnalysis } from '../plain/testFixtures'
 import type { Msg } from '../plain/types'
@@ -16,6 +18,10 @@ import { SHEET_FIXTURES } from '../settings/sheetFixtures'
 import { suggest, suggestionToText } from '../settings/suggest'
 import type { Analysis, MicAddress, MicPattern, Take } from '../types'
 import storeSource from './benchStore.ts?raw'
+
+// suggest.json (`suggestx.*`) holds the newer suggestion keys next to engine.json.
+const en = { ...enEngine, ...enSuggest }
+const pt = { ...ptEngine, ...ptSuggest }
 
 function lookup(tree: unknown, key: string): string | undefined {
   let node = tree
@@ -40,6 +46,9 @@ const analyses = (): Analysis[] => [
   fakeAnalysis({ hum: [{ hz: 120, db: 14 }], noise: -50 }),
   ...[1, 2, 3].map((n) => fakeAnalysis({ tones: [{ hz: 780, db: 20 }, { hz: 1560, db: 13 }, { hz: 2000, db: 9 }].slice(0, n) })),
   ...[10, 20, 30].map((v) => fakeAnalysis({ bandSnr: Array(9).fill(v) })),
+  // over-processing check (v0.8): good and bad
+  fakeAnalysis({ zeroRatio: 0.01, gateSwitches: 2 }),
+  fakeAnalysis({ zeroRatio: 0.4, gateSwitches: 23, noise: -100 }),
 ]
 
 const take = (analysis: Analysis): Take => ({
@@ -130,7 +139,7 @@ describe('engine message keys', () => {
     expect([...new Set(problems)]).toEqual([])
   })
 
-  it('has no unused keys in en/engine.json', () => {
+  it('has no unused keys in en/engine.json and en/suggest.json', () => {
     const flat = (tree: unknown, prefix: string): string[] =>
       Object.entries(tree as Record<string, unknown>).flatMap(([k, v]) => (typeof v === 'string' ? [`${prefix}${k}`] : flat(v, `${prefix}${k}.`)))
     expect(flat(en, '').filter((k) => !keys.includes(k))).toEqual([])

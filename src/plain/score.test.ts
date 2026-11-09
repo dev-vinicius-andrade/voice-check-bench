@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
-import { clarityScore, mainIssue, penalties, scoreBand } from './score'
-import { noisyAnalysis, voiceAnalysis } from './testFixtures'
+import { clarityScore, mainIssue, overprocessingPenalty, penalties, scoreBand } from './score'
+import { noisyAnalysis, processedPair, voiceAnalysis } from './testFixtures'
 
 describe('clarityScore', () => {
   it('scores a clean take at 100 with the clear headline', () => {
@@ -10,7 +10,7 @@ describe('clarityScore', () => {
     expect(s.main).toBe('none')
     expect(s.headline).toEqual({ key: 'plain.score.clear' })
     expect(s.explain).toEqual({ key: 'plain.score.explain.clear' })
-    expect(s.penalties).toEqual({ noise: 0, level: 0, tone: 0, consistency: 0 })
+    expect(s.penalties).toEqual({ noise: 0, level: 0, tone: 0, consistency: 0, overprocessed: 0 })
   })
 
   it('scores a very noisy take below 50 with noise as the main issue', () => {
@@ -74,13 +74,62 @@ describe('clarityScore', () => {
 
 describe('mainIssue and scoreBand', () => {
   it('needs at least 8 points and keeps noise > level > tone on ties', () => {
-    expect(mainIssue({ noise: 7.9, level: 7.9, tone: 7.9, consistency: 10 })).toBe('none')
-    expect(mainIssue({ noise: 8, level: 8, tone: 8, consistency: 0 })).toBe('noise')
-    expect(mainIssue({ noise: 8, level: 12, tone: 12, consistency: 0 })).toBe('level')
-    expect(mainIssue({ noise: 0, level: 0, tone: 9, consistency: 0 })).toBe('tone')
+    expect(mainIssue({ noise: 7.9, level: 7.9, tone: 7.9, consistency: 10, overprocessed: 0 })).toBe('none')
+    expect(mainIssue({ noise: 8, level: 8, tone: 8, consistency: 0, overprocessed: 0 })).toBe('noise')
+    expect(mainIssue({ noise: 8, level: 12, tone: 12, consistency: 0, overprocessed: 0 })).toBe('level')
+    expect(mainIssue({ noise: 0, level: 0, tone: 9, consistency: 0, overprocessed: 0 })).toBe('tone')
+    expect(mainIssue({ noise: 12, level: 0, tone: 12, consistency: 0, overprocessed: 12 })).toBe('overprocessed')
+    expect(mainIssue({ noise: 13, level: 0, tone: 0, consistency: 0, overprocessed: 12 })).toBe('noise')
   })
 
   it('maps scores to bands at 85 / 70 / 50', () => {
     expect([100, 85, 84, 70, 69, 50, 49, 0].map(scoreBand)).toEqual(['clear', 'clear', 'good', 'good', 'ok', 'ok', 'hard', 'hard'])
+  })
+})
+
+describe('over-processing (v0.8)', () => {
+  it('caps SNR at 45 for the noise part, so a digital-silence floor scores like any quiet room', () => {
+    expect(penalties(fakeAnalysis({ snr: 197 })).noise).toBe(0)
+    expect(penalties(fakeAnalysis({ snr: 45 })).noise).toBe(0)
+    expect(penalties(fakeAnalysis({ snr: 20 })).noise).toBe(15)
+  })
+
+  it('penalises digital silence and gate flips up to 35 points', () => {
+    const p = (zeroRatio: number, gateSwitches: number) => overprocessingPenalty(fakeAnalysis({ zeroRatio, gateSwitches }))
+    expect(p(0, 0)).toBe(0)
+    expect(p(0.05, 6)).toBe(0)
+    expect(p(0.15, 0)).toBeCloseTo(14, 6)
+    expect(p(0, 12)).toBeCloseTo(17.5, 6)
+    expect(p(0.3, 0)).toBeCloseTo(35, 6)
+    expect(p(0.9, 50)).toBe(35)
+    expect(penalties(fakeAnalysis({ gateSwitches: 12 })).overprocessed).toBeCloseTo(17.5, 6)
+  })
+
+  it('adds 10 points per regression against the raw take', () => {
+    const { raw, fx } = processedPair({ zeroRatio: 0, gateSwitches: 0 })
+    // quieter, thin, harsh (not chopped without digital silence)
+    expect(penalties(fx).overprocessed).toBe(0)
+    expect(penalties(fx, { raw }).overprocessed).toBe(30)
+    expect(penalties(fx, { raw: null }).overprocessed).toBe(0)
+  })
+
+  it('a processed take that broke the voice scores below its raw take, with the over-processing headline', () => {
+    const { raw, fx } = processedPair()
+    const before = clarityScore(raw)
+    const after = clarityScore(fx, { raw })
+    expect(after.penalties.overprocessed).toBe(75)
+    expect(after.score).toBeLessThan(before.score)
+    expect(after.main).toBe('overprocessed')
+    expect(after.headline).toEqual({ key: 'plain.score.overprocessed' })
+    expect(after.explain).toEqual({ key: 'plain.score.explain.overprocessed' })
+    // without the raw take the digital silence alone still dominates
+    expect(clarityScore(fx).headline.key).toBe('plain.score.overprocessed')
+  })
+
+  it('keeps the usual headline when over-processing is not the biggest problem', () => {
+    const s = clarityScore(noisyAnalysis({ snr: 0, gateSwitches: 9 }))
+    expect(s.penalties.overprocessed).toBeCloseTo(8.75, 6)
+    expect(s.main).toBe('noise')
+    expect(s.headline.key).toBe('plain.score.hard.noise')
   })
 })
