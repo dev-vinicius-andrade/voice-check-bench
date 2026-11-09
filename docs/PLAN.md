@@ -1,6 +1,6 @@
 # Plan
 
-Status: `[x]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`. Behaviour reference: `docs/prototype/voice-check.html`.
+Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`. Behaviour reference: `docs/prototype/voice-check.html`.
 
 1. `[x]` **Scaffold** — Light. Deps are already installed (see package.json); add `vitest` + `jsdom` dev deps. Create `index.html`, `vite.config.ts` (react + tailwind plugins, vitest config), `tsconfig*.json` (strict, bundler resolution), `eslint.config.js` (flat, ts + react-hooks + react-refresh), `src/main.tsx`, `src/App.tsx` (placeholder that renders the three screen names), `src/index.css` (layer order + `@import "tailwindcss"`), `src/theme.ts` (light/dark palette and fonts from SPEC), `public/worklets/` empty dir with `.gitkeep`, package scripts `test`. Verify: dev server starts, `npm run build`, `typecheck`, `lint`, `test` (with one trivial test) pass. Depends: none.
 2. `[x]` **Analysis engine** — Careful. Port `audio/dsp.ts`, `audio/reference.ts`, `audio/analyze.ts`, `audio/diagnose.ts`, `session/steps.ts`, `session/bestControl.ts`, `settings/suggest.ts` from the prototype `<script>` into strict TS, pure functions, exported types. Add stable check ids. Vitest: FFT of a sine, analyze() on a synthetic take (3 s low noise + 10 s band-limited noise "speech") gives sane values and no error, diagnose ids are unique, suggest() clamps and text/json shapes. Depends: 1.
