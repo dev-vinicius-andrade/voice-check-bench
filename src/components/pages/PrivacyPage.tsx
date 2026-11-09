@@ -1,49 +1,38 @@
 import Link from '@mui/material/Link'
+import { Trans, useTranslation } from 'react-i18next'
 import { SITE } from '../../site'
 import { BulletList } from './DefList'
+import { PRIVACY_LOCAL } from './howItWorksData'
 import { Code, PageColumn, PageHead, PageSection, Para } from './PageLayout'
 
 /** Privacy: what stays local, what a shared result contains, how to remove it, no tracking, the Wave Link tool. */
 export function PrivacyPage() {
+  const { t } = useTranslation()
+  const email = SITE.author.email
   return (
     <PageColumn>
-      <PageHead
-        first="Your audio"
-        second="stays with you"
-        lead="Everything is analysed in your browser. Nothing is uploaded unless you choose to share a summary."
-      />
-      <PageSection title="On your computer">
+      <PageHead first={t('pages.privacy.headFirst')} second={t('pages.privacy.headSecond')} lead={t('pages.privacy.lead')} />
+      <PageSection title={t('pages.privacy.local.title')}>
         <BulletList
-          items={[
-            "Your recordings and their analysis are stored in this browser's IndexedDB.",
-            'Your preferences (mic profile, chosen inputs, last screen) are stored in localStorage.',
-            'Nothing is uploaded to any server.',
-            <>
-              <b>Delete all</b> on the Results page removes every take from this browser.
-            </>,
-          ]}
+          items={PRIVACY_LOCAL.map((id) => (
+            <Trans key={id} i18nKey={`pages.privacy.local.${id}`} components={{ b: <b /> }} />
+          ))}
         />
       </PageSection>
-      <PageSection title="When you share">
+      <PageSection title={t('pages.privacy.share.title')}>
+        <Para>{t('pages.privacy.share.text')}</Para>
+      </PageSection>
+      <PageSection title={t('pages.privacy.remove.title')}>
         <Para>
-          Sharing is opt-in. It opens a public GitHub issue under your own account with your mic profile, the analysis
-          numbers and the suggested settings. It has no audio, no device names and no dates, and you review it before
-          posting.
+          <Trans i18nKey="pages.privacy.remove.text" values={{ email }} components={{ link: <Link href={`mailto:${email}`} /> }} />
         </Para>
       </PageSection>
-      <PageSection title="Removing a shared result">
-        <Para>
-          Close or edit the issue on GitHub, or email{' '}
-          <Link href={`mailto:${SITE.author.email}`}>{SITE.author.email}</Link> to ask for it to be removed from the community stats.
-        </Para>
+      <PageSection title={t('pages.privacy.tracking.title')}>
+        <Para>{t('pages.privacy.tracking.text')}</Para>
       </PageSection>
-      <PageSection title="No tracking">
-        <Para>No analytics, no cookies, no ads.</Para>
-      </PageSection>
-      <PageSection title="The Wave Link tool">
+      <PageSection title={t('pages.privacy.tool.title')}>
         <Para>
-          <Code>tools/apply-reaplugs.py</Code> runs locally on your computer. It reads and writes only Wave Link's
-          Settings.json, and saves a backup of it before writing.
+          <Trans i18nKey="pages.privacy.tool.text" values={{ file: 'tools/apply-reaplugs.py' }} components={{ code: <Code /> }} />
         </Para>
       </PageSection>
     </PageColumn>

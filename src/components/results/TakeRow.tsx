@@ -5,19 +5,23 @@ import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import DownloadIcon from '@mui/icons-material/Download'
+import type { TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
+import { fmtNum } from '../../i18n/format'
 import { downloadTakeWav } from './download'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError, type Take } from '../../types'
 
-const meta = (t: Take): string =>
-  isAnalysisError(t.analysis)
-    ? `${(t.samples.length / t.sampleRate).toFixed(1)} s · not analyzed`
-    : `speech ${t.analysis.speechMed.toFixed(1)} · noise ${t.analysis.noise.toFixed(0)} dBFS`
+const meta = (t: TFunction, take: Take): string =>
+  isAnalysisError(take.analysis)
+    ? t('results.takes.notAnalyzed', { sec: fmtNum(take.samples.length / take.sampleRate, 1) })
+    : t('results.takes.levels', { speech: fmtNum(take.analysis.speechMed, 1), noise: fmtNum(take.analysis.noise, 0) })
 
 const btnSx = { px: 1, py: 0.25, minWidth: 0, lineHeight: 1.4 }
 
 /** One take in the side panel: name, levels, A/B toggles, play, delete (prototype renderTakes). */
 export function TakeRow({ take }: { take: Take }) {
+  const { t } = useTranslation()
   const isA = useBench((s) => s.A === take.id)
   const isB = useBench((s) => s.B === take.id)
   const setA = useBench((s) => s.setA)
@@ -32,22 +36,22 @@ export function TakeRow({ take }: { take: Take }) {
     >
       <div className="min-w-0">
         <Typography variant="body2" noWrap title={take.name} sx={{ fontWeight: 600 }}>{take.name}</Typography>
-        <Typography variant="caption" color="text.secondary" component="div" noWrap>{meta(take)}</Typography>
+        <Typography variant="caption" color="text.secondary" component="div" noWrap>{meta(t, take)}</Typography>
       </div>
       <div className="flex items-center gap-1">
-        <ToggleButton value="A" size="small" color="primary" selected={isA} title="Show as A" sx={btnSx} onChange={() => setA(take.id)}>
+        <ToggleButton value="A" size="small" color="primary" selected={isA} title={t('results.takes.showA')} sx={btnSx} onChange={() => setA(take.id)}>
           A
         </ToggleButton>
-        <ToggleButton value="B" size="small" color="info" selected={isB} title="Compare as B" sx={btnSx} onChange={() => toggleB(take.id)}>
+        <ToggleButton value="B" size="small" color="info" selected={isB} title={t('results.takes.compareB')} sx={btnSx} onChange={() => toggleB(take.id)}>
           B
         </ToggleButton>
-        <IconButton size="small" title="Play" aria-label={`Play ${take.name}`} onClick={() => playTake(take.id)}>
+        <IconButton size="small" title={t('results.takes.play')} aria-label={t('results.takes.playAria', { name: take.name })} onClick={() => playTake(take.id)}>
           <PlayArrowIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" title="Download WAV" aria-label={`Download ${take.name} as WAV`} onClick={() => downloadTakeWav(take)}>
+        <IconButton size="small" title={t('results.takes.download')} aria-label={t('results.takes.downloadAria', { name: take.name })} onClick={() => downloadTakeWav(take)}>
           <DownloadIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" title="Delete take" aria-label={`Delete ${take.name}`} onClick={() => deleteTake(take.id)}>
+        <IconButton size="small" title={t('results.takes.delete')} aria-label={t('results.takes.deleteAria', { name: take.name })} onClick={() => deleteTake(take.id)}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </div>

@@ -1,6 +1,8 @@
 import LinearProgress from '@mui/material/LinearProgress'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { MAX_SEC, QUIET_SEC } from '../../audio/reference'
+import { fmtNum } from '../../i18n/format'
 import { useBench } from '../../store/benchStore'
 
 type CueColor = 'text.secondary' | 'warning.main' | 'success.main'
@@ -9,26 +11,27 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 
 /** Idle hint, silence countdown, reading timer or analyzing, with a progress bar under it. */
 export function RecordingCue() {
+  const { t } = useTranslation()
   const phase = useBench((s) => s.recorder.phase)
   const elapsed = useBench((s) => s.recorder.elapsed)
 
   let big = ''
-  let label = 'Press record, stay silent for 3 seconds, then read the text.'
+  let label = t('wizard.cue.idle', { sec: fmtNum(QUIET_SEC, 0) })
   let color: CueColor = 'text.secondary'
   let fraction = 0
   if (phase === 'silence') {
-    big = String(Math.max(1, Math.ceil(QUIET_SEC - elapsed)))
-    label = 'Stay silent, measuring the room'
+    big = fmtNum(Math.max(1, Math.ceil(QUIET_SEC - elapsed)), 0)
+    label = t('wizard.cue.silence')
     color = 'warning.main'
     fraction = clamp01(elapsed / QUIET_SEC)
   } else if (phase === 'reading') {
-    big = `${Math.max(0, elapsed - QUIET_SEC).toFixed(0)} s`
-    label = 'Read the text now'
+    big = t('common.units.seconds', { value: fmtNum(Math.max(0, elapsed - QUIET_SEC), 0) })
+    label = t('wizard.cue.reading')
     color = 'success.main'
     fraction = clamp01((elapsed - QUIET_SEC) / (MAX_SEC - QUIET_SEC))
   } else if (phase === 'analyzing') {
     big = '…'
-    label = 'Analyzing'
+    label = t('wizard.cue.analyzing')
   }
 
   return (

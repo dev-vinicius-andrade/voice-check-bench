@@ -1,6 +1,8 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { BANDS, deviations } from '../../audio/reference'
+import { fmtSigned } from '../../i18n/format'
 import type { Analysis, ChartView } from '../../types'
 
 const C = {
@@ -16,7 +18,6 @@ const W = 880, H = 290, L = 46, R = 10, T = 14, BM = 46, LO = -15, HI = 15
 const CW = (W - L - R) / BANDS.length
 const y = (v: number): number => T + ((HI - Math.max(LO, Math.min(HI, v))) / (HI - LO)) * (H - T - BM)
 const GRID = [-15, -10, -5, 0, 5, 10, 15]
-const sign = (v: number): string => (v > 0 ? '+' : '')
 
 function Bar({ v, x, color, width, diff }: { v: number; x: number; color: string; width: number; diff: boolean }) {
   const yy = y(v)
@@ -25,14 +26,15 @@ function Bar({ v, x, color, width, diff }: { v: number; x: number; color: string
     <>
       <line x1={x} x2={x} y1={y(0)} y2={yy} stroke={color} strokeWidth={width} opacity={0.85} />
       <text x={x} y={v >= 0 ? yy - 6 : yy + 14} textAnchor="middle" fontSize={11} fontWeight={600} fill={quiet ? C.muted : C.ink}>
-        {sign(v) + v.toFixed(0)}
+        {fmtSigned(v, 0)}
       </text>
     </>
   )
 }
 
 function Chart({ rA, rB, diff }: { rA: number[]; rB: number[] | null; diff: boolean }) {
-  const label = `${diff ? 'Difference between takes' : 'Deviation from reference voice'} per octave`
+  const { t } = useTranslation()
+  const label = diff ? t('results.chart.ariaDiff') : t('results.chart.ariaTone')
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} style={{ width: '100%', minWidth: 600, display: 'block', fontFamily: 'inherit' }}>
       {!diff && (
@@ -44,7 +46,7 @@ function Chart({ rA, rB, diff }: { rA: number[]; rB: number[] | null; diff: bool
       {GRID.map((v) => (
         <g key={v}>
           <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={C.line} strokeWidth={v === 0 ? 2 : 1} />
-          <text x={L - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill={C.muted}>{sign(v) + v}</text>
+          <text x={L - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill={C.muted}>{fmtSigned(v, 0)}</text>
         </g>
       ))}
       {BANDS.map((b, i) => {
@@ -53,7 +55,7 @@ function Chart({ rA, rB, diff }: { rA: number[]; rB: number[] | null; diff: bool
           <g key={b.name}>
             <Bar v={rA[i]} x={rB ? cx - CW * 0.14 : cx} color={C.a} width={rB ? 10 : 16} diff={diff} />
             {rB && <Bar v={rB[i]} x={cx + CW * 0.14} color={C.b} width={10} diff={diff} />}
-            <text x={cx} y={H - 26} textAnchor="middle" fontSize={11} fontWeight={600} fill={C.ink}>{b.label}</text>
+            <text x={cx} y={H - 26} textAnchor="middle" fontSize={11} fontWeight={600} fill={C.ink}>{t(`results.band.${i}`)}</text>
             <text x={cx} y={H - 11} textAnchor="middle" fontSize={10} fill={C.muted}>{b.name}</text>
           </g>
         )
@@ -77,17 +79,16 @@ function Legend({ items }: { items: { label: string; color: string; alpha?: numb
 
 /** Per-octave deviation chart (prototype drawChart). 'diff' plots A − B without the reference zones. */
 export function BandChart({ a, b, view }: { a: Analysis; b: Analysis | null; view: ChartView }) {
+  const { t } = useTranslation()
   const dA = deviations(a.rel)
   const dB = b ? deviations(b.rel) : null
   const diff = view === 'diff' && !!dB
-  const title = diff ? 'Difference A − B per octave' : 'Tone balance vs reference voice'
-  const note = diff
-    ? 'Bars up: A has more of that band than B (after level-matching). With A = processed and B = a raw control, this is what your effects change.'
-    : '0 = matches a clear spoken-voice curve. Up = too much of that band, down = too little. Inside ±3 dB is fine, ±6 dB is noticeable.'
+  const title = diff ? t('results.chart.titleDiff') : t('results.chart.titleTone')
+  const note = diff ? t('results.chart.noteDiff') : t('results.chart.noteTone')
   const legend = diff
     ? [{ label: 'A − B', color: C.a }]
     : [
-        { label: '±3 dB / ±6 dB', color: C.zone, alpha: ZONE_ALPHA * 2 },
+        { label: t('results.chart.zones'), color: C.zone, alpha: ZONE_ALPHA * 2 },
         { label: 'A', color: C.a },
         ...(view === 'ab' && dB ? [{ label: 'B', color: C.b }] : []),
       ]

@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import GitHubIcon from '@mui/icons-material/GitHub'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
+import { useTranslation } from 'react-i18next'
 import { SITE } from '../../site'
 
 const external = { target: '_blank', rel: 'noopener noreferrer' } as const
@@ -24,28 +25,31 @@ const LINKS = [
   { label: 'GitHub', href: SITE.author.github, Icon: GitHubIcon, ext: true },
   { label: 'LinkedIn', href: SITE.author.linkedin, Icon: LinkedInIcon, ext: true },
   { label: 'Stack Overflow', href: SITE.author.stackoverflow, Icon: StackOverflowIcon, ext: true },
-  { label: `Email ${SITE.author.email}`, href: `mailto:${SITE.author.email}`, Icon: MailOutlinedIcon, ext: false },
+  { label: 'common.footer.email', href: `mailto:${SITE.author.email}`, Icon: MailOutlinedIcon, ext: false },
 ] as const
 
 /** Footer on every screen: author + social icons on the left, project links on the right; stacks on mobile. */
 export function Footer() {
+  const { t } = useTranslation()
+  // Brand names stay literal; only the email entry is a message key.
+  const text = (label: string): string => (label.startsWith('common.') ? t(label, { email: SITE.author.email }) : label)
   return (
     <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider', color: 'text.secondary', mt: 6 }}>
       <div className="mx-auto flex max-w-[1240px] flex-col items-center gap-3 px-4 py-6 sm:flex-row sm:justify-between">
         <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-4">
           <Typography variant="body2">
-            Made by{' '}
+            {t('common.footer.madeBy')}{' '}
             <Link href={SITE.author.site} {...external} color="primary" underline="hover" sx={{ fontWeight: 600 }}>
               {SITE.author.name}
             </Link>
           </Typography>
-          <nav aria-label="Author links" className="flex items-center gap-1">
+          <nav aria-label={t('common.footer.authorLinks')} className="flex items-center gap-1">
             {LINKS.map(({ label, href, Icon, ext }) => (
-              <Tooltip key={label} title={label}>
+              <Tooltip key={label} title={text(label)}>
                 <IconButton
                   href={href}
                   {...(ext ? external : {})}
-                  aria-label={label}
+                  aria-label={text(label)}
                   size="small"
                   sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                 >
@@ -57,11 +61,11 @@ export function Footer() {
         </div>
         <Typography variant="body2" component="div" className="flex items-center gap-2">
           <Link href={SITE.repo} {...external} color="inherit" underline="hover">
-            Source on GitHub
+            {t('common.footer.source')}
           </Link>
           <span aria-hidden="true">·</span>
           <Link href={SITE.issues} {...external} color="inherit" underline="hover">
-            Report an issue
+            {t('common.footer.issue')}
           </Link>
         </Typography>
       </div>

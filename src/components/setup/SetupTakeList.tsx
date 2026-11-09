@@ -1,14 +1,18 @@
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { DEV_NAME, STEPS, fillDistance } from '../../session/steps'
+import { DEV_NAME, STEPS } from '../../session/steps'
 import { useBench } from '../../store/benchStore'
 import { useFxDist } from '../../store/hooks'
 import type { DeviceKind } from '../../types'
+import { useStepCopy } from '../step/useStepCopy'
 
 /** The four guided takes and the input each one uses. */
 export function SetupTakeList() {
+  const { t } = useTranslation()
+  const copyOf = useStepCopy()
   const fxDist = useFxDist()
   const labels = useBench(
     useShallow((s): Record<DeviceKind, string> => {
@@ -37,10 +41,9 @@ export function SetupTakeList() {
             {i + 1}
           </Box>
           <div className="min-w-0">
-            <Typography sx={{ fontWeight: 700 }}>{fillDistance(st.title, fxDist)}</Typography>
+            <Typography sx={{ fontWeight: 700 }}>{copyOf(st, fxDist).title}</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-              {st.dev === 'raw' ? 'Raw mic, no effects. Input: ' : 'Through your effects. Input: '}
-              {labels[st.dev]}
+              {t(st.dev === 'raw' ? 'wizard.setup.takeRaw' : 'wizard.setup.takeFx', { input: labels[st.dev] })}
             </Typography>
           </div>
         </Paper>

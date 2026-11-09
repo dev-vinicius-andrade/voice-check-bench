@@ -2,6 +2,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { DeviceSelect } from '../common/DeviceSelect'
 import { LevelMeter } from '../common/LevelMeter'
 import { useBench } from '../../store/benchStore'
@@ -10,12 +11,11 @@ import type { DeviceKind } from '../../types'
 
 interface DevicePickRowProps {
   kind: DeviceKind
-  title: string
-  hint: string
 }
 
 /** One input choice on its own row: title + hint, full-width select with Test, live meter when it is the open input. */
-export function DevicePickRow({ kind, title, hint }: DevicePickRowProps) {
+export function DevicePickRow({ kind }: DevicePickRowProps) {
+  const { t } = useTranslation()
   const devices = useBench((s) => s.devices)
   const choice = useBench((s) => s.deviceChoice[kind])
   const listening = useBench((s) => s.mic.status === 'on' && s.mic.deviceId === choice && choice !== null)
@@ -29,25 +29,25 @@ export function DevicePickRow({ kind, title, hint }: DevicePickRowProps) {
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <Typography sx={{ fontWeight: 700 }}>{title}</Typography>
+          <Typography sx={{ fontWeight: 700 }}>{t(`wizard.access.${kind}.title`)}</Typography>
           <Typography variant="caption" color="text.secondary">
-            {hint}
+            {t(`wizard.access.${kind}.hint`)}
           </Typography>
         </div>
-        {listening && <Chip size="small" color="primary" label="Listening" />}
+        {listening && <Chip size="small" color="primary" label={t('wizard.access.listeningChip')} />}
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <div className="min-w-0 flex-1">
-          <DeviceSelect label="Input" devices={devices} value={choice} onChange={(id) => void chooseDevice(kind, id)} />
+          <DeviceSelect label={t('wizard.access.input')} devices={devices} value={choice} onChange={(id) => void chooseDevice(kind, id)} />
         </div>
         <Button
           variant="outlined"
           size="small"
-          title="Open this input and watch the meter"
+          title={t('wizard.access.testHint')}
           disabled={!choice || listening}
           onClick={() => choice && void previewDevice(choice)}
         >
-          Test
+          {t('common.actions.test')}
         </Button>
       </div>
       {listening && (

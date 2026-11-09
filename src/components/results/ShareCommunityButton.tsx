@@ -2,19 +2,19 @@ import { useMemo } from 'react'
 import Button from '@mui/material/Button'
 import Tooltip from '@mui/material/Tooltip'
 import GitHubIcon from '@mui/icons-material/GitHub'
+import { useTranslation } from 'react-i18next'
 import { buildShareUrl } from '../../community/shareUrl'
 import { anonymizedSummary } from '../../community/summary'
 import { useBench } from '../../store/benchStore'
 import { useMicProfile, useSuggestion } from '../../store/hooks'
 import type { Take } from '../../types'
 
-const LABEL = 'Share with the community'
-
 /**
  * Opens the pre-filled "Mic result" GitHub issue form in a new tab. When the summary does not fit in the link,
  * the click also copies it to the clipboard and `onTruncated` lets the parent show how to paste it.
  */
 export function ShareCommunityButton({ A, onTruncated }: { A: Take; onTruncated: () => void }) {
+  const { t } = useTranslation()
   const mic = useMicProfile()
   const s = useSuggestion()
   const takes = useBench((st) => st.takes)
@@ -25,10 +25,10 @@ export function ShareCommunityButton({ A, onTruncated }: { A: Take; onTruncated:
 
   if (!mic.model.trim()) {
     return (
-      <Tooltip title="Set your mic model on the setup screen first">
+      <Tooltip title={t('results.share.needMic')}>
         <span>
           <Button size="small" variant="outlined" color="primary" startIcon={<GitHubIcon />} disabled>
-            {LABEL}
+            {t('results.share.label')}
           </Button>
         </span>
       </Tooltip>
@@ -53,7 +53,7 @@ export function ShareCommunityButton({ A, onTruncated }: { A: Take; onTruncated:
       rel="noopener"
       onClick={onClick}
     >
-      {LABEL}
+      {t('results.share.label')}
     </Button>
   )
 }

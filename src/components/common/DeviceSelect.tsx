@@ -1,5 +1,6 @@
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
+import { useTranslation } from 'react-i18next'
 import type { InputDevice } from '../../audio/AudioEngine'
 
 interface DeviceSelectProps {
@@ -12,6 +13,7 @@ interface DeviceSelectProps {
 
 /** Input device picker. Unknown or missing ids show as empty instead of an out-of-range value. */
 export function DeviceSelect({ label, devices, value, onChange, disabled }: DeviceSelectProps) {
+  const { t } = useTranslation()
   const current = value && devices.some((d) => d.deviceId === value) ? value : ''
   return (
     <TextField
@@ -26,7 +28,7 @@ export function DeviceSelect({ label, devices, value, onChange, disabled }: Devi
     >
       {devices.length === 0 && (
         <MenuItem value="" disabled>
-          No inputs found
+          {t('common.device.none')}
         </MenuItem>
       )}
       {devices.map((d) => (

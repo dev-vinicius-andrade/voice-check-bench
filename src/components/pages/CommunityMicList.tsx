@@ -8,28 +8,31 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import type { Theme } from '@mui/material/styles'
+import { useTranslation } from 'react-i18next'
+import { fmtNum } from '../../i18n/format'
 import type { CommunityMicStats } from '../../community/types'
 import { fmtDistance, fmtNoisyShare, fmtSnr } from './communityFormat'
 
 const COLUMNS = [
-  { label: 'Reports', value: (m: CommunityMicStats) => String(m.reports) },
-  { label: 'Typical raw SNR', value: fmtSnr },
-  { label: 'Most voted distance', value: fmtDistance },
-  { label: 'Noisy rooms', value: fmtNoisyShare },
+  { label: 'pages.community.col.reports', value: (m: CommunityMicStats) => fmtNum(m.reports, 0) },
+  { label: 'pages.community.col.snr', value: fmtSnr },
+  { label: 'pages.community.col.dist', value: fmtDistance },
+  { label: 'pages.community.col.noisy', value: fmtNoisyShare },
 ] as const
 
 const nums = { fontVariantNumeric: 'tabular-nums' } as const
 
 function MicTable({ mics }: { mics: readonly CommunityMicStats[] }) {
+  const { t } = useTranslation()
   return (
     <TableContainer component={Paper}>
-      <Table size="small" aria-label="Shared results per mic model">
+      <Table size="small" aria-label={t('pages.community.tableLabel')}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ fontWeight: 700 }}>Mic</TableCell>
+            <TableCell sx={{ fontWeight: 700 }}>{t('pages.community.col.mic')}</TableCell>
             {COLUMNS.map((c) => (
               <TableCell key={c.label} align="right" sx={{ fontWeight: 700 }}>
-                {c.label}
+                {t(c.label)}
               </TableCell>
             ))}
           </TableRow>
@@ -54,6 +57,7 @@ function MicTable({ mics }: { mics: readonly CommunityMicStats[] }) {
 }
 
 function MicCards({ mics }: { mics: readonly CommunityMicStats[] }) {
+  const { t } = useTranslation()
   return (
     <ul className="m-0 grid list-none gap-3 p-0">
       {mics.map((m) => (
@@ -63,7 +67,7 @@ function MicCards({ mics }: { mics: readonly CommunityMicStats[] }) {
             {COLUMNS.map((c) => (
               <div key={c.label} className="contents">
                 <Typography component="dt" variant="body2" color="text.secondary">
-                  {c.label}
+                  {t(c.label)}
                 </Typography>
                 <Typography component="dd" variant="body2" align="right" sx={{ m: 0, ...nums }}>
                   {c.value(m)}

@@ -24,9 +24,9 @@ export const fmtSigned = (v: number, digits = 1): string => (Number.isFinite(v) 
 export const fmtDbfs = (v: number, digits = 1): string => `${fmtNum(v, digits)} dBFS`
 /** "+3.0 dB". */
 export const fmtDb = (v: number, digits = 1, signed = true): string => `${signed ? fmtSigned(v, digits) : fmtNum(v, digits)} dB`
-/** Whole hertz below 10 kHz (tells close tones apart), kHz above. */
+/** Whole hertz below 10 kHz (tells close tones apart), kHz above. No thousands separator: people type these values into plugins. */
 export const fmtHz = (hz: number): string =>
-  hz >= 10000 ? `${fmtNum(hz / 1000, 1)} kHz` : `${fmtNum(Math.round(hz), 0)} Hz`
+  hz >= 10000 ? `${fmtNum(hz / 1000, 1)} kHz` : `${Math.round(hz)} Hz`
 /** "8 cm" plus inches for en-US: "8 cm (3 in)". */
 export const fmtCm = (cm: number): string => {
   const base = `${fmtNum(cm, 0)} cm`

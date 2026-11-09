@@ -1,33 +1,30 @@
+import { useTranslation } from 'react-i18next'
 import { BulletList, DefList } from './DefList'
 import { HowApplySection, HowTakesSection } from './HowItWorksSections'
 import { CHAIN, MEASURES, ROOM_TIPS } from './howItWorksData'
 import { PageColumn, PageCta, PageHead, PageSection, Para } from './PageLayout'
 
-/** "How it works": the takes, what is measured, the suggested chain, applying it and tips for bad rooms. */
+/** "How it works": the takes, what is measured, the suggested chain, applying it and tips for noisy rooms. */
 export function HowItWorksPage() {
+  const { t } = useTranslation()
+  const measures = MEASURES.map((id) => ({ term: t(`pages.how.measures.${id}.term`), def: t(`pages.how.measures.${id}.def`) }))
+  const chain = CHAIN.map((name) => ({ term: `${name} — ${t(`pages.how.chain.${name}.role`)}`, def: t(`pages.how.chain.${name}.def`) }))
   return (
     <PageColumn>
-      <PageHead
-        first="How it"
-        second="works"
-        lead="Four short takes of the same text, analysed in your browser. The differences between them show what your mic, your distance and your room do to your voice."
-      />
+      <PageHead first={t('pages.how.headFirst')} second={t('pages.how.headSecond')} lead={t('pages.how.lead')} />
       <HowTakesSection />
-      <PageSection title="What we measure">
-        <DefList items={MEASURES} />
+      <PageSection title={t('pages.how.measures.title')}>
+        <DefList items={measures} />
       </PageSection>
-      <PageSection title="The suggested chain">
-        <Para>
-          The settings are for the free ReaPlugs in Wave Link, in this order. In a quiet room ReaFIR is skipped and the
-          chain is ReaGate → ReaEQ → ReaComp.
-        </Para>
-        <DefList items={CHAIN} />
+      <PageSection title={t('pages.how.chain.title')}>
+        <Para>{t('pages.how.chain.intro')}</Para>
+        <DefList items={chain} />
       </PageSection>
       <HowApplySection />
-      <PageSection title="Tips for bad rooms">
-        <BulletList items={ROOM_TIPS} />
+      <PageSection title={t('pages.how.tips.title')}>
+        <BulletList items={ROOM_TIPS.map((id) => t(`pages.how.tips.${id}`))} />
       </PageSection>
-      <PageCta text="Five minutes, four takes, settings you can use today." />
+      <PageCta text={t('pages.how.cta')} />
     </PageColumn>
   )
 }

@@ -1,1 +1,222 @@
-{}
+{
+  "results": {
+    "heading": "Your results",
+    "empty": {
+      "title": "No takes yet",
+      "body": "You haven't recorded anything yet. Start with step 1 to check your voice.",
+      "button": "Go to step 1"
+    },
+    "demo": {
+      "body": "This is example data — your own takes are not affected.",
+      "start": "Start your own check"
+    },
+    "term": {
+      "info": "What does “{{term}}” mean?"
+    },
+    "score": {
+      "overline": "Your voice today",
+      "aria": "Clarity score: {{score}} out of 100",
+      "outOf": "out of 100"
+    },
+    "ratings": {
+      "aria": "How you sound"
+    },
+    "next": {
+      "title": "What to do next",
+      "none": "Nothing to fix right now. Keep doing what you're doing.",
+      "cost": {
+        "free": "Free",
+        "minutes": "A few minutes"
+      },
+      "showHow": "Show me how",
+      "hideHow": "Hide"
+    },
+    "how": {
+      "placement": {
+        "distanceKnown": "Your best distance in this session: {{everyday}}, {{dist}}.",
+        "distanceDefault": "A good starting point is {{everyday}} between your mouth and the mic: {{dist}}."
+      },
+      "gain": {
+        "term": "Gain",
+        "what": "is your input volume: how much the mic is turned up before anything else.",
+        "where": "Change it with the gain knob on your audio interface, or the mic gain slider in Wave Link.",
+        "steps": "Move it a little at a time, then record again to check."
+      }
+    },
+    "summary": {
+      "beforeAfter": {
+        "belowQuarter": "Your effects made the room {{db}} dB quieter next to your voice — less than a quarter as loud.",
+        "quarter": "Your effects made the room {{db}} dB quieter next to your voice — about a quarter as loud.",
+        "half": "Your effects made the room {{db}} dB quieter next to your voice — about half as loud.",
+        "some": "Your effects made the room {{db}} dB quieter next to your voice.",
+        "little": "Your effects barely changed the room noise yet. The noise reduction steps in the technical details can help."
+      },
+      "community": {
+        "behind": "People with this mic usually get about {{db}} dB more voice over the room noise than you do right now.",
+        "ahead": "You get about {{db}} dB more voice over the room noise than most people with this mic.",
+        "same": "Your voice stands out from the room about as well as most people's with this mic."
+      }
+    },
+    "details": {
+      "title": "Show the technical details"
+    },
+    "analysis": {
+      "aria": "Technical analysis",
+      "chartView": "Chart view",
+      "error": "This take could not be analyzed",
+      "referenceNote": "Reference ranges are approximate targets for close-miked spoken voice. Trust your ears over any single number."
+    },
+    "verdict": {
+      "fixFirst": "Fix first: {{list}}",
+      "balanced": "Balanced. Nothing stands out.",
+      "quietBroken": "Noise reading may be off: there was sound in the first 3 s.",
+      "startWith": "Start with: {{fix}}"
+    },
+    "stats": {
+      "speech": "Speech",
+      "noise": "Noise",
+      "snr": "SNR",
+      "issues": "Issues",
+      "issuesUnit": "bad · warn",
+      "b": "B: {{value}}"
+    },
+    "room": {
+      "title": "Room noise",
+      "fromQuiet": "Measured in the silent seconds before you read.",
+      "estimated": "Estimated from the quietest moments of the take.",
+      "bars": "Bars show how far your voice is above the room in each octave: under 10 dB the noise wins, 20 dB and up is clear.",
+      "noiseFloor": "Noise floor <b>{{value}}</b> dBFS",
+      "steadyTones": "Steady tones:",
+      "chartAria": "Voice over room noise per octave, in dB"
+    },
+    "noiseKind": {
+      "quiet": "Quiet room",
+      "hum": "Mains hum",
+      "tonal": "Fan / machine tones",
+      "broadband": "Broadband noise"
+    },
+    "band": {
+      "0": "Rumble",
+      "1": "Boom",
+      "2": "Warmth",
+      "3": "Mud / box",
+      "4": "Body",
+      "5": "Definition",
+      "6": "Presence",
+      "7": "Sibilance",
+      "8": "Air"
+    },
+    "chart": {
+      "titleTone": "Tone balance vs reference voice",
+      "titleDiff": "Difference A − B per octave",
+      "noteTone": "0 = matches a clear spoken-voice curve. Up = too much of that band, down = too little. Inside ±3 dB is fine, ±6 dB is noticeable.",
+      "noteDiff": "Bars up: A has more of that band than B (after level-matching). With A = processed and B = a raw control, this is what your effects change.",
+      "ariaTone": "Deviation from reference voice per octave",
+      "ariaDiff": "Difference between takes per octave",
+      "zones": "±3 dB / ±6 dB"
+    },
+    "beforeAfter": {
+      "title": "Before / after",
+      "snr": "SNR",
+      "voiceBandSnr": "Voice-band SNR",
+      "noiseFloor": "Noise floor",
+      "lowered": "Your effects lowered the room by {{db}} dB",
+      "little": "Noise reduction made little difference — check the ReaFIR profile"
+    },
+    "community": {
+      "title": "People with this mic",
+      "reports_one": "{{count}} report",
+      "reports_other": "{{count}} reports",
+      "none": "No community data for {{model}} yet — be the first to share.",
+      "rawSnr": "Raw SNR: typical <b>{{median}}</b> dB ({{p25}}–{{p75}})",
+      "rawSnrYours": "Raw SNR: yours <b>{{yours}}</b> dB · typical <b>{{median}}</b> dB ({{p25}}–{{p75}})",
+      "bestDistance": "Best distance: most voted <b>{{dist}}</b> ({{votes}} of {{reports}})",
+      "typicalEq": "Typical EQ they used:",
+      "chartAria": "Deviation from reference voice per octave: you vs community median",
+      "you": "You",
+      "median": "Community median"
+    },
+    "compare": {
+      "titleSession": "Compare this session's takes",
+      "title": "Compare takes",
+      "speech": "Speech level",
+      "noise": "Noise floor",
+      "snr": "SNR",
+      "consistency": "Consistency",
+      "problems": "Problems (bad · warn)",
+      "best": "best"
+    },
+    "checks": {
+      "title": "Checks for A",
+      "none": "No problems found.",
+      "passing_one": "{{count}} check passing",
+      "passing_other": "{{count}} checks passing",
+      "try": "Try:",
+      "good": "ok",
+      "warn": "warn",
+      "bad": "bad"
+    },
+    "copy": {
+      "copied": "Copied ✓",
+      "saved": "Saved as file"
+    },
+    "settings": {
+      "title": "Suggested ReaPlugs settings",
+      "copyText": "Copy as text",
+      "downloadTxt": "Download .txt",
+      "downloadJson": "Download .json",
+      "basedOn": "Based on the raw take “{{name}}”.",
+      "levels": "Speech {{speech}} dBFS, noise {{noise}} dBFS.",
+      "keepMic": "Keep the mic at {{dist}} and the Wave XLR gain unchanged.",
+      "effectsOrder": "Effects order:",
+      "applyBefore": "Values are a starting point: about 70% of the measured correction, so they don't overshoot. Type them into each plugin window (Wave Link → mic → Effects → the sliders icon), or close Wave Link and run",
+      "applyAfter": "(see tools/README.md). Record a processed take afterwards to check.",
+      "order_ordinal_one": "{{count}}st",
+      "order_ordinal_two": "{{count}}nd",
+      "order_ordinal_few": "{{count}}rd",
+      "order_ordinal_other": "{{count}}th",
+      "hardware": "hardware",
+      "noBands": "No bands needed",
+      "notch": "notch",
+      "on": "on",
+      "off": "off",
+      "onLight": "on (light)",
+      "whyGateNoisy": "Soft expander just above the room left after noise reduction: pauses dip, words stay whole.",
+      "whyGate": "About 12 dB above the room noise, well under your voice.",
+      "whyEq": "Frequency · gain dB · bandwidth oct. Use only these bands.",
+      "whyComp": "Aims for speech around -20 dBFS.",
+      "whyLowcut": "Extra rumble on the raw mic.",
+      "whyDeess": "S sounds spike on the raw mic.",
+      "nrTitle": "{{plugin}} (noise reduction)",
+      "nrAlternatives": "Rather not use {{plugin}}? Alternatives: {{list}}."
+    },
+    "share": {
+      "copy": "Copy anonymized summary",
+      "copyTitle": "Mic profile, analysis numbers and suggested values for this session. No audio, device names or dates.",
+      "label": "Share with the community",
+      "needMic": "Set your mic model on the setup screen first",
+      "note": "Opens a public GitHub issue with your mic profile and analysis numbers (no audio). You review it before posting.",
+      "truncated": "The summary was too long for the link: paste it into the Summary field."
+    },
+    "takes": {
+      "title": "Takes",
+      "deleteAll": "Delete all",
+      "deleteConfirm": "Click again to delete every take",
+      "hintAB": "Set A and B on any two takes to compare them.",
+      "storageBlocked": "This browser blocks local storage here, so takes last only until you close the tab.",
+      "none": "No takes yet.",
+      "newSession": "New session",
+      "freeTake": "Record a free take",
+      "notAnalyzed": "{{sec}} s · not analyzed",
+      "levels": "speech {{speech}} · noise {{noise}} dBFS",
+      "showA": "Show as A",
+      "compareB": "Compare as B",
+      "play": "Play",
+      "playAria": "Play {{name}}",
+      "download": "Download WAV",
+      "downloadAria": "Download {{name}} as WAV",
+      "delete": "Delete take",
+      "deleteAria": "Delete {{name}}"
+    }
+  }
+}

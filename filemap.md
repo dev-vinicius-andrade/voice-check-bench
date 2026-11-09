@@ -37,7 +37,7 @@
 - `src/audio/analyze.test.ts` — analyze() on synthetic takes, silence-window and error paths, tones/bandSnr/noiseKind
 - `src/audio/analyze.wav.test.ts` — spot checks against `_test/no-filters.wav` and `_test/control-2-cm-raw.wav` (each skips when absent)
 - `src/audio/diagnose.test.ts` — check ids/order, thresholds, texts, verdict helpers
-- `src/session/steps.ts` — `STEPS` wizard definition, `DEV_MATCH`, `DEV_NAME`, `fillDistance`
+- `src/session/steps.ts` — `STEPS` wizard definition (English data; title names stored takes), `DEV_MATCH`, `DEV_NAME`, `fillDistance`; UI copy keys `stepKey`/`stepText` (`wizard.steps.<key>.*`)
 - `src/session/bestControl.ts` — `sessionSlots()` and `bestControl()` control-take picker (SNR penalty doubles in a noisy room)
 - `src/session/bestControl.test.ts` — slots, best control scoring, steps helpers
 - `src/settings/suggest.ts` — `suggest()` (quiet room; noisy room: ReaFIR plan, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase()`, `isNotch()`, `suggestionToText`/`suggestionToJson`
@@ -70,11 +70,24 @@
 - `src/plain/score.test.ts` · `ratings.test.ts` · `actions.test.ts` · `distances.test.ts` — formulas, label mapping, action order/limits, distances and glossary
 - `src/plain/keys.test.ts` — every key the plain engine returns exists in en.json with its `{{params}}`; banned words
 - `src/i18n/locales/en.json` — English source strings; `plain` namespace (score, rating, action, distance, glossary)
+- `src/i18n/locales/en/results.json` — English results-screen strings (`results.*`: plain layout, technical details, settings, takes)
 - `src/storage/prefs.test.ts` — prefs round trip (incl. mic profile), corrupt JSON, blocked storage
 - `src/storage/takesDb.test.ts` — in-memory fallback and prototype record normalization
-- `src/components/results/ResultsScreen.tsx` — results page: demo banner, heading, analysis + takes grid (two columns ≥ 980 px), empty state
+- `src/components/results/ResultsScreen.tsx` — results page: demo banner, heading, plain results (or the analysis error) + takes grid (two columns ≥ 980 px), empty state
+- `src/components/results/ResultsScreen.test.tsx` — render test on the demo session: score ring, three ratings, ≤ 3 actions, details collapsed, details open state remembered
+- `src/components/results/resultsKeys.test.ts` — every `t('results.…')` / `<Trans i18nKey>` key in the results components exists in en/results.json (plus dynamic key families)
+- `src/components/results/PlainResults.tsx` — plain-first layout for take A: score → ratings → next actions → plain summaries → technical details; "Show me how" (settings) opens the details and scrolls to the suggested settings
+- `src/components/results/usePlainResults.ts` — clarity score, ratings and next actions (+ ActionContext: take/profile mic, best and current distance, suggestion) for A; `stepDist()`
+- `src/components/results/ScoreHero.tsx` — SVG score ring (success ≥ 70 / warning 50–69 / error < 50), "Your voice today", headline + explanation
+- `src/components/results/RatingCards.tsx` — the three everyday rating cards (title, status-coloured label, explanation)
+- `src/components/results/NextActions.tsx` — numbered "What to do next" list with cost chip and "Show me how" (placement/gain panels inline, settings → details)
+- `src/components/results/HowPanels.tsx` — `PlacementHow` (mic-aware placement + address tip, everyday distance) and `GainHow` (gain in plain words, where to change it)
+- `src/components/results/PlainSummaries.tsx` — one-line plain before/after and community SNR summaries shown outside the details
+- `src/components/results/TechnicalDetails.tsx` — "Show the technical details" accordion (collapsed by default, mounts AnalysisPanel when open)
+- `src/components/results/useDetailsOpen.ts` — details open state in localStorage `vcb-results-details` (try/catch)
+- `src/components/results/pluginCards.ts` — suggested-settings plugin cards (literal plugin/parameter names, locale-formatted values, translated reasons), `chainOf`, `tagOf` (ordinal tags)
 - `src/components/results/DemoBanner.tsx` — "This is example data" alert (demo active and A is a demo take): Start your own check (exitDemo), close
-- `src/components/results/AnalysisPanel.tsx` — A/B chips, chart view toggle, analysis error alert, sections for take A
+- `src/components/results/AnalysisPanel.tsx` — technical details body: A/B chips, chart view toggle, analysis error alert, sections for take A
 - `src/components/results/VerdictAlert.tsx` — "Fix first: …" / "Balanced" verdict with silence note and first fix
 - `src/components/results/StatTiles.tsx` — speech, noise, SNR, issue-count tiles with B values
 - `src/components/results/RoomNoisePanel.tsx` — room noise of A: floor, noise kind chip, steady tones, per-band SNR chart
@@ -85,12 +98,12 @@
 - `src/components/results/SummaryActions.tsx` — copy + share buttons with the public-issue note and the paste note
 - `src/components/results/CommunityMicCard.tsx` — "People with this mic": your best raw control vs community SNR, best distance, deviations and typical EQ
 - `src/components/results/CommunityDeviationChart.tsx` — SVG paired per-octave deviation bars (you vs community median)
-- `src/components/results/roomNoise.ts` — noise-kind labels, band SNR helpers, `beforeAfterPair`
+- `src/components/results/roomNoise.ts` — band SNR helpers, `beforeAfterPair`, `yourRawAnalysis` (best raw control for community comparisons)
 - `src/components/results/roomNoise.test.ts` — band SNR helpers, before/after pairing
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart (A, A + B, A − B) with ±3/±6 zones and legend
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
 - `src/components/results/ChecksList.tsx` — problem checks, passing checks in a collapsed accordion
-- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel: effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON
+- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel (`#suggested-settings`): effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON
 - `src/components/results/PluginCard.tsx` — one plugin's key/value settings card
 - `src/components/results/NoiseReductionCard.tsx` — ReaFIR (noise reduction) numbered setup steps and alternatives
 - `src/components/results/TakesPanel.tsx` — takes grouped by session, Delete all with second-click confirm, New session / free take
@@ -98,10 +111,15 @@
 - `src/components/results/download.ts` — `downloadFile()` and `shortName()` helpers
 - `src/components/common/LevelMeter.tsx` — thin live input meter (-60..0 dBFS, success/warning/error)
 - `src/components/common/DeviceSelect.tsx` — input device select (TextField select)
+- `src/components/common/MsgText.tsx` — `<MsgText msg>` renders a plain-language Msg through i18n; `useMsg()` translator
+- `src/components/common/Term.tsx` — `<Term id>`: glossary term with an info button whose tooltip (hover, focus, click/tap) shows the meaning and analogy
 - `src/components/layout/TopBar.tsx` — brand (→ home) + site nav; progress stepper as a second row on setup/step/results
-- `src/components/layout/SiteNav.tsx` — How it works · Community · Privacy links (active in primary; menu button < 600 px) + Start/Continue pill (→ #/check)
+- `src/components/layout/SiteNav.tsx` — How it works · Community · Privacy links (active in primary; menu button < 600 px) + language choice (inside the menu on mobile) + Start/Continue pill (→ #/check)
 - `src/components/layout/Footer.tsx` — "Made by", GitHub/LinkedIn/Stack Overflow/email icon links, email text, Source on GitHub · Report an issue
-- `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Processed · Results stepper (clickable)
+- `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Effects · Results stepper (clickable)
+- `src/components/layout/LanguageMenu.tsx` — top-bar language button (current LOCALE_NAMES entry) + menu
+- `src/components/layout/chooseLocale.ts` — `chooseLocale()`: setLocale + keeps an existing `?lang=` in step
+- `src/components/layout/i18nKeys.test.ts` — every common/wizard/pages key used by setup/step/pages/layout (literal and list-built) exists in the en JSON; step keys resolve
 - `src/components/layout/StatusSnackbar.tsx` — global status Snackbar/Alert
 - `src/components/pages/PageLayout.tsx` — site page building blocks: `PageColumn` (880 px column), `PageHead`, `PageSection`, `Para`, `Code`, `StartButton` (→ setup), `PageCta`
 - `src/components/pages/DefList.tsx` — `DefList` bordered definition list and `BulletList`
@@ -110,7 +128,7 @@
 - `src/components/pages/HomeFeatures.tsx` — three feature cards with icons (3 → 1 columns)
 - `src/components/pages/HowItWorksPage.tsx` — how it works: takes, what we measure, suggested chain, applying, tips, CTA
 - `src/components/pages/HowItWorksSections.tsx` — "The four takes" and "Applying the settings" sections
-- `src/components/pages/howItWorksData.ts` — measures, chain and room-tip copy for How it works
+- `src/components/pages/howItWorksData.ts` — item ids for the page lists (measures, chain, tips, takes, apply, privacy, home steps, share steps); copy in pages.json
 - `src/components/pages/CommunityPage.tsx` — community: search, loading/empty states, mic list, last updated, how to share
 - `src/components/pages/CommunityMicList.tsx` — mic models as a table (≥ 600 px) or cards
 - `src/components/pages/CommunityHowToShare.tsx` — "How to share" steps and link to the mic-result issues
@@ -118,20 +136,25 @@
 - `src/components/pages/useCommunityIndexStatus.ts` — community index with loading / ready / unavailable state
 - `src/components/pages/PrivacyPage.tsx` — privacy: local storage, sharing, removal, no tracking, the Wave Link tool
 - `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic profile card, mic card, start/results buttons
-- `src/components/setup/MicProfileCard.tsx` — "Your microphone": model autocomplete, type/pattern/where-you-speak selects, address + placement tip, community line
-- `src/components/setup/CommunityMicLine.tsx` — "N people shared results with this mic · typical raw SNR · most voted distance"
+- `src/components/setup/MicProfileCard.tsx` — "Which mic do you have?": model autocomplete, type/pattern/where-you-speak selects with plain explanations, tips, community line
+- `src/components/setup/micOptions.ts` — mic kind/pattern/address choices + tip keys (`addressKey`, `placementKey`)
+- `src/components/setup/MicTips.tsx` — translated where-to-speak + placement tip for the current mic profile
+- `src/components/setup/CommunityMicLine.tsx` — "N people shared results with this mic · usually X dB louder than the room · most chose …"
 - `src/components/setup/RoomReading.tsx` — "Room: quiet / some noise / noisy" next to the live meter
 - `src/components/setup/useRoomLevel.ts` — minimum of the live level over the last 2 s (room estimate)
 - `src/components/setup/SetupTakeList.tsx` — the 4 guided takes and the input each uses
 - `src/components/setup/MicCard.tsx` — enable mic, raw/fx device selects with Test, live meter + room reading
 - `src/components/setup/DevicePickRow.tsx` — one input choice per row: title, select + Test, meter + room reading when listening
-- `src/components/step/StepScreen.tsx` — step / free-take screen composition, head split for TwoToneHeading, mic tips on raw control steps
-- `src/components/step/DistanceRuler.tsx` — SVG mouth-to-mic ruler (0–16 cm)
+- `src/components/step/StepScreen.tsx` — step / free-take screen composition (translated head/lead), mic tips on mic-only steps
+- `src/components/step/stepCopy.ts` — `stepCm`, `stepDist` (locale-formatted distance), `stepCopy` (translated step text)
+- `src/components/step/useStepCopy.ts` — hook binding `stepCopy` to the active translator
+- `src/components/step/failureKey.ts` — message key for a take that could not be analysed (mirrors quickStats `failureHint`)
+- `src/components/step/DistanceRuler.tsx` — SVG mouth-to-mic ruler (0–16 cm) + everyday caption ("about one fist away · 8 cm")
 - `src/components/step/InputBar.tsx` — current input, meter, Change → device select, Enable microphone
 - `src/components/step/RecordingCue.tsx` — idle / silence countdown / reading timer / analyzing cue + progress
 - `src/components/step/ReadingText.tsx` — Portuguese reading passage, dimmed until reading
 - `src/components/step/RecordButton.tsx` — 88 px record/stop button + Space hint
-- `src/components/step/TakeSummary.tsx` — mini summary of the step take (verdict, stats, play)
+- `src/components/step/TakeSummary.tsx` — mini summary of the step take (clarity score + headline + explanation, small numbers, play / failure hint)
 - `src/components/step/StepNav.tsx` — Back / Skip / Next navigation
 - `src/store/api.ts` — store contract: `BenchState`, `BenchActions`, `BenchSelectors`
 - `src/store/engine.ts` — lazily created `AudioEngine` singleton `getEngine()` (mocked in tests)

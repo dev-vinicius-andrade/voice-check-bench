@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fakeAnalysis } from '../../audio/testSignals'
 import type { Analysis, AnalysisResult, StepKey, Take } from '../../types'
-import { beforeAfterPair, fmtHz, hasBandSnr, voiceBandSnr } from './roomNoise'
+import { beforeAfterPair, hasBandSnr, voiceBandSnr } from './roomNoise'
 
 const mkTake = (id: number, session: string, step: StepKey | null, analysis: AnalysisResult = fakeAnalysis()): Take => ({
   id,
@@ -28,13 +28,6 @@ describe('band SNR helpers', () => {
   it('averages the 640 Hz–5 kHz bands', () => {
     expect(voiceBandSnr(fakeAnalysis({ bandSnr: [0, 0, 0, 0, 10, 20, 30, 0, 0] }))).toBe(20)
     expect(voiceBandSnr(fakeAnalysis({ bandSnr: [] }))).toBeNaN()
-  })
-
-  it('formats frequencies', () => {
-    expect(fmtHz(780.4)).toBe('780 Hz')
-    expect(fmtHz(2400)).toBe('2400 Hz')
-    expect(fmtHz(1559)).not.toBe(fmtHz(1617))
-    expect(fmtHz(12500)).toBe('12.5 kHz')
   })
 })
 

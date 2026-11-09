@@ -1,7 +1,7 @@
 // Guided session definition ported 1:1 from the prototype (docs/prototype/voice-check.html). Pure.
 import type { DeviceKind, StepDef } from '../types'
 
-/** `{d}` in title/head/lead is replaced by the processed-take distance (see fillDistance). */
+/** `{d}` in title/head/lead is replaced by the processed-take distance (see fillDistance). English data only; the UI uses stepText(). */
 export const STEPS: StepDef[] = [
   { key: 'c2', kind: 'Control test', cm: 2, dist: '2 cm', dev: 'raw', title: 'Control · 2 cm · raw', head: 'Record at 2 cm, raw mic', lead: 'Mouth about 2 cm from the mic, speaking on-axis (straight into the capsule). This shows how much bass the mic adds up close.' },
   { key: 'c8', kind: 'Control test', cm: 8, dist: '8 cm', dev: 'raw', title: 'Control · 8 cm · raw', head: 'Record at 8 cm, raw mic', lead: 'About a fist between your mouth and the mic, still speaking on-axis. Same voice volume as before.' },
@@ -23,3 +23,21 @@ export const DEV_NAME: Record<DeviceKind, string> = {
 
 /** Replace every `{d}` placeholder with the distance. */
 export const fillDistance = (text: string, dist: string): string => text.replaceAll('{d}', dist)
+
+// UI text. `title`/`head`/`lead`/`kind` above stay as locale-neutral data (title names stored takes and exports);
+// screens show the translated copy from `wizard.steps.<key>.*` instead.
+export type StepPart = 'kind' | 'title' | 'head1' | 'head2' | 'lead'
+export const STEP_PARTS: readonly StepPart[] = ['kind', 'title', 'head1', 'head2', 'lead']
+
+/** i18n key of one part of a step's on-screen copy. */
+export const stepKey = (st: Pick<StepDef, 'key'>, part: StepPart): string => `wizard.steps.${st.key}.${part}`
+
+/** A translate function (i18next `t`), kept structural so this module stays framework-free. */
+export type Translate = (key: string, params?: Record<string, string | number>) => string
+
+/** Translated copy of a step; `dist` is the already formatted distance (the step's own, or the best one for fx). */
+export function stepText(st: Pick<StepDef, 'key'>, t: Translate, dist: string): Record<StepPart, string> {
+  const out = {} as Record<StepPart, string>
+  for (const part of STEP_PARTS) out[part] = t(stepKey(st, part), { dist })
+  return out
+}

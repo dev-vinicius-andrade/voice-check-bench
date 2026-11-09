@@ -1,95 +1,92 @@
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import DownloadIcon from '@mui/icons-material/Download'
-import { downloadTakeWav } from '../results/download'
 import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
-import { countByStatus, diagnose, f1, topIssues } from '../../audio/diagnose'
-import { failureHint, quickStats } from '../../audio/quickStats'
-import { deviations } from '../../audio/reference'
+import { useTranslation } from 'react-i18next'
+import { downloadTakeWav } from '../results/download'
+import { useMsg } from '../common/MsgText'
+import { quickStats } from '../../audio/quickStats'
+import { QUIET_SEC } from '../../audio/reference'
+import { fmtDb, fmtDbfs, fmtNum } from '../../i18n/format'
+import { clarityScore, scoreBand } from '../../plain/score'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError } from '../../types'
-import type { Analysis, Take } from '../../types'
+import type { Take } from '../../types'
+import { failureKey } from './failureKey'
 
 interface TakeSummaryProps {
   take: Take
 }
 
-const BORDER = { good: 'success.main', warn: 'warning.main', bad: 'error.main' } as const
+const BORDER = { clear: 'success.main', good: 'success.main', ok: 'warning.main', hard: 'error.main' } as const
 
-function Stats({ a }: { a: Analysis }) {
-  const dev = deviations(a.rel)
-  const items: [string, string, string][] = [
-    ['speech', a.speechMed.toFixed(1), ' dBFS'],
-    ['noise', a.noise.toFixed(0), ' dBFS'],
-    ['SNR', a.snr.toFixed(0), ' dB'],
-    ['boom', f1(dev[1]), ''],
-    ['body', f1(dev[4]), ''],
-  ]
-  return (
-    <div className="flex flex-wrap gap-x-5 gap-y-1">
-      {items.map(([name, value, unit]) => (
-        <Typography key={name} variant="body2" color="text.secondary">
-          {name}{' '}
-          <Typography component="b" color="text.primary" sx={{ fontWeight: 700, fontSize: 15 }}>
-            {value}
-          </Typography>
-          {unit}
-        </Typography>
-      ))}
-    </div>
-  )
-}
-
-/** Mini summary of the take on the step screen: verdict, key numbers, play, replace hint. */
-export function TakeSummary({ take }: TakeSummaryProps) {
+/** Play + Download WAV. */
+function PlayRow({ take, label }: { take: Take; label: string }) {
+  const { t } = useTranslation()
   const playTake = useBench((s) => s.playTake)
-  const a = take.analysis
-  const play = (label: string) => (
+  return (
     <span className="inline-flex flex-wrap gap-2">
       <Button variant="outlined" size="small" startIcon={<PlayArrowIcon />} onClick={() => playTake(take.id)}>
         {label}
       </Button>
       <Button variant="text" size="small" startIcon={<DownloadIcon />} onClick={() => downloadTakeWav(take)}>
-        Download WAV
+        {t('common.actions.downloadWav')}
       </Button>
     </span>
   )
+}
 
-  if (isAnalysisError(a)) {
-    const q = quickStats(take.samples, take.sampleRate)
-    const db = (v: number) => (Number.isFinite(v) ? `${v.toFixed(0)} dBFS` : '—')
-    return (
-      <Paper className="grid gap-2.5 px-4 py-3.5" sx={{ borderLeft: 4, borderLeftColor: BORDER.bad }}>
-        <Typography sx={{ fontWeight: 700 }}>This take could not be analyzed</Typography>
-        <Typography variant="body2">{failureHint(q)}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-          {q.duration.toFixed(1)} s · peak {db(q.peakDb)} · silence {db(q.silenceDb)} · reading {db(q.readingDb)} · input{' '}
-          {take.device || '—'}
-        </Typography>
-        <div>{play('Play it back')}</div>
-      </Paper>
-    )
-  }
-
-  const checks = diagnose(a)
-  const { bad, warn } = countByStatus(checks)
-  const worst = bad ? 'bad' : warn ? 'warn' : 'good'
-  const top = topIssues(checks).map((c) => c.title.replace(/\s*\(.*\)/, ''))
-
+/** A take that could not be analysed: what happened and what to do, small numbers below. */
+function FailedTake({ take }: TakeSummaryProps) {
+  const { t } = useTranslation()
+  const q = quickStats(take.samples, take.sampleRate)
   return (
-    <Paper className="grid gap-2.5 px-4 py-3.5" sx={{ borderLeft: 4, borderLeftColor: BORDER[worst] }}>
-      <Typography sx={{ fontWeight: 700 }}>Saved. {top.length ? `Watch: ${top.join(' · ')}` : 'Nothing stands out.'}</Typography>
-      <Stats a={a} />
+    <Paper className="grid gap-2.5 px-4 py-3.5" sx={{ borderLeft: 4, borderLeftColor: BORDER.hard }}>
+      <Typography sx={{ fontWeight: 700 }}>{t('wizard.take.failed')}</Typography>
+      <Typography variant="body2">{t(failureKey(q))}</Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+        {t('wizard.take.failedDetails', {
+          duration: t('common.units.seconds', { value: fmtNum(q.duration, 1) }),
+          peak: fmtDbfs(q.peakDb, 0),
+          silence: fmtDbfs(q.silenceDb, 0),
+          reading: fmtDbfs(q.readingDb, 0),
+          device: take.device || '—',
+        })}
+      </Typography>
+      <div>
+        <PlayRow take={take} label={t('common.actions.playBack')} />
+      </div>
+    </Paper>
+  )
+}
+
+/** Mini summary of the take on the step screen: clarity score and headline, small numbers, play, replace hint. */
+export function TakeSummary({ take }: TakeSummaryProps) {
+  const { t } = useTranslation()
+  const tm = useMsg()
+  const a = take.analysis
+  if (isAnalysisError(a)) return <FailedTake take={take} />
+
+  const score = clarityScore(a)
+  return (
+    <Paper className="grid gap-2 px-4 py-3.5" sx={{ borderLeft: 4, borderLeftColor: BORDER[scoreBand(score.score)] }}>
+      <Typography sx={{ fontWeight: 700 }}>
+        {t('wizard.take.saved', { score: fmtNum(score.score, 0), headline: tm(score.headline) })}
+      </Typography>
+      <Typography variant="body2">{tm(score.explain)}</Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+        {t('wizard.take.details', { speech: fmtDbfs(a.speechMed, 1), noise: fmtDbfs(a.noise, 0), snr: fmtDb(a.snr, 0, false) })}
+      </Typography>
       {a.quietBroken && (
         <Typography variant="body2" color="text.secondary">
-          There was sound during the first 3 s, so the noise reading may be off.
+          {t('wizard.take.quietBroken', { sec: fmtNum(QUIET_SEC, 0) })}
         </Typography>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {play('Play')}
+        <PlayRow take={take} label={t('common.actions.play')} />
         <Typography variant="body2" color="text.secondary">
-          Not happy? Press record again to replace it.
+          {t('wizard.take.replace')}
         </Typography>
       </div>
     </Paper>

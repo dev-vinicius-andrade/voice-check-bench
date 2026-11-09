@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { TwoToneHeading } from '../common/TwoToneHeading'
 import { useBench } from '../../store/benchStore'
 
@@ -49,8 +50,8 @@ export function Para({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Inline code (commands, file names). */
-export function Code({ children }: { children: React.ReactNode }) {
+/** Inline code (commands, file names). Children are optional so it can be a <Trans> component slot. */
+export function Code({ children }: { children?: React.ReactNode }) {
   return (
     <Box
       component="code"
@@ -62,11 +63,12 @@ export function Code({ children }: { children: React.ReactNode }) {
 }
 
 /** Primary pill that starts the check. */
-export function StartButton({ label = 'Start the 5-minute check →' }: { label?: string }) {
+export function StartButton({ label }: { label?: string }) {
+  const { t } = useTranslation()
   const goTo = useBench((s) => s.goTo)
   return (
     <Button variant="contained" size="large" onClick={() => goTo('setup')}>
-      {label}
+      {label ?? t('common.actions.startCheck')}
     </Button>
   )
 }

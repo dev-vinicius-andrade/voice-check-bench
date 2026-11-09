@@ -1,1 +1,184 @@
-{}
+{
+  "wizard": {
+    "setup": {
+      "overline": "Before you start",
+      "headFirst": "Find out what's making",
+      "headSecond": "your voice unclear",
+      "lead": "You'll read the same short text four times. The first three use your mic on its own, at three distances. The last one goes through your effects. Everything stays in this browser.",
+      "previous": "See your last results",
+      "start": "Start step 1 →",
+      "takeRaw": "Mic only, no effects · Input: {{input}}",
+      "takeFx": "With your effects · Input: {{input}}"
+    },
+    "mic": {
+      "title": "Which mic do you have?",
+      "lead": "Not sure? That's fine — pick 'Not sure'. Known models fill in the rest, and you can change anything that doesn't match.",
+      "model": "Mic model",
+      "other": "Other",
+      "kindLabel": "What kind of mic is it?",
+      "patternLabel": "Which way does it listen?",
+      "addressLabel": "Where do you speak into it?",
+      "kind": {
+        "dynamic": "Dynamic",
+        "condenser": "Condenser",
+        "unknown": "Not sure"
+      },
+      "kindHelp": {
+        "dynamic": "Dynamic: most podcast and gaming mics. It mostly hears what's close to it, so the room bothers it less.",
+        "condenser": "Condenser: very sensitive. It picks up fine detail in your voice, and more of the room too.",
+        "unknown": "Not sure? No problem. You'll get advice that works for both kinds."
+      },
+      "pattern": {
+        "cardioid": "Cardioid",
+        "supercardioid": "Supercardioid",
+        "omni": "Omni",
+        "figure8": "Figure-8",
+        "unknown": "Not sure"
+      },
+      "patternHelp": {
+        "cardioid": "Cardioid: hears what's in front, ignores what's behind. Most voice mics work like this.",
+        "supercardioid": "Supercardioid: hears a narrow area in front and ignores the sides, but hears a little from behind.",
+        "omni": "Omni: hears all around equally, so it also hears the whole room.",
+        "figure8": "Figure-8: hears the front and the back, and ignores the sides.",
+        "unknown": "Not sure? Most voice mics are cardioid: they hear the front and ignore the back."
+      },
+      "address": {
+        "end": "The top",
+        "side": "The side",
+        "unknown": "Not sure"
+      },
+      "addressHelp": {
+        "end": "Top: you talk into the tip of the mic, like a handheld mic on stage.",
+        "side": "Side: you talk into the front of the mic, usually where the logo is. Common on big studio mics.",
+        "unknown": "Not sure? Point the part with the metal mesh straight at your mouth."
+      },
+      "tip": {
+        "address": {
+          "end": "Speak straight into the top of the mic.",
+          "side": "Speak into the front of the mic (usually where the logo is), not the top.",
+          "unknown": "Point the mic straight at your mouth."
+        },
+        "placement": {
+          "cardioid": "Turn the back of the mic toward the loudest noise, like a fan or your computer.",
+          "supercardioid": "Keep the loudest noise off to the side of the mic, a little behind it.",
+          "other": "Move the mic closer to you and away from the noise."
+        }
+      },
+      "community_one": "{{count}} person shared results with this mic",
+      "community_other": "{{count}} people shared results with this mic",
+      "communitySnr": "usually {{snr}} louder than the room",
+      "communityDist": "most chose {{dist}}"
+    },
+    "access": {
+      "title": "Microphone access",
+      "leadOff": "Your browser will ask for permission once. We switch off its own noise filter and automatic volume, so we hear your real mic.",
+      "leadOn": "Pick the input for each kind of take. The page switches between them by itself. Press Test and talk to see the meter move.",
+      "listening": "Listening to:",
+      "listeningChip": "Listening",
+      "input": "Input",
+      "testHint": "Open this input and watch the meter",
+      "raw": {
+        "title": "Mic only, no effects",
+        "hint": "Steps 1–3 · the test takes"
+      },
+      "fx": {
+        "title": "With your effects",
+        "hint": "Step 4 · with your effects on"
+      }
+    },
+    "room": {
+      "label": "Room:",
+      "quiet": "quiet",
+      "some": "a little noisy",
+      "noisy": "noisy — the advice will adapt",
+      "measuring": "measuring…",
+      "detail": "Quietest moment in the last 2 seconds: {{level}}"
+    },
+    "steps": {
+      "overline": "Step {{n}} of {{total}} · {{kind}}",
+      "c2": {
+        "kind": "Mic only",
+        "title": "About a finger away · {{dist}}",
+        "head1": "Record very close,",
+        "head2": "about a finger away",
+        "lead": "Put your mouth about a finger's width from the mic ({{dist}}) and talk straight into it. Being this close adds extra bass. This take shows how much."
+      },
+      "c8": {
+        "kind": "Mic only",
+        "title": "About one fist away · {{dist}}",
+        "head1": "Now a bit further,",
+        "head2": "about one fist away",
+        "lead": "Leave about one fist between your mouth and the mic ({{dist}}). Keep talking straight into it, at the same volume as before."
+      },
+      "c15": {
+        "kind": "Mic only",
+        "title": "About an open hand away · {{dist}}",
+        "head1": "Now further back,",
+        "head2": "about an open hand away",
+        "lead": "Leave about an open hand between your mouth and the mic ({{dist}}). Same direction, same volume as before."
+      },
+      "fx": {
+        "kind": "With your effects",
+        "title": "Your best distance · {{dist}}",
+        "head1": "One more time,",
+        "head2": "with your effects on",
+        "lead": "Read the same text at your best distance: {{dist}}. This time your voice goes through your effects, so you can hear what they change."
+      }
+    },
+    "free": {
+      "overline": "Free take",
+      "head1": "Record any setup",
+      "head2": "you want to test",
+      "lead": "Pick an input below, give the take a name, and compare it with your other takes later.",
+      "placeholder": "Name this take, e.g. With effects · 8 cm · new EQ",
+      "nameLabel": "Take name"
+    },
+    "stepper": {
+      "setup": "Setup",
+      "fx": "Effects",
+      "results": "Results"
+    },
+    "ruler": {
+      "mouth": "mouth",
+      "everyday": "{{everyday}} away · {{dist}}",
+      "plain": "{{dist}} away"
+    },
+    "input": {
+      "label": "Input:",
+      "notConnected": "not connected",
+      "device": "Input device"
+    },
+    "record": {
+      "start": "Record",
+      "again": "Record again",
+      "stop": "Stop",
+      "key": "Space",
+      "keyHint": "to start and stop"
+    },
+    "cue": {
+      "idle": "Press record. Stay quiet for {{sec}} seconds, then read the text out loud.",
+      "silence": "Stay quiet — we're listening to the room",
+      "reading": "Now read the text out loud",
+      "analyzing": "Checking your take…"
+    },
+    "nav": {
+      "next": "Next: {{dist}} →",
+      "nextFx": "Next: with effects →",
+      "results": "See results →"
+    },
+    "take": {
+      "saved": "Saved. Clarity {{score}} of 100: {{headline}}",
+      "details": "Details: your voice {{speech}} · room {{noise}} · voice over room {{snr}}",
+      "quietBroken": "We heard sound during the first {{sec}} seconds, so the room reading may be off. Record again and stay quiet until the countdown ends.",
+      "replace": "Not happy? Press record again to replace it.",
+      "failed": "We couldn't check this take",
+      "failedDetails": "Details: {{duration}} long · loudest {{peak}} · quiet part {{silence}} · reading {{reading}} · input {{device}}",
+      "failure": {
+        "silent": "We only got silence. This input isn't hearing your mic. Press Change and pick another input, or check that your audio app sends your mic to it.",
+        "tooQuiet": "Your voice barely reached the mic. Turn up the input volume (gain) on your mic or audio interface, or check that you picked the right input.",
+        "noisyPause": "The quiet part was almost as loud as your reading. Stay silent until the countdown ends, and pause anything else that plays sound into this input, like music or a call.",
+        "tooShort": "Your volume looks fine, but there wasn't enough talking. Read the whole text after the countdown and keep going until the end."
+      }
+    }
+  }
+}

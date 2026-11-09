@@ -1,14 +1,7 @@
 // Pure helpers for the room-noise results: band SNR checks, before/after pair.
-import { sessionSlots } from '../../session/bestControl'
+import { bestControl, sessionSlots } from '../../session/bestControl'
 import { pickSuggestionBase } from '../../settings/suggest'
-import { isAnalysisError, type Analysis, type NoiseKind, type Take } from '../../types'
-
-export const NOISE_KIND_LABEL: Record<NoiseKind, string> = {
-  quiet: 'Quiet room',
-  hum: 'Mains hum',
-  tonal: 'Fan / machine tones',
-  broadband: 'Broadband noise',
-}
+import { isAnalysisError, type Analysis, type Take } from '../../types'
 
 /** Voice bands 640 Hz–5 kHz (BANDS indexes 4..6). */
 const VOICE_BANDS = [4, 5, 6] as const
@@ -20,10 +13,6 @@ export const hasBandSnr = (a: Analysis): boolean =>
 /** Mean SNR over the voice bands, NaN when unavailable. */
 export const voiceBandSnr = (a: Analysis): number =>
   hasBandSnr(a) ? VOICE_BANDS.reduce((sum, i) => sum + a.bandSnr[i], 0) / VOICE_BANDS.length : Number.NaN
-
-/** "780 Hz" / "2.4 kHz". */
-/** Exact enough to tell close tones apart: 768 Hz, 1559 Hz, 3832 Hz, 12.5 kHz. */
-export const fmtHz = (hz: number): string => (hz >= 10000 ? `${+(hz / 1000).toFixed(1)} kHz` : `${Math.round(hz)} Hz`)
 
 export interface BeforeAfter {
   raw: Take & { analysis: Analysis }
@@ -42,4 +31,13 @@ export function beforeAfterPair(takes: readonly Take[], A: Take, session: string
   const fx = slots[3]
   const raw = pickSuggestionBase(slots, A.session === session ? fxDist : null)
   return valid(fx) && valid(raw) ? { raw, fx } : null
+}
+
+const RAW_STEPS = new Set(['c2', 'c8', 'c15'])
+
+/** The session's best raw control take, else A when A itself is a raw control (community comparisons). */
+export function yourRawAnalysis(takes: readonly Take[], A: Take): Analysis | null {
+  const best = A.session === 'free' ? null : bestControl(sessionSlots(takes, A.session))?.take
+  const t = best ?? (A.step && RAW_STEPS.has(A.step) ? A : null)
+  return t && !isAnalysisError(t.analysis) ? t.analysis : null
 }

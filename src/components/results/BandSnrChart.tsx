@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { BANDS } from '../../audio/reference'
+import { fmtNum } from '../../i18n/format'
 
 const C = {
   bad: 'var(--mui-palette-error-main)',
@@ -17,11 +19,12 @@ const colorOf = (v: number): string => (v < 10 ? C.bad : v < 20 ? C.warn : C.goo
 
 /** Per-band voice-over-room SNR bars (0–50 dB) with 10 and 20 dB guides. */
 export function BandSnrChart({ snr }: { snr: readonly number[] }) {
+  const { t } = useTranslation()
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
       role="img"
-      aria-label="Voice over room noise per octave, in dB"
+      aria-label={t('results.room.chartAria')}
       style={{ width: '100%', minWidth: 600, display: 'block', fontFamily: 'inherit' }}
     >
       <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} stroke={C.line} strokeWidth={2} />
@@ -40,9 +43,9 @@ export function BandSnrChart({ snr }: { snr: readonly number[] }) {
           <g key={b.name}>
             <line x1={cx} x2={cx} y1={y(0)} y2={y(v)} stroke={colorOf(v)} strokeWidth={16} opacity={0.85} />
             <text x={cx} y={y(v) - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill={C.ink}>
-              {v.toFixed(0)}
+              {fmtNum(v, 0)}
             </text>
-            <text x={cx} y={H - 26} textAnchor="middle" fontSize={11} fontWeight={600} fill={C.ink}>{b.label}</text>
+            <text x={cx} y={H - 26} textAnchor="middle" fontSize={11} fontWeight={600} fill={C.ink}>{t(`results.band.${i}`)}</text>
             <text x={cx} y={H - 11} textAnchor="middle" fontSize={10} fill={C.muted}>{b.name}</text>
           </g>
         )

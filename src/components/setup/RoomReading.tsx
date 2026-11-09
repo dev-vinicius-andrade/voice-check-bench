@@ -1,18 +1,21 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
+import { fmtDbfs } from '../../i18n/format'
 import { useRoomLevel } from './useRoomLevel'
 
 type Tone = 'success' | 'warning' | 'error'
 
 /** Plain room reading from the 2 s minimum level: < -60 quiet, < -45 some noise, else noisy. */
-function roomReading(db: number): { text: string; tone: Tone } {
-  if (db < -60) return { text: 'quiet', tone: 'success' }
-  if (db < -45) return { text: 'some noise', tone: 'warning' }
-  return { text: 'noisy — the guide will adapt', tone: 'error' }
+function roomReading(db: number): { key: string; tone: Tone } {
+  if (db < -60) return { key: 'wizard.room.quiet', tone: 'success' }
+  if (db < -45) return { key: 'wizard.room.some', tone: 'warning' }
+  return { key: 'wizard.room.noisy', tone: 'error' }
 }
 
-/** "Room: quiet / some noise / noisy" next to the live meter, from the quietest moment of the last 2 s. */
+/** "Room: quiet / a little noisy / noisy" next to the live meter, from the quietest moment of the last 2 s. */
 export function RoomReading() {
+  const { t } = useTranslation()
   const room = useRoomLevel()
   const r = room === null ? null : roomReading(room)
   return (
@@ -20,15 +23,15 @@ export function RoomReading() {
       variant="body2"
       color="text.secondary"
       aria-live="polite"
-      title={room === null ? undefined : `Quietest level in the last 2 s: ${room.toFixed(0)} dBFS`}
+      title={room === null ? undefined : t('wizard.room.detail', { level: fmtDbfs(room, 0) })}
     >
-      Room:{' '}
+      {t('wizard.room.label')}{' '}
       {r ? (
         <Box component="b" sx={{ color: `${r.tone}.main`, fontWeight: 700 }}>
-          {r.text}
+          {t(r.key)}
         </Box>
       ) : (
-        'measuring…'
+        t('wizard.room.measuring')
       )}
     </Typography>
   )

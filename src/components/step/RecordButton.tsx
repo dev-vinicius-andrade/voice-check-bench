@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { useBench } from '../../store/benchStore'
 
 interface RecordButtonProps {
@@ -10,11 +11,12 @@ interface RecordButtonProps {
 
 /** Big round record button: red dot, rounded square while recording. */
 export function RecordButton({ hasTake }: RecordButtonProps) {
+  const { t } = useTranslation()
   const phase = useBench((s) => s.recorder.phase)
   const micOn = useBench((s) => s.mic.status === 'on')
   const toggleRecording = useBench((s) => s.toggleRecording)
   const recording = phase === 'silence' || phase === 'reading'
-  const label = recording ? 'Stop' : hasTake ? 'Record again' : 'Record'
+  const label = t(recording ? 'wizard.record.stop' : hasTake ? 'wizard.record.again' : 'wizard.record.start')
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4">
@@ -46,9 +48,9 @@ export function RecordButton({ hasTake }: RecordButtonProps) {
       </IconButton>
       <Typography variant="body2" color="text.secondary">
         <Box component="kbd" sx={{ border: 1, borderColor: 'divider', borderRadius: 1, px: 0.75, fontFamily: 'inherit' }}>
-          Space
+          {t('wizard.record.key')}
         </Box>{' '}
-        to start and stop
+        {t('wizard.record.keyHint')}
       </Typography>
     </div>
   )

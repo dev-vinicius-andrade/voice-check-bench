@@ -1,15 +1,17 @@
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import type { NoiseReductionPlan } from '../../types'
 
 /** The manual noise-reduction setup (ReaFIR steps) and the alternatives, styled like a plugin card. */
 export function NoiseReductionCard({ plan, tag }: { plan: NoiseReductionPlan; tag: string }) {
+  const { t } = useTranslation()
   const steps = plan.steps ?? []
   const alternatives = plan.alternatives ?? []
   return (
     <Paper className="grid content-start gap-1.5 px-3 py-2.5">
       <div className="flex justify-between gap-2">
-        <Typography sx={{ fontWeight: 700 }}>{plan.plugin} (noise reduction)</Typography>
+        <Typography sx={{ fontWeight: 700 }}>{t('results.settings.nrTitle', { plugin: plan.plugin })}</Typography>
         {tag && <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{tag}</Typography>}
       </div>
       {steps.length > 0 && (
@@ -21,7 +23,7 @@ export function NoiseReductionCard({ plan, tag }: { plan: NoiseReductionPlan; ta
       )}
       {alternatives.length > 0 && (
         <Typography variant="caption" color="text.secondary">
-          Rather not use {plan.plugin}? Alternatives: {alternatives.join(' · ')}.
+          {t('results.settings.nrAlternatives', { plugin: plan.plugin, list: alternatives.join(' · ') })}
         </Typography>
       )}
     </Paper>
