@@ -1,0 +1,188 @@
+{
+  "plain": {
+    "score": {
+      "clear": "Clear and clean",
+      "good": "Good — small things to polish",
+      "ok": {
+        "noise": "Understandable, but the room is loud",
+        "level": "Understandable, but your volume needs fixing",
+        "tone": "Understandable, but your voice sounds a bit off",
+        "none": "Understandable, with a few small issues"
+      },
+      "hard": {
+        "noise": "Hard to follow: the room is too loud",
+        "level": "Hard to follow: your volume is way off",
+        "tone": "Hard to follow: your voice doesn't sound like you",
+        "none": "Hard to follow: several small things add up"
+      },
+      "explain": {
+        "clear": "Your voice comes through clearly, and the room stays out of the way.",
+        "good": "You sound good. A couple of small changes will make it even better.",
+        "ok": {
+          "noise": "People can follow you, but the background noise competes with your voice.",
+          "level": "People can follow you, but they'll need to adjust their volume.",
+          "tone": "People can follow you, but your voice doesn't sound quite natural.",
+          "none": "People can follow you. A few small things add up, so fix them one at a time."
+        },
+        "hard": {
+          "noise": "The background noise is almost as loud as your voice, so words get lost.",
+          "level": "Your volume is far off, so listeners will struggle or hear crackles.",
+          "tone": "Your voice is far from natural, so words are harder to make out.",
+          "none": "Many small problems add up. Start with the first tip."
+        }
+      }
+    },
+    "rating": {
+      "noise": {
+        "title": "Background noise",
+        "label": {
+          "quiet": "Quiet",
+          "noticeable": "Noticeable",
+          "loud": "Loud"
+        },
+        "explain": {
+          "quiet": "Your pauses are clean.",
+          "tonal": "You can clearly hear a fan or machine.",
+          "hum": "A low electrical hum is audible.",
+          "broadband": "A steady hiss or room noise is audible."
+        }
+      },
+      "volume": {
+        "title": "Your volume",
+        "label": {
+          "good": "Good",
+          "tooQuiet": "Too quiet",
+          "tooLoud": "Too loud",
+          "distorting": "Distorting"
+        },
+        "explain": {
+          "good": "Your voice sits at a comfortable level.",
+          "tooQuiet": "Listeners will have to turn you up, and that turns the room up too.",
+          "tooLoud": "You're close to the limit, so loud moments can crack.",
+          "distorting": "Your loudest moments hit the limit and crackle."
+        }
+      },
+      "voice": {
+        "title": "Sound of your voice",
+        "label": {
+          "natural": "Natural",
+          "mild": {
+            "boomy": "A bit boomy",
+            "boxy": "A bit boxy",
+            "hollow": "A bit hollow",
+            "muffled": "A bit muffled",
+            "harsh": "A bit harsh",
+            "sharpS": "Slightly sharp S sounds",
+            "dull": "A bit dull",
+            "thin": "A bit thin"
+          },
+          "strong": {
+            "boomy": "Very boomy",
+            "boxy": "Very boxy",
+            "hollow": "Very hollow",
+            "muffled": "Very muffled",
+            "harsh": "Very harsh",
+            "sharpS": "Very sharp S sounds",
+            "dull": "Very dull",
+            "thin": "Very thin"
+          }
+        },
+        "explain": {
+          "natural": "Your voice sounds like you.",
+          "boomy": "Too much bass, so words blur together.",
+          "boxy": "A boxy, cardboard sound covers your words.",
+          "hollow": "Your voice sounds hollow and far away.",
+          "muffled": "Your voice sounds muffled, like talking through a cloth.",
+          "harsh": "The upper tones are pushed, so it can sound sharp and tiring.",
+          "sharpS": "S sounds come out sharp and hissy.",
+          "dull": "There's little sparkle on top, so consonants sound dull.",
+          "thin": "There's not much bass, so your voice sounds thin."
+        }
+      }
+    },
+    "action": {
+      "placement": {
+        "cardioid": "Point the back of the mic at the loudest noise, like a fan or computer",
+        "supercardioid": "Keep the loudest noise off to the side of the mic, a little behind it",
+        "other": "Move the mic closer to you and further from the noise"
+      },
+      "moveCloser": "Move closer: about one fist away ({{cm}} cm)",
+      "fans": "Switch off fans or machines you can while recording",
+      "noiseReduction": "Turn on noise reduction with our ready-made settings",
+      "gainUp": "Turn the input volume (gain) up a little",
+      "gainDown": "Turn the input volume (gain) down a little",
+      "backOff": "Back off a little — bass builds up when you're very close",
+      "speakInto": {
+        "end": "Speak straight into the top of the mic",
+        "side": "Speak straight into the front of the mic, where the logo usually is",
+        "unknown": "Speak straight into the mic"
+      },
+      "angleMic": "Angle the mic slightly off to the side of your mouth",
+      "eqSettings": "Use our ready-made EQ settings",
+      "usbPort": "Plug your audio interface into a different USB port (back of the computer)"
+    },
+    "distance": {
+      "finger": "about a finger's width",
+      "fist": "about one fist",
+      "hand": "about an open hand",
+      "other": "{{dist}}"
+    },
+    "glossary": {
+      "gain": {
+        "term": "Gain",
+        "meaning": "How much the mic's signal is turned up before anything else happens.",
+        "analogy": "Like the volume knob on a guitar amp: more makes you louder, and the room too."
+      },
+      "noise": {
+        "term": "Noise",
+        "meaning": "Any sound that isn't your voice, like fans, hiss, traffic or hum.",
+        "analogy": "Like the chatter at the next table in a café."
+      },
+      "snr": {
+        "term": "Signal-to-noise ratio (SNR)",
+        "meaning": "How much louder your voice is than the room.",
+        "analogy": "Like talking in a quiet library versus a busy train station."
+      },
+      "db": {
+        "term": "Decibel (dB)",
+        "meaning": "The unit for how much louder one sound is than another.",
+        "analogy": "Like steps on a staircase: every 10 dB up sounds about twice as loud."
+      },
+      "eq": {
+        "term": "EQ (equalizer)",
+        "meaning": "Turns parts of your voice up or down, from deep bass to bright top.",
+        "analogy": "Like the bass and treble knobs on a stereo."
+      },
+      "noiseReduction": {
+        "term": "Noise reduction",
+        "meaning": "Learns what the room sounds like while you're quiet, then takes it out of your voice.",
+        "analogy": "Like noise-cancelling headphones, but for your mic."
+      },
+      "compressor": {
+        "term": "Compressor",
+        "meaning": "Evens out your volume by gently turning down the loud parts.",
+        "analogy": "Like a friend who turns the TV down whenever an ad blasts."
+      },
+      "gate": {
+        "term": "Gate",
+        "meaning": "Lowers the mic when you stop talking, so your pauses stay quiet.",
+        "analogy": "Like a door that opens when you speak and closes when you stop."
+      },
+      "sibilance": {
+        "term": "Sibilance",
+        "meaning": "The hiss in S, SH and T sounds.",
+        "analogy": "Like a snake's hiss when there's too much of it."
+      },
+      "proximityEffect": {
+        "term": "Proximity effect",
+        "meaning": "The extra bass you get when you're very close to the mic.",
+        "analogy": "Like a radio host's deep voice when they lean right into the mic."
+      },
+      "cardioid": {
+        "term": "Cardioid",
+        "meaning": "A mic that hears mostly from the front and very little from the back.",
+        "analogy": "Like a flashlight that lights up what's in front of it, not behind."
+      }
+    }
+  }
+}

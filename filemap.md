@@ -60,6 +60,16 @@
 - `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages; new visitor → home), `vcb-devs` device choice and `vcb-mic` mic profile with shape validation
 - `src/mics/catalog.ts` — `MIC_CATALOG` known models (kind/pattern/address), `DEFAULT_MIC`, `findMic`, `addressTip`, `placementTip`
 - `src/mics/catalog.test.ts` — catalog lookup and tip texts
+- `src/plain/types.ts` — plain-language contract: `Msg` (key + params), `ClarityScore`, `Rating`, `Action` (cost, impact, how)
+- `src/plain/score.ts` — `clarityScore()` (noise/level/tone/consistency penalties, main issue, headline/explain keys), `penalties`, `mainIssue`, `scoreBand`
+- `src/plain/ratings.ts` — `plainRatings()` background noise / your volume / sound of your voice, `voiceState`, `volumeState`, `noiseWording`, `ratingTitle`
+- `src/plain/actions.ts` — `nextActions()` up to 3 "what to do next" actions (mic-aware placement/address, impact order, free before paid), `rankActions`
+- `src/plain/glossary.ts` — `GLOSSARY` term/meaning/analogy keys, `glossaryEntry(id)`
+- `src/plain/distances.ts` — `everydayDistance()` (finger / fist / open hand), `distanceCm()`
+- `src/plain/testFixtures.ts` — test-only analyses (exact band deviations, noisy room, fixture set) and mic builder
+- `src/plain/score.test.ts` · `ratings.test.ts` · `actions.test.ts` · `distances.test.ts` — formulas, label mapping, action order/limits, distances and glossary
+- `src/plain/keys.test.ts` — every key the plain engine returns exists in en.json with its `{{params}}`; banned words
+- `src/i18n/locales/en.json` — English source strings; `plain` namespace (score, rating, action, distance, glossary)
 - `src/storage/prefs.test.ts` — prefs round trip (incl. mic profile), corrupt JSON, blocked storage
 - `src/storage/takesDb.test.ts` — in-memory fallback and prototype record normalization
 - `src/components/results/ResultsScreen.tsx` — results page: demo banner, heading, analysis + takes grid (two columns ≥ 980 px), empty state
