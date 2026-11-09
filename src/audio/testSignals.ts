@@ -16,6 +16,7 @@ export function prng(seed: number): () => number {
 /**
  * 3 s of white noise at ~noiseDb dBFS RMS, then speechSec seconds of a speech-like signal
  * (sines 150–3000 Hz, amplitude-modulated at 4 Hz, ~speechDb dBFS) plus the same noise.
+ * `tones` adds steady sines (fan/server whine) at the given dBFS RMS over the whole take.
  */
 export function syntheticTake({
   sampleRate = 48000,
@@ -24,7 +25,16 @@ export function syntheticTake({
   noiseDb = -80,
   speechDb = -25,
   seed = 1234,
-}: Partial<{ sampleRate: number; quietSec: number; speechSec: number; noiseDb: number; speechDb: number; seed: number }> = {}): Float32Array {
+  tones = [],
+}: Partial<{
+  sampleRate: number
+  quietSec: number
+  speechSec: number
+  noiseDb: number
+  speechDb: number
+  seed: number
+  tones: { hz: number; db: number }[]
+}> = {}): Float32Array {
   const rnd = prng(seed)
   const n = Math.round((quietSec + speechSec) * sampleRate)
   const q = Math.round(quietSec * sampleRate)
@@ -36,6 +46,7 @@ export function syntheticTake({
   const sineAmp = 10 ** (speechDb / 20) / Math.sqrt(freqs.length / 2) / 0.6
   for (let i = 0; i < n; i++) {
     let v = (rnd() * 2 - 1) * noiseAmp
+    for (const t of tones) v += 10 ** (t.db / 20) * Math.SQRT2 * Math.sin((2 * Math.PI * t.hz * i) / sampleRate)
     if (i >= q) {
       const t = (i - q) / sampleRate
       const env = 0.6 + 0.4 * Math.sin(2 * Math.PI * 4 * t)
@@ -48,8 +59,10 @@ export function syntheticTake({
   return x
 }
 
-/** A plausible analysis, overridable per field. */
+/** A plausible analysis (quiet room), overridable per field. bandSnr defaults to speechBands - noiseBands. */
 export function fakeAnalysis(over: Partial<Analysis> = {}): Analysis {
+  const speechBands = over.speechBands ?? [-48, -34, -31, -28, -30, -36, -37, -41, -47]
+  const noiseBands = over.noiseBands ?? [-92, -96, -100, -102, -104, -106, -108, -110, -112]
   return {
     sampleRate: 48000,
     duration: 15,
@@ -67,6 +80,11 @@ export function fakeAnalysis(over: Partial<Analysis> = {}): Analysis {
     hum: [],
     sibMed: -20,
     sibP95: -12,
+    speechBands,
+    noiseBands,
+    bandSnr: speechBands.map((v, i) => v - noiseBands[i]),
+    tones: [],
+    noiseKind: 'quiet',
     ...over,
   }
 }

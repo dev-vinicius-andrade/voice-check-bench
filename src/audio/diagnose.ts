@@ -1,5 +1,6 @@
 // Checks ported 1:1 from the prototype diagnose() (docs/prototype/voice-check.html). Pure.
 import type { Analysis, Check, CheckId, Status } from '../types'
+import { STRONG_TONE_DB } from './analyze'
 import { deviations } from './reference'
 
 /** Signed number with one decimal: "+1.5", "-2.0", "0.0". */
@@ -47,6 +48,24 @@ export function diagnose(a: Analysis): Check[] {
       s === 'good' ? 'No tonal hum in pauses.' : gated ? 'Pauses are silent, but the hum is still there under your voice while you talk (the gate only hides it in pauses).' : 'A steady buzz sits under your voice.',
       s === 'good' ? '' : 'Ground loop: try another USB port (rear, on the motherboard), unplug chargers on the same strip, keep XLR cable away from power bricks. ReaGate hides it in pauses only.')
   }
+  // noisy-room checks: need a usable silence window (noiseBands are NaN without one)
+  if (a.noiseBands.length > 0 && a.noiseBands.every(Number.isFinite)) {
+    const strong = a.tones.some((t) => t.db >= STRONG_TONE_DB)
+    const s: Status = strong ? 'warn' : 'good'
+    add('tones', s, 'Fan / machine tones',
+      a.tones.length ? a.tones.slice(0, 3).map((t) => `${t.hz} Hz +${t.db.toFixed(0)} dB`).join(', ') : 'no steady tones',
+      strong ? 'Steady tones from fans, servers or other machines sit under your voice.' : 'No strong steady tones in pauses.',
+      strong ? 'Turn the mic so its least sensitive side faces the machine; the suggested settings add narrow EQ notches at these tones.' : '')
+    const v = (a.bandSnr[4] + a.bandSnr[5] + a.bandSnr[6]) / 3
+    if (Number.isFinite(v)) {
+      const sb: Status = v < 15 ? 'bad' : v < 25 ? 'warn' : 'good'
+      add('bandsnr', sb, 'Voice vs room (per band)', `voice bands ${v.toFixed(0)} dB over the room`,
+        sb === 'good' ? 'Your voice is well above the room noise where clarity lives (640 Hz–5 kHz).'
+          : sb === 'warn' ? 'The room noise is close to your voice where clarity lives (640 Hz–5 kHz).'
+          : 'The room noise competes with your voice where clarity lives (640 Hz–5 kHz).',
+        sb === 'good' ? '' : 'Speak closer and keep the noise off-axis, then use the noise-reduction step in the suggested settings.')
+    }
+  }
 
   const dv = deviations(r)
   const grade = (v: number): Status => (Math.abs(v) <= 3 ? 'good' : Math.abs(v) <= 6 ? 'warn' : 'bad')
@@ -64,7 +83,7 @@ export function diagnose(a: Analysis): Check[] {
       s === 'good' ? '' : "Keep Wave XLR Lowcut on (try 120 Hz); use a boom arm or shock mount so desk bumps don't reach the mic.")
   }
   band('boom', 1, 'Boom (80–160 Hz)', 'Bass is in a healthy range.', 'Too much bass, usually proximity effect from being very close to a dynamic mic.', 'Voice is thin in the bass.',
-    'Back off 2–3 cm from the K688, or set ReaEQ low shelf at 150 Hz to -4/-5 dB.', 'Move 2 cm closer, or reduce the 150 Hz low shelf cut.')
+    'Back off 2–3 cm from the mic, or set ReaEQ low shelf at 150 Hz to -4/-5 dB.', 'Move 2 cm closer, or reduce the 150 Hz low shelf cut.')
   band('warmth', 2, 'Warmth (160–320 Hz)', 'Warmth is balanced.', 'Low-mid buildup makes the voice thick and muffled.', 'Voice lacks warmth and may sound thin.',
     'ReaEQ: cut around 250 Hz by 3–4 dB, bandwidth ~1.5.', 'Reduce the 300 Hz cut to -2 dB.')
   band('mud', 3, 'Mud / boxiness (320–640 Hz)', 'Low-mids are not masking your consonants.', "Boxy, cardboard sound that hides consonants; a top cause of 'not clear'.", 'Low-mids are scooped; voice can sound hollow.',
@@ -74,10 +93,10 @@ export function diagnose(a: Analysis): Check[] {
   band('definition', 5, 'Definition (1.25–2.5 kHz)', 'Vowel and consonant definition is fine.', "Forward, slightly nasal or 'telephone' tone.", 'Words lack definition.',
     'ReaEQ: cut ~1.8 kHz by 2 dB.', 'ReaEQ: +2 dB around 2 kHz, bandwidth ~1.5.')
   band('presence', 6, 'Presence (2.5–5 kHz)', 'Voice cuts through clearly.', 'Upper mids are pushed; can sound harsh or tiring.', 'Voice sounds dull and distant; this band carries clarity.',
-    'Lower the 4 kHz boost by 2–3 dB.', 'Raise the 4 kHz band to +4/+5 dB, and speak on-axis into the top of the K688.')
+    'Lower the 4 kHz boost by 2–3 dB.', 'Raise the 4 kHz band to +4/+5 dB, and speak on-axis, straight into the capsule.')
   band('sibilance', 7, 'Sibilance (5–10 kHz)', 'S and T sounds are balanced.', 'S sounds are sharp and can hiss.', 'Consonants are dull.',
     'Turn on Elgato De-Esser, or lower the 10 kHz high shelf 2 dB; angle the mic slightly off your mouth.', 'Raise the 10 kHz high shelf to +4 dB.')
-  band('air', 8, 'Air (10–16 kHz)', 'Some sparkle on top.', 'Lots of top end; can sound brittle or hissy.', 'Very little top end. Common for budget dynamics like the K688.',
+  band('air', 8, 'Air (10–16 kHz)', 'Some sparkle on top.', 'Lots of top end; can sound brittle or hissy.', 'Very little top end. Common for budget dynamic mics.',
     'Lower the 10 kHz high shelf 2 dB.', 'ReaEQ high shelf at 10 kHz +3 to +5 dB (watch sibilance).')
   if (a.sibP95 > -6) {
     add('harsh', 'warn', 'Harsh S peaks', `S-frames p95 ${a.sibP95.toFixed(1)} dB`,

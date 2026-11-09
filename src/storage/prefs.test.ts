@@ -1,5 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { loadDeviceChoice, loadUiPrefs, readPref, saveDeviceChoice, saveUiPrefs, writePref, type UiPrefs } from './prefs'
+import {
+  loadDeviceChoice,
+  loadMicProfile,
+  loadUiPrefs,
+  readPref,
+  saveDeviceChoice,
+  saveMicProfile,
+  saveUiPrefs,
+  writePref,
+  type UiPrefs,
+} from './prefs'
+import { DEFAULT_MIC } from '../mics/catalog'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -40,5 +51,20 @@ describe('prefs', () => {
     expect(loadUiPrefs().screen).toBe('setup')
     expect(loadDeviceChoice()).toEqual({ raw: null, fx: null })
     expect(readPref('x', 42)).toBe(42)
+    expect(loadMicProfile()).toEqual(DEFAULT_MIC)
+    expect(() => saveMicProfile(DEFAULT_MIC)).not.toThrow()
+  })
+
+  it('round-trips the mic profile and validates its shape', () => {
+    expect(loadMicProfile()).toEqual(DEFAULT_MIC)
+    const mic = { model: 'Shure SM7B', kind: 'dynamic', pattern: 'cardioid', address: 'end' } as const
+    saveMicProfile(mic)
+    expect(loadMicProfile()).toEqual(mic)
+    localStorage.setItem('vcb-mic', JSON.stringify({ model: 3, kind: 'ribbon', pattern: 'omni', address: 'top' }))
+    expect(loadMicProfile()).toEqual({ model: '', kind: 'unknown', pattern: 'omni', address: 'unknown' })
+    localStorage.setItem('vcb-mic', '[1]')
+    expect(loadMicProfile()).toEqual(DEFAULT_MIC)
+    localStorage.setItem('vcb-mic', '{bad')
+    expect(loadMicProfile()).toEqual(DEFAULT_MIC)
   })
 })

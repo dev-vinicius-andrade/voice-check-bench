@@ -5,7 +5,7 @@
 - `docs/PLAN.md` — task list with status
 - `docs/prototype/voice-check.html` — working single-file prototype; behaviour reference for the port
 - `tools/apply-reaplugs.py` — writes exported settings into Wave Link Settings.json (`--show`, preview, `--write`, `--self-test`, `--input`)
-- `tools/README.md` — tool usage, Wave Link FXP layout, safety and restore
+- `tools/README.md` — tool usage, Wave Link FXP layout, noisy rooms (notches, manual ReaFIR), safety and restore
 - `tools/example-settings.json` — sample settings export for previewing the tool
 - `README.md` — project overview, requirements, workflow, scripts
 - `package.json` — scripts and dependencies
@@ -24,34 +24,43 @@
 - `src/audio/reference.ts` — `BANDS` reference curve, `deviations()`, `QUIET_SEC`/`MAX_SEC`
 - `src/audio/quickStats.ts` — duration/peak/silence/reading levels of a raw take + plain hint for failed analyses
 - `src/audio/wav.ts` — 16-bit mono WAV encoder + safe file names (Download WAV)
-- `src/audio/analyze.ts` — `analyze(samples, sampleRate)`: levels, noise, speech mask, spectra, hum, sibilance
-- `src/audio/diagnose.ts` — `diagnose()` checks with ids, `countByStatus`, `topIssues`, `f1`
-- `src/audio/testSignals.ts` — test-only seeded PRNG, synthetic take, `fakeAnalysis` fixture
+- `src/audio/analyze.ts` — `analyze(samples, sampleRate)`: levels, noise, speech mask, spectra, hum, sibilance, per-band speech/noise SNR, `findTones`, `classifyNoise` (noiseKind)
+- `src/audio/diagnose.ts` — `diagnose()` checks with ids (incl. tones, bandsnr; generic mic copy), `countByStatus`, `topIssues`, `f1`
+- `src/audio/testSignals.ts` — test-only seeded PRNG, synthetic take (optional steady tones), `fakeAnalysis` fixture
 - `src/audio/dsp.test.ts` — FFT bin, Hann, percentile tests
-- `src/audio/analyze.test.ts` — analyze() on synthetic takes, silence-window and error paths
-- `src/audio/analyze.wav.test.ts` — spot check against `_test/no-filters.wav` (skips when absent)
+- `src/audio/analyze.test.ts` — analyze() on synthetic takes, silence-window and error paths, tones/bandSnr/noiseKind
+- `src/audio/analyze.wav.test.ts` — spot checks against `_test/no-filters.wav` and `_test/control-2-cm-raw.wav` (each skips when absent)
 - `src/audio/diagnose.test.ts` — check ids/order, thresholds, texts, verdict helpers
 - `src/session/steps.ts` — `STEPS` wizard definition, `DEV_MATCH`, `DEV_NAME`, `fillDistance`
-- `src/session/bestControl.ts` — `sessionSlots()` and `bestControl()` control-take picker
+- `src/session/bestControl.ts` — `sessionSlots()` and `bestControl()` control-take picker (SNR penalty doubles in a noisy room)
 - `src/session/bestControl.test.ts` — slots, best control scoring, steps helpers
-- `src/settings/suggest.ts` — `suggest()`, `pickSuggestionBase()`, `suggestionToText`/`suggestionToJson`
-- `src/settings/suggest.test.ts` — clamps, EQ rounding, gain hints, JSON shape, text sheet
+- `src/settings/suggest.ts` — `suggest()` (quiet room; noisy room: ReaFIR plan, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase()`, `isNotch()`, `suggestionToText`/`suggestionToJson`
+- `src/settings/suggest.test.ts` — clamps, EQ rounding, gain hints, JSON shape, text sheet; noisy room: chain, ReaFIR plan, notches, band-SNR boosts, gate/comp, condenser hint
 - `public/worklets/` — AudioWorklet scripts served as static files
 - `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
 - `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
 - `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records
-- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs and `vcb-devs` device choice with shape validation
-- `src/storage/prefs.test.ts` — prefs round trip, corrupt JSON, blocked storage
+- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs, `vcb-devs` device choice and `vcb-mic` mic profile with shape validation
+- `src/mics/catalog.ts` — `MIC_CATALOG` known models (kind/pattern/address), `DEFAULT_MIC`, `findMic`, `addressTip`, `placementTip`
+- `src/mics/catalog.test.ts` — catalog lookup and tip texts
+- `src/storage/prefs.test.ts` — prefs round trip (incl. mic profile), corrupt JSON, blocked storage
 - `src/storage/takesDb.test.ts` — in-memory fallback and prototype record normalization
 - `src/components/results/ResultsScreen.tsx` — results page: heading, analysis + takes grid (two columns ≥ 980 px), empty state
 - `src/components/results/AnalysisPanel.tsx` — A/B chips, chart view toggle, analysis error alert, sections for take A
 - `src/components/results/VerdictAlert.tsx` — "Fix first: …" / "Balanced" verdict with silence note and first fix
 - `src/components/results/StatTiles.tsx` — speech, noise, SNR, issue-count tiles with B values
+- `src/components/results/RoomNoisePanel.tsx` — room noise of A: floor, noise kind chip, steady tones, per-band SNR chart
+- `src/components/results/BandSnrChart.tsx` — SVG per-octave voice-over-room SNR bars (0–50 dB) with 10/20 dB guides
+- `src/components/results/BeforeAfterCard.tsx` — raw control vs processed take of A's session: SNR, voice-band SNR, noise floor, verdict
+- `src/components/results/CopySummaryButton.tsx` — "Copy anonymized summary" (clipboard, falls back to voice-check-summary.json)
+- `src/components/results/roomNoise.ts` — noise-kind labels, band SNR helpers, `beforeAfterPair`, `anonymizedSummary`
+- `src/components/results/roomNoise.test.ts` — band SNR helpers, before/after pairing, summary anonymization
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart (A, A + B, A − B) with ±3/±6 zones and legend
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
 - `src/components/results/ChecksList.tsx` — problem checks, passing checks in a collapsed accordion
-- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel, copy/download as text or JSON
+- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel: effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON
 - `src/components/results/PluginCard.tsx` — one plugin's key/value settings card
+- `src/components/results/NoiseReductionCard.tsx` — ReaFIR (noise reduction) numbered setup steps and alternatives
 - `src/components/results/TakesPanel.tsx` — takes grouped by session, Delete all with second-click confirm, New session / free take
 - `src/components/results/TakeRow.tsx` — take row: name, levels, A/B toggles, play, delete
 - `src/components/results/download.ts` — `downloadFile()` and `shortName()` helpers
@@ -60,11 +69,14 @@
 - `src/components/layout/TopBar.tsx` — brand mark + name and the progress stepper
 - `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Processed · Results stepper (clickable)
 - `src/components/layout/StatusSnackbar.tsx` — global status Snackbar/Alert
-- `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic card, start/results buttons
+- `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic profile card, mic card, start/results buttons
+- `src/components/setup/MicProfileCard.tsx` — "Your microphone": model autocomplete, type/pattern/where-you-speak selects, address + placement tip
+- `src/components/setup/RoomReading.tsx` — "Room: quiet / some noise / noisy" next to the live meter
+- `src/components/setup/useRoomLevel.ts` — minimum of the live level over the last 2 s (room estimate)
 - `src/components/setup/SetupTakeList.tsx` — the 4 guided takes and the input each uses
-- `src/components/setup/MicCard.tsx` — enable mic, raw/fx device selects with Test, live meter
-- `src/components/setup/DevicePickRow.tsx` — one input choice per row: title, select + Test, meter when listening
-- `src/components/step/StepScreen.tsx` — step / free-take screen composition, head split for TwoToneHeading
+- `src/components/setup/MicCard.tsx` — enable mic, raw/fx device selects with Test, live meter + room reading
+- `src/components/setup/DevicePickRow.tsx` — one input choice per row: title, select + Test, meter + room reading when listening
+- `src/components/step/StepScreen.tsx` — step / free-take screen composition, head split for TwoToneHeading, mic tips on raw control steps
 - `src/components/step/DistanceRuler.tsx` — SVG mouth-to-mic ruler (0–16 cm)
 - `src/components/step/InputBar.tsx` — current input, meter, Change → device select, Enable microphone
 - `src/components/step/RecordingCue.tsx` — idle / silence countdown / reading timer / analyzing cue + progress
@@ -74,10 +86,10 @@
 - `src/components/step/StepNav.tsx` — Back / Skip / Next navigation
 - `src/store/api.ts` — store contract: `BenchState`, `BenchActions`, `BenchSelectors`
 - `src/store/engine.ts` — lazily created `AudioEngine` singleton `getEngine()` (mocked in tests)
-- `src/store/benchStore.ts` — zustand `useBench` store: bootstrap, mic/devices, recording, navigation, A/B, deletes; persists UI prefs; `initialBenchState()`
+- `src/store/benchStore.ts` — zustand `useBench` store: bootstrap, mic/devices, recording, navigation, A/B, deletes, mic profile (`patchMicProfile`, copied onto new takes); persists UI prefs; `initialBenchState()`
 - `src/store/selectors.ts` — pure selectors: slots, best control, fxDist, step take, A/B, suggestion, take groups, canGoNext
-- `src/store/hooks.ts` — render-safe selector hooks (`useSlots`, `useBestControl`, `useSuggestion`, `useTakeGroups`, …)
-- `src/store/benchStore.test.ts` — navigation, A/B, delete, recording, enableMic, bootstrap (fake engine)
+- `src/store/hooks.ts` — render-safe selector hooks (`useSlots`, `useBestControl`, `useSuggestion`, `useTakeGroups`, `useMicProfile`, …)
+- `src/store/benchStore.test.ts` — navigation, A/B, delete, recording, enableMic, bootstrap, mic profile (fake engine)
 - `src/store/selectors.test.ts` — slots latest-wins, fxDist, suggestion fallback order, groups, canGoNext
 - `src/hooks/useLevel.ts` — rAF input level in dBFS while the mic is on (~30 fps state updates)
 - `src/hooks/useBootstrap.ts` — runs `bootstrap()` once on mount

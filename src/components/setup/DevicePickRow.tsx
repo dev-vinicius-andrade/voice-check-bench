@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import { DeviceSelect } from '../common/DeviceSelect'
 import { LevelMeter } from '../common/LevelMeter'
 import { useBench } from '../../store/benchStore'
+import { RoomReading } from './RoomReading'
 import type { DeviceKind } from '../../types'
 
 interface DevicePickRowProps {
@@ -49,7 +50,14 @@ export function DevicePickRow({ kind, title, hint }: DevicePickRowProps) {
           Test
         </Button>
       </div>
-      {listening && <LevelMeter width="100%" />}
+      {listening && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <div className="min-w-[120px] flex-1">
+            <LevelMeter width="100%" />
+          </div>
+          <RoomReading />
+        </div>
+      )}
     </Box>
   )
 }

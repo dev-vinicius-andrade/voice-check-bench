@@ -5,6 +5,7 @@ import { useBench } from '../../store/benchStore'
 import { useSlots } from '../../store/hooks'
 import { isAnalysisError } from '../../types'
 import { MicCard } from './MicCard'
+import { MicProfileCard } from './MicProfileCard'
 import { SetupTakeList } from './SetupTakeList'
 
 /** First screen: what the session records, mic permission and input choices. */
@@ -28,6 +29,7 @@ export function SetupScreen() {
         </Typography>
       </div>
       <SetupTakeList />
+      <MicProfileCard />
       <MicCard />
       <div className="flex flex-wrap items-center justify-between gap-3">
         {hasResults ? (

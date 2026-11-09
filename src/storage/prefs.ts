@@ -1,5 +1,6 @@
 // localStorage JSON helpers. Every access is wrapped; bad or missing data yields defaults.
-import type { ChartView, DeviceChoice, Screen, StepRef } from '../types'
+import { DEFAULT_MIC } from '../mics/catalog'
+import type { ChartView, DeviceChoice, MicProfile, Screen, StepRef } from '../types'
 
 export interface UiPrefs {
   screen: Screen
@@ -13,8 +14,12 @@ export interface UiPrefs {
 
 const UI_KEY = 'vcb-ui'
 const DEVS_KEY = 'vcb-devs'
+const MIC_KEY = 'vcb-mic'
 const SCREENS: readonly Screen[] = ['setup', 'step', 'results']
 const VIEWS: readonly ChartView[] = ['a', 'ab', 'diff']
+const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
+const MIC_PATTERNS: readonly MicProfile['pattern'][] = ['cardioid', 'supercardioid', 'omni', 'figure8', 'unknown']
+const MIC_ADDRESSES: readonly MicProfile['address'][] = ['end', 'side', 'unknown']
 
 export function readPref<T>(key: string, fallback: T): T {
   try {
@@ -72,4 +77,20 @@ export function loadDeviceChoice(): DeviceChoice {
 
 export function saveDeviceChoice(c: DeviceChoice): void {
   writePref(DEVS_KEY, c)
+}
+
+/** The person's mic profile ('vcb-mic'); unknown values fall back to 'unknown', bad data to DEFAULT_MIC. */
+export function loadMicProfile(): MicProfile {
+  const raw = readPref<unknown>(MIC_KEY, null)
+  if (!isObject(raw)) return { ...DEFAULT_MIC }
+  return {
+    model: typeof raw.model === 'string' ? raw.model : DEFAULT_MIC.model,
+    kind: MIC_KINDS.find((k) => k === raw.kind) ?? DEFAULT_MIC.kind,
+    pattern: MIC_PATTERNS.find((p) => p === raw.pattern) ?? DEFAULT_MIC.pattern,
+    address: MIC_ADDRESSES.find((a) => a === raw.address) ?? DEFAULT_MIC.address,
+  }
+}
+
+export function saveMicProfile(m: MicProfile): void {
+  writePref(MIC_KEY, m)
 }

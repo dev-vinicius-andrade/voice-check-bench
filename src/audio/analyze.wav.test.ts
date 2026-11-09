@@ -1,5 +1,5 @@
 // @vitest-environment node
-// Spot check against a real recording (_test/no-filters.wav, local and git-ignored). Skips when absent.
+// Spot checks against real recordings (_test/*.wav, local and git-ignored). Each skips when its file is absent.
 import { describe, expect, it } from 'vitest'
 import { isAnalysisError, type Analysis } from '../types'
 import { analyze } from './analyze'
@@ -12,6 +12,8 @@ const fsModule = 'node:fs'
 const fs = (await import(/* @vite-ignore */ fsModule)) as NodeFs
 const wavUrl = new URL('../../_test/no-filters.wav', import.meta.url)
 const present = fs.existsSync(wavUrl)
+const noisyUrl = new URL('../../_test/control-2-cm-raw.wav', import.meta.url)
+const noisyPresent = fs.existsSync(noisyUrl)
 
 /** Minimal RIFF/WAVE PCM decoder (16- or 32-bit int, or 32-bit float), channels averaged to mono. */
 function decodeWav(bytes: Uint8Array): { samples: Float32Array; sampleRate: number } {
@@ -62,5 +64,26 @@ describe.skipIf(!present)('analyze on _test/no-filters.wav', () => {
     expect(Math.abs(a.noise - -93)).toBeLessThanOrEqual(1.5)
     const proto = [-12.8, 4.2, 8.6, 6.8, 0, 0.5, -1.6, -1.0, -14.3]
     a.rel.forEach((v, i) => expect(Math.abs(v - proto[i])).toBeLessThanOrEqual(0.5))
+  })
+})
+
+describe.skipIf(!noisyPresent)('analyze on _test/control-2-cm-raw.wav (server + ceiling fan)', () => {
+  it('reports a noisy, tonal or broadband room with fan/server tones', () => {
+    const { samples, sampleRate } = decodeWav(fs.readFileSync(noisyUrl))
+    const r = analyze(samples, sampleRate)
+    expect(isAnalysisError(r)).toBe(false)
+    const a = r as Analysis
+    console.log('control-2-cm-raw', JSON.stringify({
+      noise: +a.noise.toFixed(1),
+      snr: +a.snr.toFixed(1),
+      noiseKind: a.noiseKind,
+      tones: a.tones,
+      bandSnr: a.bandSnr.map((v) => +v.toFixed(1)),
+    }))
+    expect(a.noise).toBeGreaterThan(-45)
+    expect(a.snr).toBeLessThan(20)
+    expect(['tonal', 'broadband']).toContain(a.noiseKind)
+    expect(a.bandSnr).toHaveLength(9)
+    expect(a.tones.some((t) => Math.abs(t.hz - 780) <= 780 * 0.05 || Math.abs(t.hz - 1560) <= 1560 * 0.05)).toBe(true)
   })
 })

@@ -3,6 +3,7 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { LevelMeter } from '../common/LevelMeter'
 import { DevicePickRow } from './DevicePickRow'
+import { RoomReading } from './RoomReading'
 import { useBench } from '../../store/benchStore'
 import type { DeviceKind } from '../../types'
 
@@ -41,6 +42,7 @@ export function MicCard() {
             Listening: <b>{mic.label || '—'}</b>
           </Typography>
           <LevelMeter />
+          <RoomReading />
         </div>
       )}
     </Paper>

@@ -113,3 +113,58 @@ describe('analyze on a noisy input', () => {
     }
   })
 })
+
+describe('analyze noisy-room diagnosis', () => {
+  const near = (hz: number, target: number, tol: number) => Math.abs(hz - target) <= target * tol
+
+  it('a quiet synthetic take: per-band levels, quiet kind', () => {
+    const a = analyze(syntheticTake(), 48000) as Analysis
+    expect(a.speechBands).toHaveLength(9)
+    expect(a.noiseBands).toHaveLength(9)
+    expect(a.bandSnr).toHaveLength(9)
+    expect([...a.speechBands, ...a.noiseBands, ...a.bandSnr].every(Number.isFinite)).toBe(true)
+    a.bandSnr.forEach((v, i) => expect(v).toBeCloseTo(a.speechBands[i] - a.noiseBands[i], 9))
+    // same scale: the body band of a -25 dBFS voice over -80 dBFS white noise is far above the room
+    expect(a.bandSnr[4]).toBeGreaterThan(30)
+    expect(a.tones.every((t) => t.db < 12)).toBe(true)
+    expect(a.noiseKind).toBe('quiet')
+  })
+
+  it('finds steady 780 + 1560 Hz tones in silence and speech', () => {
+    const x = syntheticTake({ noiseDb: -50, speechDb: -30, tones: [{ hz: 780, db: -48 }, { hz: 1560, db: -52 }] })
+    const a = analyze(x, 48000) as Analysis
+    expect(isAnalysisError(a)).toBe(false)
+    expect(a.bandSnr).toHaveLength(9)
+    expect(a.snr).toBeLessThan(30)
+    expect(a.tones.length).toBeGreaterThanOrEqual(2)
+    expect(a.tones.length).toBeLessThanOrEqual(6)
+    expect(a.tones.some((t) => near(t.hz, 780, 0.03))).toBe(true)
+    expect(a.tones.some((t) => near(t.hz, 1560, 0.03))).toBe(true)
+    expect(a.tones[0].db).toBeGreaterThanOrEqual(a.tones[a.tones.length - 1].db)
+    for (const t of a.tones) {
+      expect(Number.isInteger(t.hz)).toBe(true)
+      expect(Math.round(t.db * 10) / 10).toBe(t.db)
+      expect(t.hz).toBeGreaterThanOrEqual(90)
+      expect(t.hz).toBeLessThanOrEqual(8000)
+    }
+    expect(a.noiseKind).toBe('tonal')
+  })
+
+  it('does not report mains hum as a tone', () => {
+    const x = syntheticTake({ noiseDb: -50, speechDb: -30, tones: [{ hz: 100, db: -45 }] })
+    const a = analyze(x, 48000) as Analysis
+    expect(a.tones.some((t) => near(t.hz, 100, 0.02))).toBe(false)
+    expect(a.noiseKind).toBe('hum')
+  })
+
+  it('fills NaN and no tones when there is no silence block', () => {
+    // at 3 kHz an 8192-sample block is 2.7 s, longer than the 0.5–2.8 s silence window
+    const a = analyze(syntheticTake({ sampleRate: 3000, speechSec: 20 }), 3000) as Analysis
+    expect(isAnalysisError(a)).toBe(false)
+    expect(a.hum).toEqual([])
+    expect(a.noiseBands).toHaveLength(9)
+    expect(a.noiseBands.every(Number.isNaN)).toBe(true)
+    expect(a.bandSnr.every(Number.isNaN)).toBe(true)
+    expect(a.tones).toEqual([])
+  })
+})

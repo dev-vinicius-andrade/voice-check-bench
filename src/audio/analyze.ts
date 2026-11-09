@@ -1,5 +1,5 @@
 // Take analysis ported 1:1 from the prototype analyze() (docs/prototype/voice-check.html). Pure.
-import type { AnalysisResult, HumPeak } from '../types'
+import type { AnalysisResult, HumPeak, NoiseKind, NoiseTone } from '../types'
 import { adb, db, median, pct, powerSpec } from './dsp'
 import { BANDS, QUIET_SEC } from './reference'
 
@@ -93,6 +93,7 @@ export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
   const hop = 4096
   const specS = new Float64Array(N / 2 + 1)
   const specN = new Float64Array(N / 2 + 1)
+  let cS = 0
   let cN = 0
   const isSp = new Uint8Array(nF)
   for (const f of spIdx) isSp[f] = 1
@@ -103,6 +104,7 @@ export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
     if (sCount >= frames * 0.6) {
       const p = powerSpec(x, st, N)
       for (let i = 0; i < p.length; i++) specS[i] += p[i]
+      cS++
     } else if (st / sr >= 0.5 && (st + N) / sr <= QUIET_SEC - 0.2) {
       const p = powerSpec(x, st, N)
       for (let i = 0; i < p.length; i++) specN[i] += p[i]
@@ -132,6 +134,17 @@ export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
     }
   }
 
+  // noisy-room diagnosis: per-band average power (summed spectra / block count) and steady tones
+  const avgBands = (spec: Float64Array, count: number): number[] =>
+    count > 0 ? BANDS.map((b) => bandSum(spec, b.lo, b.hi, binHz) / count).map(db) : BANDS.map(() => NaN)
+  const speechBands = avgBands(specS, cS)
+  const noiseBands = avgBands(specN, cN)
+  const bandSnr = speechBands.map((v, i) => v - noiseBands[i])
+  const tones = cN > 0 ? findTones(specN.map((v) => v / cN), binHz) : []
+  const speechMed = median(sp)
+  const snr = speechMed - noise
+  const noiseKind = classifyNoise(noise, snr, hum, tones)
+
   // sibilance per frame
   const sN = 2048
   const sib: number[] = []
@@ -148,7 +161,6 @@ export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
     sib.push(db(s / t))
   }
 
-  const speechMed = median(sp)
   return {
     sampleRate: sr,
     duration: x.length / sr,
@@ -160,11 +172,69 @@ export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
     speechMed,
     speechP90: pct(sp, 0.9),
     speechMax: Math.max(...sp),
-    snr: speechMed - noise,
+    snr,
     spread: perSec.length > 2 ? pct(perSec, 0.9) - pct(perSec, 0.1) : 0,
     rel,
     hum,
     sibMed: median(sib),
     sibP95: pct(sib, 0.95),
+    speechBands,
+    noiseBands,
+    bandSnr,
+    tones,
+    noiseKind,
   }
+}
+
+/** Sum of spectrum bins in [lo, hi) Hz, with the same bin range as the band energies above. */
+function bandSum(spec: Float64Array, lo: number, hi: number, binHz: number): number {
+  let s = 0
+  for (let i = Math.ceil(lo / binHz); i < hi / binHz && i < spec.length; i++) s += spec[i]
+  return s
+}
+
+/** Mains frequencies reported by `hum`; tones within ±2 % of these are skipped. */
+const MAINS = [50, 60, 100, 120, 150, 180]
+/** A tone must be this many dB above the local median. */
+export const TONE_MIN_DB = 8
+/** Tones at or above this many dB are "strong" (tonal noise, notch-worthy). */
+export const STRONG_TONE_DB = 12
+
+/**
+ * Steady tonal peaks in an averaged noise spectrum: local maxima 90 Hz–8 kHz at least TONE_MIN_DB above
+ * the median of the bins within ±1/3 octave (excluding ±3 bins around the peak, at least 8 bins each side),
+ * mains frequencies skipped, peaks within 3 % merged (strongest kept), strongest first, at most 6.
+ */
+export function findTones(spec: Float64Array, binHz: number): NoiseTone[] {
+  const third = 2 ** (1 / 3)
+  const cands: NoiseTone[] = []
+  const iLo = Math.max(1, Math.ceil(90 / binHz))
+  const iHi = Math.min(spec.length - 2, Math.floor(8000 / binHz))
+  for (let i = iLo; i <= iHi; i++) {
+    if (!(spec[i] > spec[i - 1] && spec[i] >= spec[i + 1])) continue
+    const hz = i * binHz
+    if (MAINS.some((m) => Math.abs(hz - m) <= m * 0.02)) continue
+    const a = Math.max(0, Math.min(Math.ceil(hz / third / binHz), i - 8))
+    const b = Math.min(spec.length - 1, Math.max(Math.floor((hz * third) / binHz), i + 8))
+    const nb: number[] = []
+    for (let k = a; k <= b; k++) if (Math.abs(k - i) > 3) nb.push(spec[k])
+    const above = db(spec[i]) - db(median(nb))
+    if (above >= TONE_MIN_DB) cands.push({ hz, db: above })
+  }
+  cands.sort((x, y) => y.db - x.db)
+  const out: NoiseTone[] = []
+  for (const c of cands) {
+    if (out.length >= 6) break
+    if (out.some((t) => Math.abs(c.hz - t.hz) <= t.hz * 0.03)) continue
+    out.push(c)
+  }
+  return out.map((t) => ({ hz: Math.round(t.hz), db: Math.round(t.db * 10) / 10 }))
+}
+
+/** quiet: noise < -60 dBFS or SNR >= 30 · tonal: a tone >= 12 dB · hum: strongest hum >= 10 dB · else broadband. */
+export function classifyNoise(noise: number, snr: number, hum: readonly HumPeak[], tones: readonly NoiseTone[]): NoiseKind {
+  if (noise < -60 || snr >= 30) return 'quiet'
+  if (tones.some((t) => t.db >= STRONG_TONE_DB)) return 'tonal'
+  if (hum.some((h) => h.db >= 10)) return 'hum'
+  return 'broadband'
 }

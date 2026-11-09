@@ -39,3 +39,6 @@ export function useTakeGroups() {
   const inputs = useBench(useShallow((s) => ({ takes: s.takes, session: s.session })))
   return useMemo(() => selectTakeGroups(inputs), [inputs])
 }
+
+/** The person's mic profile (stable reference until it changes). */
+export const useMicProfile = () => useBench((s) => s.micProfile)

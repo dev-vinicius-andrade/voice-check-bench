@@ -6,7 +6,7 @@ import { countByStatus, diagnose, f1, topIssues } from './diagnose'
 import { fakeAnalysis, syntheticTake } from './testSignals'
 
 const ALL_IDS: CheckId[] = [
-  'level', 'peaks', 'noise', 'silence', 'hum',
+  'level', 'peaks', 'noise', 'silence', 'hum', 'tones', 'bandsnr',
   'rumble', 'boom', 'warmth', 'mud', 'body', 'definition', 'presence', 'sibilance', 'air',
   'harsh', 'consistency',
 ]
@@ -26,7 +26,7 @@ describe('diagnose', () => {
     }
   })
 
-  it('emits all 16 checks in order when every optional check applies', () => {
+  it('emits all 18 checks in order when every optional check applies', () => {
     const a = fakeAnalysis({ quietBroken: true, hum: [{ hz: 50, db: 3 }, { hz: 60, db: 8 }], sibP95: -4 })
     const checks = diagnose(a)
     expect(checks.map((c) => c.id)).toEqual(ALL_IDS)
@@ -60,10 +60,68 @@ describe('diagnose', () => {
     // level-matching offset is the mean over bands 1..7, so shift only band 8 (air) and band 0 (rumble)
     const rel = [-18 + 9, -4, -1, 2, 0, -6, -7, -11, -17 - 5]
     const by = Object.fromEntries(diagnose(fakeAnalysis({ rel })).map((c) => [c.id, c]))
-    expect(by.air).toMatchObject({ status: 'warn', value: '-5.0 dB vs reference', detail: 'Very little top end. Common for budget dynamics like the K688.' })
+    expect(by.air).toMatchObject({ status: 'warn', value: '-5.0 dB vs reference', detail: 'Very little top end. Common for budget dynamic mics.' })
     expect(by.rumble).toMatchObject({ status: 'bad', value: '+9.0 dB vs reference' })
     const low = Object.fromEntries(diagnose(fakeAnalysis({ rel: [-40, -4, -1, 2, 0, -6, -7, -11, -17] })).map((c) => [c.id, c]))
     expect(low.rumble.status).toBe('good')
+  })
+})
+
+describe('noisy-room checks', () => {
+  const by = (a: Analysis) => Object.fromEntries(diagnose(a).map((c) => [c.id, c]))
+  // bandSnr 4..6 average = target
+  const withVoiceSnr = (target: number) => {
+    const speechBands = [-40, -40, -40, -40, -40, -40, -40, -40, -40]
+    return fakeAnalysis({ speechBands, noiseBands: speechBands.map((v) => v - target), bandSnr: speechBands.map(() => target) })
+  }
+
+  it('passes in a quiet room', () => {
+    const b = by(fakeAnalysis())
+    expect(b.tones).toMatchObject({ status: 'good', title: 'Fan / machine tones', value: 'no steady tones', fix: '' })
+    expect(b.bandsnr).toMatchObject({ status: 'good', title: 'Voice vs room (per band)', fix: '' })
+  })
+
+  it('warns on tones >= 12 dB and lists them', () => {
+    const b = by(fakeAnalysis({ tones: [{ hz: 770, db: 18.2 }, { hz: 1560, db: 15.4 }, { hz: 200, db: 9 }, { hz: 3800, db: 8.5 }] }))
+    expect(b.tones).toMatchObject({
+      status: 'warn',
+      value: '770 Hz +18 dB, 1560 Hz +15 dB, 200 Hz +9 dB',
+      fix: 'Turn the mic so its least sensitive side faces the machine; the suggested settings add narrow EQ notches at these tones.',
+    })
+    expect(by(fakeAnalysis({ tones: [{ hz: 770, db: 11.9 }] })).tones.status).toBe('good')
+  })
+
+  it('grades voice-band SNR (640 Hz–5 kHz): < 15 bad, < 25 warn', () => {
+    expect(by(withVoiceSnr(14)).bandsnr).toMatchObject({
+      status: 'bad',
+      value: 'voice bands 14 dB over the room',
+      fix: 'Speak closer and keep the noise off-axis, then use the noise-reduction step in the suggested settings.',
+    })
+    expect(by(withVoiceSnr(15)).bandsnr.status).toBe('warn')
+    expect(by(withVoiceSnr(24.9)).bandsnr.status).toBe('warn')
+    expect(by(withVoiceSnr(25)).bandsnr.status).toBe('good')
+    // only bands 4..6 count
+    const a = withVoiceSnr(30)
+    a.bandSnr = [0, 0, 0, 0, 30, 30, 30, 0, 0]
+    expect(by(a).bandsnr.status).toBe('good')
+  })
+
+  it('skips both without a silence window (NaN noise bands)', () => {
+    const ids = diagnose(fakeAnalysis({ noiseBands: Array(9).fill(NaN), tones: [] })).map((c) => c.id)
+    expect(ids).not.toContain('tones')
+    expect(ids).not.toContain('bandsnr')
+  })
+})
+
+describe('generic copy', () => {
+  it('names no mic model in any check text', () => {
+    const worst = fakeAnalysis({
+      speechMed: -40, clip: 5, noise: -40, snr: 10, quietBroken: true, hum: [{ hz: 60, db: 20 }], sibP95: -2, spread: 20,
+      tones: [{ hz: 780, db: 20 }], bandSnr: Array(9).fill(5),
+    })
+    const texts = [-12, 12].flatMap((d) => diagnose({ ...worst, rel: worst.rel.map((v, i) => (i % 2 ? v + d : v - d)) }))
+      .flatMap((c) => [c.title, c.value, c.detail, c.fix])
+    expect(texts.join(' ')).not.toMatch(/K688|K669|SM7B|SM58|Fifine|Shure|Rode|Yeti/)
   })
 })
 

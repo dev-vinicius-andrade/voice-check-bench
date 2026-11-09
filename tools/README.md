@@ -10,6 +10,13 @@ It changes, on one Wave Link input:
 
 It does **not** change the Wave XLR hardware **Lowcut**. That is a device setting; set it by hand in Wave Link (the tool prints the value to use). The plugins must already be added to the input in Wave Link; the tool only edits existing plugins.
 
+### Noisy rooms
+
+When the voice is less than 25 dB over the room, the export has `"noisyRoom": true`, a `chain` (`ReaFIR → ReaEQ → ReaComp → ReaGate`) and a `noiseReduction` plan. The tool reads the EQ, compressor and gate values as usual and ignores these extra keys:
+- **Notches** for fan/server tones are ordinary ReaEQ bands (`Band`, bandwidth 0.1 oct, -6 to -12 dB, at most 3, after the tonal bands). The tool writes them like any other band.
+- **ReaFIR** (noise reduction) is set up **by hand**: its noise profile can't be written to Settings.json. In Wave Link → your mic → Effects, add "ReaFIR (ReaPlugs Edition)" and drag it to the top; Mode **Subtract**, FFT size 4096; stay silent and tick **Automatically build noise profile** for about 3 seconds, then untick it; drag the curve down until the room drops about 10–12 dB (about 15 dB when the voice is less than 15 dB over the room) and back off if the voice turns watery or robotic. The exact steps are in the `.txt` / Copy as text sheet.
+- **Plugin order** is not changed by the tool. Put the plugins in the `chain` order by hand (ReaGate moves to the end, where it works as a soft expander).
+
 ## Where Wave Link stores settings
 
 ```

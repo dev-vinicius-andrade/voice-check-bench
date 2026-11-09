@@ -4,9 +4,26 @@ import { analyze } from '../audio/analyze'
 import { MAX_SEC, QUIET_SEC } from '../audio/reference'
 import { DEV_MATCH, STEPS, fillDistance } from '../session/steps'
 import { bestControl, sessionSlots } from '../session/bestControl'
-import { loadDeviceChoice, loadUiPrefs, saveDeviceChoice, saveUiPrefs, type UiPrefs } from '../storage/prefs'
+import { DEFAULT_MIC, findMic } from '../mics/catalog'
+import {
+  loadDeviceChoice,
+  loadMicProfile,
+  loadUiPrefs,
+  saveDeviceChoice,
+  saveMicProfile,
+  saveUiPrefs,
+  type UiPrefs,
+} from '../storage/prefs'
 import { openTakesDb, type TakesDb } from '../storage/takesDb'
-import { isAnalysisError, type DeviceChoice, type DeviceKind, type Screen, type StepRef, type Take } from '../types'
+import {
+  isAnalysisError,
+  type DeviceChoice,
+  type DeviceKind,
+  type MicProfile,
+  type Screen,
+  type StepRef,
+  type Take,
+} from '../types'
 import type { BenchState, BenchStore } from './api'
 import { getEngine } from './engine'
 import { selectFxDist } from './selectors'
@@ -33,6 +50,7 @@ export function initialBenchState(): BenchState {
     recorder: { phase: 'idle', elapsed: 0 },
     lastTakeId: null,
     freeTakeName: '',
+    micProfile: { ...DEFAULT_MIC },
     status: null,
   }
 }
@@ -69,6 +87,14 @@ function pickChoices(saved: DeviceChoice, devices: { deviceId: string; label: st
       out[k] = devices.find((d) => DEV_MATCH[k](d.label))?.deviceId ?? devices[0]?.deviceId ?? null
   }
   return out
+}
+
+/** Applies a mic profile patch; a known model also fills kind/pattern/address unless the patch sets them. */
+export function patchMicProfile(cur: MicProfile, patch: Partial<MicProfile>): MicProfile {
+  const set = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as Partial<MicProfile>
+  const known = set.model !== undefined ? findMic(set.model) : undefined
+  const traits = known ? { kind: known.kind, pattern: known.pattern, address: known.address } : {}
+  return { ...cur, ...traits, ...set }
 }
 
 /** Prototype prepareResults(): processed + best control → A/B diff; else keep A if valid, else latest. */
@@ -137,6 +163,7 @@ export const useBench = create<BenchStore>()((set, get) => {
         sampleRate,
         samples,
         created: new Date().toISOString(),
+        mic: { ...s.micProfile },
         analysis,
       }
       set({
@@ -157,7 +184,15 @@ export const useBench = create<BenchStore>()((set, get) => {
     bootstrap() {
       booting ??= (async () => {
         const ui = loadUiPrefs()
-        set({ session: ui.session, A: ui.A, B: ui.B, view: ui.view, fxDist: ui.fxDist, deviceChoice: loadDeviceChoice() })
+        set({
+          session: ui.session,
+          A: ui.A,
+          B: ui.B,
+          view: ui.view,
+          fxDist: ui.fxDist,
+          deviceChoice: loadDeviceChoice(),
+          micProfile: loadMicProfile(),
+        })
         const db = await getDb()
         const takes: Take[] = []
         for (const t of await db.all().catch(() => [])) {
@@ -344,6 +379,11 @@ export const useBench = create<BenchStore>()((set, get) => {
     startFreeTake: () => get().goTo('step', 'free'),
     setFreeTakeName: (freeTakeName) => set({ freeTakeName }),
     setFxDist: (fxDist) => set({ fxDist }),
+    setMicProfile(patch) {
+      const micProfile = patchMicProfile(get().micProfile, patch)
+      saveMicProfile(micProfile)
+      set({ micProfile })
+    },
     setStatus: (message, error = false) => set({ status: { message, error } }),
     clearStatus: () => set({ status: null }),
   }

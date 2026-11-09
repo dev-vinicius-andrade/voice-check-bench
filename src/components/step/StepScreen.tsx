@@ -1,10 +1,12 @@
+import Alert from '@mui/material/Alert'
 import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { TwoToneHeading } from '../common/TwoToneHeading'
+import { addressTip, placementTip } from '../../mics/catalog'
 import { STEPS, fillDistance } from '../../session/steps'
 import { useBench } from '../../store/benchStore'
-import { useFxDist, useStepTake } from '../../store/hooks'
+import { useFxDist, useMicProfile, useStepTake } from '../../store/hooks'
 import { DistanceRuler } from './DistanceRuler'
 import { InputBar } from './InputBar'
 import { ReadingText } from './ReadingText'
@@ -30,6 +32,7 @@ export function StepScreen() {
   const freeTakeName = useBench((s) => s.freeTakeName)
   const setFreeTakeName = useBench((s) => s.setFreeTakeName)
   const busy = useBench((s) => s.recorder.phase !== 'idle')
+  const mic = useMicProfile()
 
   const st = typeof step === 'number' ? STEPS[step] : undefined
   const free = !st
@@ -50,6 +53,11 @@ export function StepScreen() {
         <Typography color="text.secondary" sx={{ maxWidth: '56ch', mx: 'auto', fontSize: 17 }}>
           {lead}
         </Typography>
+        {st?.dev === 'raw' && (
+          <Alert severity="info" sx={{ maxWidth: '64ch', mx: 'auto', textAlign: 'left', py: 0 }}>
+            {addressTip(mic)} {placementTip(mic)}
+          </Alert>
+        )}
       </div>
       {cm !== null && <DistanceRuler cm={cm} />}
       {free && (

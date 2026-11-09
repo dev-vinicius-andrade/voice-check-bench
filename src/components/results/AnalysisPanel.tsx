@@ -10,8 +10,11 @@ import { diagnose } from '../../audio/diagnose'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError, type Analysis, type ChartView, type Take } from '../../types'
 import { BandChart } from './BandChart'
+import { BeforeAfterCard } from './BeforeAfterCard'
 import { ChecksList } from './ChecksList'
 import { CompareTable } from './CompareTable'
+import { CopySummaryButton } from './CopySummaryButton'
+import { RoomNoisePanel } from './RoomNoisePanel'
 import { StatTiles } from './StatTiles'
 import { SuggestedSettings } from './SuggestedSettings'
 import { VerdictAlert } from './VerdictAlert'
@@ -34,13 +37,18 @@ function AnalysisBody({ A, a, b, view }: { A: Take; a: Analysis; b: Take | null;
     <>
       <VerdictAlert analysis={a} checks={checks} />
       <StatTiles a={a} checks={checks} b={bAnalysis} checksB={checksB} />
+      <RoomNoisePanel a={a} />
+      <BeforeAfterCard A={A} />
       <BandChart a={a} b={bAnalysis} view={view} />
       <CompareTable A={A} B={b} />
       <ChecksList checks={checks} />
       <SuggestedSettings />
-      <Typography variant="body2" color="text.secondary">
-        Reference ranges are approximate targets for close-miked spoken voice. Trust your ears over any single number.
-      </Typography>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: '64ch' }}>
+          Reference ranges are approximate targets for close-miked spoken voice. Trust your ears over any single number.
+        </Typography>
+        <CopySummaryButton A={A} />
+      </div>
     </>
   )
 }

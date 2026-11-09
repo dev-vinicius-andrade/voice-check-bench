@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
 import type { AnalysisResult, StepKey, Take } from '../types'
 import type { BenchState } from './api'
-import { initialBenchState, useBench } from './benchStore'
+import { initialBenchState, patchMicProfile, useBench } from './benchStore'
+import { DEFAULT_MIC } from '../mics/catalog'
 
 const fake = vi.hoisted(() => {
   const engine = {
@@ -193,12 +194,14 @@ describe('recording', () => {
 
   it('names a free take after the input and clears the name field', async () => {
     vi.useFakeTimers()
-    reset({ screen: 'step', step: 'free', mic: micOn })
+    const mic = { model: 'My mic', kind: 'condenser', pattern: 'omni', address: 'side' } as const
+    reset({ screen: 'step', step: 'free', mic: micOn, micProfile: mic })
     await st().startRecording()
     fake.samples = new Float32Array(48000 * 6)
     st().stopRecording()
     vi.advanceTimersByTime(30)
-    expect(st().takes[0]).toMatchObject({ session: 'free', step: null, name: 'Free take · Elgato Wave:XLR' })
+    expect(st().takes[0]).toMatchObject({ session: 'free', step: null, name: 'Free take · Elgato Wave:XLR', mic })
+    expect(st().takes[0].mic).not.toBe(st().micProfile)
     expect(st().lastTakeId).toBe(st().takes[0].id)
     st().setFreeTakeName('  Mine ')
     await st().startRecording()
@@ -231,12 +234,42 @@ describe('bootstrap', () => {
   it('restores UI prefs once and marks the store ready', async () => {
     useBench.setState({ ...initialBenchState() })
     localStorage.setItem('vcb-ui', JSON.stringify({ screen: 'step', step: 9, session: 's42', A: null, B: null, view: 'a', fxDist: '2 cm' }))
+    localStorage.setItem('vcb-mic', JSON.stringify({ model: 'Blue Yeti', kind: 'condenser', pattern: 'omni', address: 'side' }))
     const p1 = st().bootstrap()
     const p2 = st().bootstrap()
     expect(p2).toBe(p1)
     await p1
     expect(st()).toMatchObject({ ready: true, screen: 'step', step: 0, session: 's42', fxDist: '2 cm' })
+    expect(st().micProfile).toEqual({ model: 'Blue Yeti', kind: 'condenser', pattern: 'omni', address: 'side' })
     st().setView('ab')
     expect(JSON.parse(localStorage.getItem('vcb-ui') ?? '{}')).toMatchObject({ view: 'ab', session: 's42' })
+  })
+})
+
+describe('mic profile', () => {
+  afterEach(() => localStorage.clear())
+
+  it('starts unknown', () => {
+    expect(initialBenchState().micProfile).toEqual(DEFAULT_MIC)
+  })
+
+  it('fills traits from a known model unless the patch sets them', () => {
+    expect(patchMicProfile(DEFAULT_MIC, { model: 'shure sm7b' })).toEqual({
+      model: 'shure sm7b',
+      kind: 'dynamic',
+      pattern: 'cardioid',
+      address: 'end',
+    })
+    expect(patchMicProfile(DEFAULT_MIC, { model: 'Blue Yeti', pattern: 'omni' })).toMatchObject({ pattern: 'omni', address: 'side' })
+    const custom = patchMicProfile({ ...DEFAULT_MIC, kind: 'condenser' }, { model: 'Homemade', address: undefined })
+    expect(custom).toEqual({ model: 'Homemade', kind: 'condenser', pattern: 'unknown', address: 'unknown' })
+  })
+
+  it('setMicProfile updates the state and saves it', () => {
+    st().setMicProfile({ model: 'Rode NT-USB' })
+    st().setMicProfile({ kind: 'dynamic' })
+    const want = { model: 'Rode NT-USB', kind: 'dynamic', pattern: 'cardioid', address: 'side' }
+    expect(st().micProfile).toEqual(want)
+    expect(JSON.parse(localStorage.getItem('vcb-mic') ?? '{}')).toEqual(want)
   })
 })

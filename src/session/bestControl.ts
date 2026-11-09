@@ -10,14 +10,17 @@ export function sessionSlots(takes: readonly Take[], session: string): (Take | n
   )
 }
 
-const score = (a: Analysis): number => {
+/** Noisy room (any control take with SNR < 25): the SNR penalty counts double. */
+const score = (a: Analysis, noisy: boolean): number => {
   const d = deviations(a.rel)
-  return Math.abs(d[1]) + Math.abs(d[2]) + Math.abs(d[3]) + Math.abs(d[4]) + Math.max(0, 40 - a.snr) / 2
+  const snrPenalty = Math.max(0, 40 - a.snr) / (noisy ? 1 : 2)
+  return Math.abs(d[1]) + Math.abs(d[2]) + Math.abs(d[3]) + Math.abs(d[4]) + snrPenalty
 }
 
 /**
  * The control take (first 3 slots) with the lowest |boom|+|warmth|+|mud|+|body| deviation plus
- * an SNR penalty. Needs at least 2 analyzed control takes.
+ * an SNR penalty: max(0, 40 - snr) / 2, or max(0, 40 - snr) when any control take has SNR < 25.
+ * Needs at least 2 analyzed control takes.
  */
 export function bestControl(sessionTakes: readonly (Take | null)[]): { dist: string; cm: number; take: Take } | null {
   const ts: { a: Analysis; dist: string; cm: number; take: Take }[] = []
@@ -27,6 +30,7 @@ export function bestControl(sessionTakes: readonly (Take | null)[]): { dist: str
     ts.push({ a: t.analysis, dist: st.dist, cm: st.cm, take: t })
   })
   if (ts.length < 2) return null
-  ts.sort((x, y) => score(x.a) - score(y.a))
+  const noisy = ts.some((t) => t.a.snr < 25)
+  ts.sort((x, y) => score(x.a, noisy) - score(y.a, noisy))
   return { dist: ts[0].dist, cm: ts[0].cm, take: ts[0].take }
 }
