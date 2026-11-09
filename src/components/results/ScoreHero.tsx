@@ -52,7 +52,7 @@ function Ring({ score }: { score: number }) {
 }
 
 /** Clarity score ring with the headline and one-sentence explanation. */
-export function ScoreHero({ score }: { score: ClarityScore }) {
+export function ScoreHero({ score, before = null }: { score: ClarityScore; before?: ClarityScore | null }) {
   const { t } = useTranslation()
   return (
     <Paper component="section" aria-labelledby="score-headline" className="flex flex-col items-center gap-4 p-5 text-center sm:flex-row sm:text-left">
@@ -67,6 +67,11 @@ export function ScoreHero({ score }: { score: ClarityScore }) {
         <Typography color="text.secondary">
           <MsgText msg={score.explain} />
         </Typography>
+        {before && (
+          <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }} data-testid="score-before-after">
+            {t('results.score.beforeAfter', { before: fmtNum(before.score, 0), after: fmtNum(score.score, 0) })}
+          </Typography>
+        )}
       </div>
     </Paper>
   )

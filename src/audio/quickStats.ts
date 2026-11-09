@@ -1,4 +1,5 @@
 // Cheap level summary of a raw take, used to explain a failed analysis. Pure, no React.
+import type { Msg } from '../plain/types'
 import { adb, median, pct } from './dsp'
 import { QUIET_SEC } from './reference'
 
@@ -37,10 +38,16 @@ export function quickStats(samples: Float32Array, sampleRate: number): QuickStat
   }
 }
 
-/** Plain-language hint for why "not enough speech" happened. */
-export function failureHint(q: QuickStats): string {
-  if (!Number.isFinite(q.peakDb) || q.peakDb < -90) return 'The take is silent. The selected input is not receiving audio: check the input with Change, or that Wave Link routes the mic to it.'
-  if (q.readingDb < -55) return 'Your voice barely reached the input. Raise the Wave XLR gain or check that you picked the right input.'
-  if (q.readingDb - q.silenceDb < 15) return 'The "silence" was almost as loud as your reading. Stay quiet until the countdown ends, and check for fans, music or Discord playing into this input.'
-  return 'The level looks fine but too few loud frames were found. Read the whole text after the countdown and keep recording until the end.'
+export type FailureId = 'silent' | 'tooQuiet' | 'noisyPause' | 'tooShort'
+export const FAILURE_IDS: readonly FailureId[] = ['silent', 'tooQuiet', 'noisyPause', 'tooShort']
+
+/** Why "not enough speech" happened, in order: nothing on the input, voice too quiet, noisy pause, too little talking. */
+export function failureId(q: QuickStats): FailureId {
+  if (!Number.isFinite(q.peakDb) || q.peakDb < -90) return 'silent'
+  if (q.readingDb < -55) return 'tooQuiet'
+  if (q.readingDb - q.silenceDb < 15) return 'noisyPause'
+  return 'tooShort'
 }
+
+/** Plain-language hint for why "not enough speech" happened (`engine.failure.<id>`). */
+export const failureHint = (q: QuickStats): Msg => ({ key: `engine.failure.${failureId(q)}` })

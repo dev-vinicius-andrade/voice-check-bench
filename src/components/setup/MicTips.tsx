@@ -1,10 +1,10 @@
-import { useTranslation } from 'react-i18next'
+import { addressTip, placementTip } from '../../mics/catalog'
 import { useMicProfile } from '../../store/hooks'
-import { addressKey, placementKey } from './micOptions'
+import { useMsg } from '../common/MsgText'
 
 /** "Speak into … · Turn the back of the mic …" for the current mic profile, as plain text. */
 export function MicTips() {
-  const { t } = useTranslation()
+  const tm = useMsg()
   const mic = useMicProfile()
-  return <>{`${t(addressKey(mic))} ${t(placementKey(mic))}`}</>
+  return <>{`${tm(addressTip(mic))} ${tm(placementTip(mic))}`}</>
 }

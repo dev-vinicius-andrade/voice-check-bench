@@ -3,6 +3,7 @@ import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
+import { fmtDateTime } from '../../i18n/format'
 import { useBench } from '../../store/benchStore'
 import { TakeRow } from './TakeRow'
 import { useTakeGroups } from '../../store/hooks'
@@ -53,7 +54,9 @@ export function TakesPanel() {
       {!hasTakes && <Typography variant="body2" color="text.secondary">{t('results.takes.none')}</Typography>}
       {groups.map((g) => (
         <div key={g.session} className="grid gap-1.5">
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mt: 1 }}>{g.label}</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mt: 1 }}>
+            {g.created === null ? t('engine.takes.freeGroup') : t('engine.takes.sessionGroup', { date: fmtDateTime(g.created) })}
+          </Typography>
           {g.takes.map((t) => <TakeRow key={t.id} take={t} />)}
         </div>
       ))}

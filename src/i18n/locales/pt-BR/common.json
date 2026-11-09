@@ -1,1 +1,45 @@
-{}
+{
+  "common": {
+    "nav": {
+      "label": "Site",
+      "how": "Como funciona",
+      "community": "Comunidade",
+      "privacy": "Privacidade",
+      "start": "Começar",
+      "continue": "Continuar",
+      "menu": "Páginas do site",
+      "progress": "Progresso",
+      "home": "Início"
+    },
+    "language": {
+      "label": "Idioma",
+      "change": "Mudar idioma"
+    },
+    "footer": {
+      "madeBy": "Feito por",
+      "authorLinks": "Links do autor",
+      "email": "E-mail {{email}}",
+      "source": "Código no GitHub",
+      "issue": "Relatar um problema"
+    },
+    "actions": {
+      "enableMic": "Ligar o microfone",
+      "connecting": "Conectando…",
+      "back": "← Voltar",
+      "skip": "Pular",
+      "test": "Testar",
+      "change": "Trocar",
+      "play": "Ouvir",
+      "playBack": "Ouvir de novo",
+      "downloadWav": "Baixar WAV",
+      "startCheck": "Começar o teste de 5 minutos →"
+    },
+    "device": {
+      "none": "Nenhuma entrada encontrada"
+    },
+    "units": {
+      "seconds": "{{value}} s",
+      "cm": "{{value}} cm"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 // Guided session definition ported 1:1 from the prototype (docs/prototype/voice-check.html). Pure.
-import type { DeviceKind, StepDef } from '../types'
+import type { DeviceKind, StepDef, StepKey } from '../types'
 
 /** `{d}` in title/head/lead is replaced by the processed-take distance (see fillDistance). English data only; the UI uses stepText(). */
 export const STEPS: StepDef[] = [
@@ -40,4 +40,21 @@ export function stepText(st: Pick<StepDef, 'key'>, t: Translate, dist: string): 
   const out = {} as Record<StepPart, string>
   for (const part of STEP_PARTS) out[part] = t(stepKey(st, part), { dist })
   return out
+}
+
+/** The step of a guided take; undefined for a free take. */
+export const stepOf = (key: StepKey | null): StepDef | undefined => STEPS.find((s) => s.key === key)
+
+/**
+ * Distance a guided take was recorded at: the step's own, or for the processed take the one filled into its
+ * stored name ("Processed · 8 cm · Record Mix" → "8 cm"). Null for free takes or an unrecognised name.
+ * The stored name is locale-neutral data; screens show the step copy (stepText) with this distance instead.
+ */
+export function takeDist(take: { step: StepKey | null; name: string }): string | null {
+  const st = stepOf(take.step)
+  if (!st) return null
+  if (st.dist) return st.dist
+  const [pre, post = ''] = st.title.split('{d}')
+  const n = take.name
+  return n.length > pre.length + post.length && n.startsWith(pre) && n.endsWith(post) ? n.slice(pre.length, n.length - post.length) : null
 }

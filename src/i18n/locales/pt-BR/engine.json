@@ -1,1 +1,239 @@
-{}
+{
+  "engine": {
+    "analysis": {
+      "notEnoughSpeech": "Não encontramos fala suficiente. Fale mais alto ou mais perto, ou confira a entrada escolhida."
+    },
+    "check": {
+      "vsReference": "{{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB em relação à referência",
+      "level": {
+        "title": "Volume da fala",
+        "value": "mediana de {{v, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS",
+        "good": "Volume confortável para chamadas e lives.",
+        "quiet": "A voz está baixa; quem ouve vai aumentar o volume, e o ruído sobe junto.",
+        "hot": "A voz está alta demais; risco de distorção e de cansar quem ouve.",
+        "fixQuiet": "Aumente o makeup do compressor (Wet no ReaComp) em 3–6 dB, ou o gain do Wave XLR em alguns dB.",
+        "fixHot": "Diminua o gain do Wave XLR ou o makeup do compressor em 3–6 dB."
+      },
+      "peaks": {
+        "title": "Picos / clipping",
+        "value": "pico de {{peak, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS · {{clip}} amostras cortadas",
+        "good": "Há folga suficiente no volume.",
+        "bad": "Os picos batem no teto e vão estalar.",
+        "fix": "Diminua o gain em 2–3 dB; deixe o 'Limit output' do ReaComp ligado."
+      },
+      "noise": {
+        "title": "Ruído de fundo",
+        "value": "{{noise, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS no silêncio · SNR {{snr, number(maximumFractionDigits: 0)}} dB",
+        "good": "As pausas estão limpas.",
+        "bad": "Dá para ouvir chiado, ventiladores ou barulho do ambiente nas pausas.",
+        "roughGood": "Não achamos 3 s de silêncio limpo; a estimativa é aproximada. As pausas estão limpas.",
+        "roughBad": "Não achamos 3 s de silêncio limpo; a estimativa é aproximada. Dá para ouvir chiado, ventiladores ou barulho do ambiente nas pausas.",
+        "fix": "Afaste-se dos ventiladores do PC, diminua o gain e fale mais perto, ou suba o Threshold do ReaGate."
+      },
+      "silence": {
+        "title": "Janela de silêncio",
+        "value": "som nos primeiros 3 s",
+        "detail": "Algo alto aconteceu durante os 3 s de silêncio, então a leitura do ruído pode estar errada.",
+        "fix": "Grave de novo e fique em silêncio total até a tela pedir para começar a ler."
+      },
+      "hum": {
+        "title": "Zumbido da rede elétrica",
+        "value": "mais forte em {{hz}} Hz, +{{db, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dB acima das frequências vizinhas",
+        "good": "Nenhum zumbido nas pausas.",
+        "gated": "As pausas estão silenciosas, mas o zumbido de {{hz}} Hz continua por baixo da sua voz enquanto você fala (o gate só o esconde nas pausas).",
+        "bad": "Um zumbido constante de {{hz}} Hz, vindo da rede elétrica, fica por baixo da sua voz.",
+        "fix": "Loop de terra: tente outra porta USB (atrás, na placa-mãe), tire carregadores da mesma régua e mantenha o cabo XLR longe de fontes de energia. O ReaGate só esconde o zumbido nas pausas."
+      },
+      "tones": {
+        "title": "Tons de ventilador / máquina",
+        "value1": "{{hz1}} Hz +{{db1, number(maximumFractionDigits: 0)}} dB",
+        "value2": "{{hz1}} Hz +{{db1, number(maximumFractionDigits: 0)}} dB, {{hz2}} Hz +{{db2, number(maximumFractionDigits: 0)}} dB",
+        "value3": "{{hz1}} Hz +{{db1, number(maximumFractionDigits: 0)}} dB, {{hz2}} Hz +{{db2, number(maximumFractionDigits: 0)}} dB, {{hz3}} Hz +{{db3, number(maximumFractionDigits: 0)}} dB",
+        "none": "nenhum tom constante",
+        "good": "Nenhum tom constante forte nas pausas.",
+        "bad": "Tons constantes de ventiladores, servidores ou outras máquinas ficam por baixo da sua voz.",
+        "fix": "Gire o microfone para que o lado menos sensível fique virado para a máquina; as configurações sugeridas colocam cortes estreitos de EQ nesses tons."
+      },
+      "bandsnr": {
+        "title": "Voz contra o ambiente (por faixa)",
+        "value": "faixas da voz {{v, number(maximumFractionDigits: 0)}} dB acima do ambiente",
+        "good": "Sua voz fica bem acima do ruído do ambiente onde mora a clareza (640 Hz–5 kHz).",
+        "warn": "O ruído do ambiente está perto da sua voz onde mora a clareza (640 Hz–5 kHz).",
+        "bad": "O ruído do ambiente disputa com sua voz onde mora a clareza (640 Hz–5 kHz).",
+        "fix": "Fale mais perto e deixe o barulho fora do eixo do microfone; depois use o passo de redução de ruído das configurações sugeridas."
+      },
+      "rumble": {
+        "title": "Ronco (40–80 Hz)",
+        "good": "O ronco grave está controlado.",
+        "bad": "Batidas na mesa, passos e o ronco do ar-condicionado embolam o som.",
+        "fix": "Deixe o Lowcut do Wave XLR ligado (tente 120 Hz); use um braço articulado ou um shock mount para as batidas na mesa não chegarem ao microfone."
+      },
+      "boom": {
+        "title": "Grave cheio (80–160 Hz)",
+        "good": "O grave está na medida.",
+        "high": "Grave demais, geralmente o efeito de proximidade por estar muito perto de um microfone dinâmico.",
+        "low": "A voz está fina no grave.",
+        "fixHigh": "Afaste-se 2–3 cm do microfone, ou ajuste o low shelf do ReaEQ em 150 Hz para -4/-5 dB.",
+        "fixLow": "Chegue 2 cm mais perto, ou diminua o corte do low shelf em 150 Hz."
+      },
+      "warmth": {
+        "title": "Calor (160–320 Hz)",
+        "good": "O calor está equilibrado.",
+        "high": "O acúmulo de médios-graves deixa a voz grossa e abafada.",
+        "low": "Falta calor na voz, e ela pode soar fina.",
+        "fixHigh": "ReaEQ: corte em torno de 250 Hz em 3–4 dB, bandwidth ~1,5.",
+        "fixLow": "Diminua o corte em 300 Hz para -2 dB."
+      },
+      "mud": {
+        "title": "Embolado / caixa (320–640 Hz)",
+        "good": "Os médios-graves não estão escondendo as consoantes.",
+        "high": "Som de caixa de papelão que esconde as consoantes; uma das maiores causas de \"não está claro\".",
+        "low": "Os médios-graves estão cavados; a voz pode soar oca.",
+        "fixHigh": "ReaEQ: corte 400–500 Hz em 3–4 dB, bandwidth ~1,2.",
+        "fixLow": "Diminua o corte em 300 Hz, ou leve-o mais para baixo (200 Hz)."
+      },
+      "body": {
+        "title": "Corpo (640 Hz–1,25 kHz)",
+        "good": "O centro da voz está firme.",
+        "high": "Médios anasalados, com som de buzina.",
+        "low": "O centro da voz está cavado; graves e agudos dominam, então ela soa oca e distante.",
+        "fixHigh": "ReaEQ: corte ~900 Hz em 2–3 dB, bandwidth ~1.",
+        "fixLow": "ReaEQ: adicione +2/+3 dB em ~1 kHz, bandwidth ~1,5, e alivie o low shelf e os agudos."
+      },
+      "definition": {
+        "title": "Definição (1,25–2,5 kHz)",
+        "good": "Vogais e consoantes estão bem definidas.",
+        "high": "Som projetado, meio anasalado ou de \"telefone\".",
+        "low": "As palavras perdem definição.",
+        "fixHigh": "ReaEQ: corte ~1,8 kHz em 2 dB.",
+        "fixLow": "ReaEQ: +2 dB em torno de 2 kHz, bandwidth ~1,5."
+      },
+      "presence": {
+        "title": "Presença (2,5–5 kHz)",
+        "good": "A voz se destaca com clareza.",
+        "high": "Os médios-agudos estão puxados; pode soar áspero ou cansativo.",
+        "low": "A voz soa sem brilho e distante; é esta faixa que traz a clareza.",
+        "fixHigh": "Diminua o reforço em 4 kHz em 2–3 dB.",
+        "fixLow": "Suba a faixa de 4 kHz para +4/+5 dB e fale de frente, direto na cápsula."
+      },
+      "sibilance": {
+        "title": "Sibilância (5–10 kHz)",
+        "good": "Os sons de S e T estão equilibrados.",
+        "high": "Os sons de S estão cortantes e podem chiar.",
+        "low": "As consoantes estão apagadas.",
+        "fixHigh": "Ligue o Elgato De-Esser, ou baixe o high shelf de 10 kHz em 2 dB; incline o microfone um pouco para fora da boca.",
+        "fixLow": "Suba o high shelf de 10 kHz para +4 dB."
+      },
+      "air": {
+        "title": "Ar (10–16 kHz)",
+        "good": "Tem um pouco de brilho no topo.",
+        "high": "Muito agudo; pode soar quebradiço ou com chiado.",
+        "low": "Quase nada de agudo. Comum em microfones dinâmicos baratos.",
+        "fixHigh": "Baixe o high shelf de 10 kHz em 2 dB.",
+        "fixLow": "High shelf do ReaEQ em 10 kHz, +3 a +5 dB (cuidado com a sibilância)."
+      },
+      "harsh": {
+        "title": "Picos ásperos de S",
+        "value": "p95 dos trechos de S {{v, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dB",
+        "detail": "Alguns sons de S dão picos fortes, mesmo com a média boa.",
+        "fix": "Ligue o Elgato De-Esser (ajuste leve) depois do EQ."
+      },
+      "consistency": {
+        "title": "Constância",
+        "value": "{{v, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dB de variação entre os segundos",
+        "good": "O volume está estável.",
+        "bad": "O volume pula entre as frases; quem ouve vai ficar mexendo no volume.",
+        "fix": "Mantenha a mesma distância (um punho) e baixe o Threshold do ReaComp em 3 dB."
+      }
+    },
+    "failure": {
+      "silent": "Só captamos silêncio. Esta entrada não está ouvindo seu microfone. Clique em Trocar e escolha outra entrada, ou confira se seu programa de áudio manda o microfone para ela.",
+      "tooQuiet": "Sua voz quase não chegou ao microfone. Aumente o volume de entrada (gain) no microfone ou na interface de áudio, ou confira se escolheu a entrada certa.",
+      "noisyPause": "A parte silenciosa estava quase tão alta quanto sua leitura. Fique em silêncio até a contagem acabar e pause qualquer outra coisa que toque som nesta entrada, como música ou uma chamada.",
+      "tooShort": "Seu volume parece bom, mas faltou fala. Leia o texto inteiro depois da contagem e continue até o fim."
+    },
+    "mic": {
+      "other": "Outro / não está na lista",
+      "address": {
+        "end": "Fale direto na ponta do microfone.",
+        "side": "Fale na lateral da frente do microfone (geralmente onde fica a logo), não na ponta.",
+        "unknown": "Aponte a cápsula para sua boca."
+      },
+      "placement": {
+        "cardioid": "Vire a parte de trás do microfone para a fonte de barulho mais forte (ventilador, PC, servidor).",
+        "supercardioid": "Deixe o barulho mais forte nas laterais do microfone, a uns 125° do eixo.",
+        "other": "Chegue o microfone mais perto de você e mais longe do barulho; este padrão de captação não vai rejeitá-lo."
+      },
+      "mains": {
+        "label": "Energia no seu país",
+        "auto": "Automático",
+        "hz": "{{hz}} Hz"
+      }
+    },
+    "suggest": {
+      "gainQuiet": "A gravação sem efeitos está baixa ({{speech, number(maximumFractionDigits: 0)}} dBFS). Primeiro aumente o gain do Wave XLR em cerca de {{db}} dB e depois refaça as gravações de controle. Os valores do gate e do compressor dependem disso.",
+      "gainHot": "A gravação sem efeitos está alta demais ({{speech, number(maximumFractionDigits: 0)}} dBFS). Diminua o gain do Wave XLR em cerca de {{db}} dB e refaça as gravações de controle.",
+      "noisy": "A entrada está ruidosa: o ruído do ambiente/entrada ({{noise, number(maximumFractionDigits: 0)}} dBFS) fica só {{snr, number(maximumFractionDigits: 0)}} dB abaixo da sua voz. Nenhum ajuste de gate ou EQ consegue separar os dois, e o gate cortaria palavras ditas mais baixo. Tire o máximo do ambiente:",
+      "noisyNext": "Fale mais perto e desligue o que puder; depois configure o passo de redução de ruído abaixo, antes do EQ. Refaça as gravações de controle para conferir: quanto mais perto de 30 dB, mais limpo.",
+      "condenser": "Microfones condensadores captam mais do ambiente: fique mais perto e diminua o gain.",
+      "reafir": {
+        "add": "No Wave Link → seu microfone → Effects, adicione \"ReaFIR (ReaPlugs Edition)\" e arraste-o para o topo.",
+        "mode": "Mode: Subtract. FFT size: 4096.",
+        "profile": "Fique em silêncio, marque \"Automatically build noise profile\" por uns 3 segundos e depois desmarque.",
+        "curve": "Arraste a curva inteira para baixo até o ambiente cair cerca de 10–12 dB. Se sua voz ficar aguada ou robótica, volte um pouco.",
+        "curveStrong": "Arraste a curva inteira para baixo até o ambiente cair cerca de 15 dB. Se sua voz ficar aguada ou robótica, volte um pouco.",
+        "order": "Deixe ReaEQ, ReaComp e ReaGate abaixo do ReaFIR, nessa ordem."
+      },
+      "alternative": {
+        "elgato": "Elgato Noise Removal (no Wave Link)",
+        "voiceFocus": "Voice Focus da ai-coustics (no Wave Link)",
+        "nvidia": "NVIDIA Broadcast — Noise Removal (GPUs RTX)"
+      },
+      "why": {
+        "boom": "Grave {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB no microfone sem efeitos",
+        "warmth": "Calor {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "mud": "Embolado/caixa {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "body": "Corpo {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "presence": "Presença {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "top": "Sibilância {{sib, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} / ar {{air, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "roomAbove5k": "O ruído do ambiente domina acima de 5 kHz",
+        "tone": "Tom de ventilador/máquina {{db, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB"
+      }
+    },
+    "sheet": {
+      "title": "Voice Check Bench · configurações sugeridas",
+      "basedOn": "Com base em: {{name}} (fala {{speech, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS, ruído {{noise, number(maximumFractionDigits: 0)}} dBFS)",
+      "keepMic": "Mantenha o microfone a {{dist}}.",
+      "keepGain": "Deixe o gain do Wave XLR onde estava nesta gravação.",
+      "first": "PRIMEIRO: {{text}}",
+      "hardware": "Wave XLR (hardware)",
+      "order": "Ordem dos efeitos: {{chain}}",
+      "noiseReduction": "{{plugin}} (redução de ruído)",
+      "alternatives": "Alternativas: {{list}}",
+      "eq": "ReaEQ (use só estas bandas; remova ou desative as outras)",
+      "eqNone": "Não precisa de EQ: o microfone sem efeitos já está perto da referência.",
+      "eqBand": "Band {{n}}: Type {{type}}{{notch}} · Frequency {{freq}} Hz · Gain {{gain, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB · Bandwidth {{bw, number(minimumFractionDigits: 2; maximumFractionDigits: 2)}} oct   ({{why}})",
+      "notch": "(corte estreito)",
+      "deessOn": "Elgato De-Esser: ligado (leve)",
+      "deessOff": "Elgato De-Esser: desligado",
+      "offNoisy": "Elgato EQ: desligado. Use só um removedor de ruído: o ReaFIR ou uma das alternativas acima (não os dois).",
+      "offQuiet": "Voice Focus, Elgato EQ, Elgato Noise Removal: desligados"
+    },
+    "takes": {
+      "sessionGroup": "Sessão · {{date}}",
+      "freeGroup": "Gravações livres"
+    },
+    "status": {
+      "openInput": "Não foi possível abrir esta entrada ({{error}}).",
+      "pickRaw": "Escolha a entrada do microfone sem efeitos em Trocar.",
+      "pickFx": "Escolha a entrada com efeitos em Trocar.",
+      "openNamed": "Não foi possível abrir {{name}} ({{error}}). Escolha outra em Trocar.",
+      "openUnnamed": "Não foi possível abrir essa entrada ({{error}}). Escolha outra em Trocar.",
+      "unsupported": "Este navegador não consegue gravar aqui. Abra a página via http://localhost no Chrome ou no Edge.",
+      "micDenied": "Não foi possível abrir o microfone ({{error}}). Permita o acesso ao microfone na barra de endereço e recarregue a página.",
+      "enableFirst": "Ligue o microfone primeiro.",
+      "startFailed": "Não foi possível começar a gravar ({{error}}).",
+      "tooShort": "Curto demais ({{sec, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} s). Grave pelo menos {{min}} s: {{quiet}} s de silêncio e depois o texto."
+    }
+  }
+}

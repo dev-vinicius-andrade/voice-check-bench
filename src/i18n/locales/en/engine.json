@@ -1,1 +1,239 @@
-{}
+{
+  "engine": {
+    "analysis": {
+      "notEnoughSpeech": "Not enough speech detected. Speak louder or closer, or check the selected input."
+    },
+    "check": {
+      "vsReference": "{{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB vs reference",
+      "level": {
+        "title": "Speech level",
+        "value": "{{v, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS median",
+        "good": "Comfortable level for calls and streams.",
+        "quiet": "Voice is quiet; listeners will turn you up, raising noise too.",
+        "hot": "Voice is hot; risk of distortion and listener fatigue.",
+        "fixQuiet": "Raise compressor makeup gain (ReaComp wet) 3–6 dB, or Wave XLR gain a few dB.",
+        "fixHot": "Lower Wave XLR gain or compressor makeup by 3–6 dB."
+      },
+      "peaks": {
+        "title": "Peaks / clipping",
+        "value": "peak {{peak, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS · {{clip}} clipped samples",
+        "good": "Headroom is fine.",
+        "bad": "Peaks hit the ceiling and will crackle.",
+        "fix": "Lower gain 2–3 dB; keep ReaComp 'Limit output' on."
+      },
+      "noise": {
+        "title": "Background noise",
+        "value": "{{noise, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS in silence · SNR {{snr, number(maximumFractionDigits: 0)}} dB",
+        "good": "Pauses are clean.",
+        "bad": "Hiss, fans or room noise are audible in pauses.",
+        "roughGood": "No clean 3 s silence found; estimate is rough. Pauses are clean.",
+        "roughBad": "No clean 3 s silence found; estimate is rough. Hiss, fans or room noise are audible in pauses.",
+        "fix": "Move away from PC fans, lower gain and speak closer, or tighten ReaGate threshold."
+      },
+      "silence": {
+        "title": "Silence window",
+        "value": "sound in first 3 s",
+        "detail": "Something loud happened during the 3 s silence, so the noise reading may be off.",
+        "fix": "Re-record and stay fully silent until the status says 'Read now'."
+      },
+      "hum": {
+        "title": "Mains hum",
+        "value": "strongest {{hz}} Hz, +{{db, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dB over neighbours",
+        "good": "No tonal hum in pauses.",
+        "gated": "Pauses are silent, but the {{hz}} Hz hum is still there under your voice while you talk (the gate only hides it in pauses).",
+        "bad": "A steady {{hz}} Hz buzz from the power line sits under your voice.",
+        "fix": "Ground loop: try another USB port (rear, on the motherboard), unplug chargers on the same strip, keep XLR cable away from power bricks. ReaGate hides it in pauses only."
+      },
+      "tones": {
+        "title": "Fan / machine tones",
+        "value1": "{{hz1}} Hz +{{db1, number(maximumFractionDigits: 0)}} dB",
+        "value2": "{{hz1}} Hz +{{db1, number(maximumFractionDigits: 0)}} dB, {{hz2}} Hz +{{db2, number(maximumFractionDigits: 0)}} dB",
+        "value3": "{{hz1}} Hz +{{db1, number(maximumFractionDigits: 0)}} dB, {{hz2}} Hz +{{db2, number(maximumFractionDigits: 0)}} dB, {{hz3}} Hz +{{db3, number(maximumFractionDigits: 0)}} dB",
+        "none": "no steady tones",
+        "good": "No strong steady tones in pauses.",
+        "bad": "Steady tones from fans, servers or other machines sit under your voice.",
+        "fix": "Turn the mic so its least sensitive side faces the machine; the suggested settings add narrow EQ notches at these tones."
+      },
+      "bandsnr": {
+        "title": "Voice vs room (per band)",
+        "value": "voice bands {{v, number(maximumFractionDigits: 0)}} dB over the room",
+        "good": "Your voice is well above the room noise where clarity lives (640 Hz–5 kHz).",
+        "warn": "The room noise is close to your voice where clarity lives (640 Hz–5 kHz).",
+        "bad": "The room noise competes with your voice where clarity lives (640 Hz–5 kHz).",
+        "fix": "Speak closer and keep the noise off-axis, then use the noise-reduction step in the suggested settings."
+      },
+      "rumble": {
+        "title": "Rumble (40–80 Hz)",
+        "good": "Low-end rumble is controlled.",
+        "bad": "Desk thumps, footsteps and AC rumble muddy the signal.",
+        "fix": "Keep Wave XLR Lowcut on (try 120 Hz); use a boom arm or shock mount so desk bumps don't reach the mic."
+      },
+      "boom": {
+        "title": "Boom (80–160 Hz)",
+        "good": "Bass is in a healthy range.",
+        "high": "Too much bass, usually proximity effect from being very close to a dynamic mic.",
+        "low": "Voice is thin in the bass.",
+        "fixHigh": "Back off 2–3 cm from the mic, or set ReaEQ low shelf at 150 Hz to -4/-5 dB.",
+        "fixLow": "Move 2 cm closer, or reduce the 150 Hz low shelf cut."
+      },
+      "warmth": {
+        "title": "Warmth (160–320 Hz)",
+        "good": "Warmth is balanced.",
+        "high": "Low-mid buildup makes the voice thick and muffled.",
+        "low": "Voice lacks warmth and may sound thin.",
+        "fixHigh": "ReaEQ: cut around 250 Hz by 3–4 dB, bandwidth ~1.5.",
+        "fixLow": "Reduce the 300 Hz cut to -2 dB."
+      },
+      "mud": {
+        "title": "Mud / boxiness (320–640 Hz)",
+        "good": "Low-mids are not masking your consonants.",
+        "high": "Boxy, cardboard sound that hides consonants; a top cause of 'not clear'.",
+        "low": "Low-mids are scooped; voice can sound hollow.",
+        "fixHigh": "ReaEQ: cut 400–500 Hz by 3–4 dB, bandwidth ~1.2.",
+        "fixLow": "Reduce the 300 Hz cut, or move it lower (200 Hz)."
+      },
+      "body": {
+        "title": "Body (640 Hz–1.25 kHz)",
+        "good": "Core of the voice is solid.",
+        "high": "Honky, nasal midrange.",
+        "low": "The core of the voice is scooped out; lows and highs dominate, so it sounds hollow and distant.",
+        "fixHigh": "ReaEQ: cut ~900 Hz by 2–3 dB, bandwidth ~1.",
+        "fixLow": "ReaEQ: add +2/+3 dB at ~1 kHz, bandwidth ~1.5, and ease back the low shelf and highs."
+      },
+      "definition": {
+        "title": "Definition (1.25–2.5 kHz)",
+        "good": "Vowel and consonant definition is fine.",
+        "high": "Forward, slightly nasal or 'telephone' tone.",
+        "low": "Words lack definition.",
+        "fixHigh": "ReaEQ: cut ~1.8 kHz by 2 dB.",
+        "fixLow": "ReaEQ: +2 dB around 2 kHz, bandwidth ~1.5."
+      },
+      "presence": {
+        "title": "Presence (2.5–5 kHz)",
+        "good": "Voice cuts through clearly.",
+        "high": "Upper mids are pushed; can sound harsh or tiring.",
+        "low": "Voice sounds dull and distant; this band carries clarity.",
+        "fixHigh": "Lower the 4 kHz boost by 2–3 dB.",
+        "fixLow": "Raise the 4 kHz band to +4/+5 dB, and speak on-axis, straight into the capsule."
+      },
+      "sibilance": {
+        "title": "Sibilance (5–10 kHz)",
+        "good": "S and T sounds are balanced.",
+        "high": "S sounds are sharp and can hiss.",
+        "low": "Consonants are dull.",
+        "fixHigh": "Turn on Elgato De-Esser, or lower the 10 kHz high shelf 2 dB; angle the mic slightly off your mouth.",
+        "fixLow": "Raise the 10 kHz high shelf to +4 dB."
+      },
+      "air": {
+        "title": "Air (10–16 kHz)",
+        "good": "Some sparkle on top.",
+        "high": "Lots of top end; can sound brittle or hissy.",
+        "low": "Very little top end. Common for budget dynamic mics.",
+        "fixHigh": "Lower the 10 kHz high shelf 2 dB.",
+        "fixLow": "ReaEQ high shelf at 10 kHz +3 to +5 dB (watch sibilance)."
+      },
+      "harsh": {
+        "title": "Harsh S peaks",
+        "value": "S-frames p95 {{v, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dB",
+        "detail": "Individual S sounds spike hard even if the average is fine.",
+        "fix": "Turn on Elgato De-Esser (light setting) after the EQ."
+      },
+      "consistency": {
+        "title": "Consistency",
+        "value": "{{v, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dB spread between seconds",
+        "good": "Loudness is steady.",
+        "bad": "Level jumps between phrases; listeners will ride the volume.",
+        "fix": "Keep the same distance (a fist away) and lower ReaComp threshold 3 dB."
+      }
+    },
+    "failure": {
+      "silent": "We only got silence. This input isn't hearing your mic. Press Change and pick another input, or check that your audio app sends your mic to it.",
+      "tooQuiet": "Your voice barely reached the mic. Turn up the input volume (gain) on your mic or audio interface, or check that you picked the right input.",
+      "noisyPause": "The quiet part was almost as loud as your reading. Stay silent until the countdown ends, and pause anything else that plays sound into this input, like music or a call.",
+      "tooShort": "Your volume looks fine, but there wasn't enough talking. Read the whole text after the countdown and keep going until the end."
+    },
+    "mic": {
+      "other": "Other / not listed",
+      "address": {
+        "end": "Speak straight into the top of the mic.",
+        "side": "Speak into the front side of the mic (usually where the logo is), not the top.",
+        "unknown": "Point the capsule at your mouth."
+      },
+      "placement": {
+        "cardioid": "Point the back of the mic at the loudest noise source (fan, PC, server).",
+        "supercardioid": "Keep the loudest noise at the mic's sides, about 125° off-axis.",
+        "other": "Move the mic closer to you and away from the noise; this pickup pattern won't reject it."
+      },
+      "mains": {
+        "label": "Power in your country",
+        "auto": "Auto",
+        "hz": "{{hz}} Hz"
+      }
+    },
+    "suggest": {
+      "gainQuiet": "The raw take is quiet ({{speech, number(maximumFractionDigits: 0)}} dBFS). Raise the Wave XLR gain about {{db}} dB first, then record the control takes again. The gate and compressor values depend on it.",
+      "gainHot": "The raw take is hot ({{speech, number(maximumFractionDigits: 0)}} dBFS). Lower the Wave XLR gain about {{db}} dB and record the control takes again.",
+      "noisy": "The input is noisy: the room/input noise ({{noise, number(maximumFractionDigits: 0)}} dBFS) is only {{snr, number(maximumFractionDigits: 0)}} dB under your voice. No gate or EQ setting can separate them, and the gate would cut quiet words. Get the most out of the room:",
+      "noisyNext": "Speak closer and switch off what you can, then set up the noise-reduction step below before the EQ. Re-record the control takes to check: the closer to 30 dB, the cleaner.",
+      "condenser": "Condenser mics pick up more of the room: stay closer and lower the gain.",
+      "reafir": {
+        "add": "In Wave Link → your mic → Effects, add \"ReaFIR (ReaPlugs Edition)\" and drag it to the top.",
+        "mode": "Mode: Subtract. FFT size: 4096.",
+        "profile": "Stay silent, tick \"Automatically build noise profile\" for about 3 seconds, then untick it.",
+        "curve": "Drag the whole curve down until the room drops about 10–12 dB. If your voice turns watery or robotic, back off.",
+        "curveStrong": "Drag the whole curve down until the room drops about 15 dB. If your voice turns watery or robotic, back off.",
+        "order": "Keep ReaEQ, ReaComp and ReaGate below ReaFIR, in that order."
+      },
+      "alternative": {
+        "elgato": "Elgato Noise Removal (in Wave Link)",
+        "voiceFocus": "Voice Focus by ai-coustics (in Wave Link)",
+        "nvidia": "NVIDIA Broadcast — Noise Removal (RTX GPUs)"
+      },
+      "why": {
+        "boom": "Boom {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB on the raw mic",
+        "warmth": "Warmth {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "mud": "Mud/box {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "body": "Body {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "presence": "Presence {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "top": "Sibilance {{sib, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} / air {{air, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB",
+        "roomAbove5k": "Room noise dominates above 5 kHz",
+        "tone": "Fan/machine tone {{db, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB"
+      }
+    },
+    "sheet": {
+      "title": "Voice Check Bench · suggested settings",
+      "basedOn": "Based on: {{name}} (speech {{speech, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} dBFS, noise {{noise, number(maximumFractionDigits: 0)}} dBFS)",
+      "keepMic": "Keep the mic at {{dist}}.",
+      "keepGain": "Leave the Wave XLR gain where it was for this take.",
+      "first": "FIRST: {{text}}",
+      "hardware": "Wave XLR (hardware)",
+      "order": "Effects order: {{chain}}",
+      "noiseReduction": "{{plugin}} (noise reduction)",
+      "alternatives": "Alternatives: {{list}}",
+      "eq": "ReaEQ (use these bands only; remove or disable any others)",
+      "eqNone": "No EQ needed: the raw mic is already close to the reference.",
+      "eqBand": "Band {{n}}: Type {{type}}{{notch}} · Frequency {{freq}} Hz · Gain {{gain, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB · Bandwidth {{bw, number(minimumFractionDigits: 2; maximumFractionDigits: 2)}} oct   ({{why}})",
+      "notch": "(notch)",
+      "deessOn": "Elgato De-Esser: on (light)",
+      "deessOff": "Elgato De-Esser: off",
+      "offNoisy": "Elgato EQ: off. Use only one noise remover: ReaFIR, or one of the alternatives above (not both).",
+      "offQuiet": "Voice Focus, Elgato EQ, Elgato Noise Removal: off"
+    },
+    "takes": {
+      "sessionGroup": "Session · {{date}}",
+      "freeGroup": "Free takes"
+    },
+    "status": {
+      "openInput": "Could not open this input ({{error}}).",
+      "pickRaw": "Pick the raw mic input with Change.",
+      "pickFx": "Pick the effects input with Change.",
+      "openNamed": "Could not open {{name}} ({{error}}). Pick another with Change.",
+      "openUnnamed": "Could not open that input ({{error}}). Pick another with Change.",
+      "unsupported": "This browser can't record here. Open the page via http://localhost in Chrome or Edge.",
+      "micDenied": "Could not open the microphone ({{error}}). Allow microphone access in the address bar, then reload.",
+      "enableFirst": "Enable the microphone first.",
+      "startFailed": "Could not start recording ({{error}}).",
+      "tooShort": "Too short ({{sec, number(minimumFractionDigits: 1; maximumFractionDigits: 1)}} s). Record at least {{min}} s: {{quiet}} s of silence, then the text."
+    }
+  }
+}

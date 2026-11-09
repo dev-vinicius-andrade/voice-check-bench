@@ -9,6 +9,7 @@ import { fmtNum, fmtSigned } from '../../i18n/format'
 import { useBench } from '../../store/benchStore'
 import type { Take } from '../../types'
 import { beforeAfterPair, voiceBandSnr } from './roomNoise'
+import { useTakeName } from './useTakeName'
 
 /** Below this SNR gain (dB) the effects did not really lower the room. */
 const MIN_GAIN = 3
@@ -44,6 +45,7 @@ function Row({ label, raw, fx, unit, higherIsBetter }: RowProps) {
 /** Raw control vs processed take of A's session: SNR, voice-band SNR and noise floor, with a one-line verdict. */
 export function BeforeAfterCard({ A }: { A: Take }) {
   const { t } = useTranslation()
+  const tn = useTakeName()
   const inputs = useBench(useShallow((s) => ({ takes: s.takes, session: s.session, fxDist: s.fxDist })))
   const pair = useMemo(() => beforeAfterPair(inputs.takes, A, inputs.session, inputs.fxDist), [inputs, A])
   if (!pair) return null
@@ -55,7 +57,7 @@ export function BeforeAfterCard({ A }: { A: Take }) {
       <div>
         <Typography sx={{ fontWeight: 700 }}>{t('results.beforeAfter.title')}</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-          {pair.raw.name} → {pair.fx.name}
+          {tn(pair.raw)} → {tn(pair.fx)}
         </Typography>
       </div>
       <dl className="m-0 grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1">

@@ -9,6 +9,7 @@ import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { fmtNum } from '../../i18n/format'
 import { downloadTakeWav } from './download'
+import { useTakeName } from './useTakeName'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError, type Take } from '../../types'
 
@@ -22,6 +23,7 @@ const btnSx = { px: 1, py: 0.25, minWidth: 0, lineHeight: 1.4 }
 /** One take in the side panel: name, levels, A/B toggles, play, delete (prototype renderTakes). */
 export function TakeRow({ take }: { take: Take }) {
   const { t } = useTranslation()
+  const name = useTakeName()(take)
   const isA = useBench((s) => s.A === take.id)
   const isB = useBench((s) => s.B === take.id)
   const setA = useBench((s) => s.setA)
@@ -35,7 +37,7 @@ export function TakeRow({ take }: { take: Take }) {
       sx={{ borderColor: isA ? 'primary.main' : isB ? 'info.main' : undefined }}
     >
       <div className="min-w-0">
-        <Typography variant="body2" noWrap title={take.name} sx={{ fontWeight: 600 }}>{take.name}</Typography>
+        <Typography variant="body2" noWrap title={name} sx={{ fontWeight: 600 }}>{name}</Typography>
         <Typography variant="caption" color="text.secondary" component="div" noWrap>{meta(t, take)}</Typography>
       </div>
       <div className="flex items-center gap-1">
@@ -45,13 +47,13 @@ export function TakeRow({ take }: { take: Take }) {
         <ToggleButton value="B" size="small" color="info" selected={isB} title={t('results.takes.compareB')} sx={btnSx} onChange={() => toggleB(take.id)}>
           B
         </ToggleButton>
-        <IconButton size="small" title={t('results.takes.play')} aria-label={t('results.takes.playAria', { name: take.name })} onClick={() => playTake(take.id)}>
+        <IconButton size="small" title={t('results.takes.play')} aria-label={t('results.takes.playAria', { name })} onClick={() => playTake(take.id)}>
           <PlayArrowIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" title={t('results.takes.download')} aria-label={t('results.takes.downloadAria', { name: take.name })} onClick={() => downloadTakeWav(take)}>
+        <IconButton size="small" title={t('results.takes.download')} aria-label={t('results.takes.downloadAria', { name })} onClick={() => downloadTakeWav(take)}>
           <DownloadIcon fontSize="small" />
         </IconButton>
-        <IconButton size="small" title={t('results.takes.delete')} aria-label={t('results.takes.deleteAria', { name: take.name })} onClick={() => deleteTake(take.id)}>
+        <IconButton size="small" title={t('results.takes.delete')} aria-label={t('results.takes.deleteAria', { name })} onClick={() => deleteTake(take.id)}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </div>

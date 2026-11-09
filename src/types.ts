@@ -1,4 +1,5 @@
 // Shared domain types. Owned by the orchestrator; change only with a matching SPEC update.
+import type { Msg } from './plain/types'
 
 export type StepKey = 'c2' | 'c8' | 'c15' | 'fx'
 export type DeviceKind = 'raw' | 'fx'
@@ -67,14 +68,16 @@ export type CheckId =
   | 'rumble' | 'boom' | 'warmth' | 'mud' | 'body' | 'definition' | 'presence' | 'sibilance' | 'air'
   | 'harsh' | 'consistency' | 'tones' | 'bandsnr'
 
+/** One diagnosis line. Text is message keys (`engine.check.*`); numbers travel as params and are formatted by the UI. */
 export interface Check {
   id: CheckId
   status: Status
-  title: string
-  value: string
-  detail: string
-  /** Empty when status is good. */
-  fix: string
+  titleMsg: Msg
+  /** The measured value, e.g. "-27.4 dBFS median". */
+  valueMsg?: Msg
+  detailMsg: Msg
+  /** What to try; absent when status is good. */
+  fixMsg?: Msg
 }
 
 export type MicKind = 'dynamic' | 'condenser' | 'unknown'
@@ -136,25 +139,37 @@ export interface EqBand {
   why: string
 }
 
+/** EqBand as the app holds it: the reason is a message key (exports turn it back into English text). */
+export type SuggestedEqBand = Omit<EqBand, 'why'> & { why: Msg }
+
 export interface Suggestion {
   base: Take
-  gainHint: string
-  /** Non-empty when the room/input noise is too close to the voice for the gate and EQ to help. */
-  noiseHint: string
+  /** Raise/lower the gain first; null when the level is fine. */
+  gainHint: Msg | null
+  /** Sentences shown together (join with a space); empty unless the room/input noise is too close to the voice for the gate and EQ to help. */
+  noiseHint: Msg[]
   dist: string
   lowcut: 80 | 120
   gate: { threshold: number; attack: number; hold: number; release: number; hysteresis: number; wet: number; dry: number }
-  eq: EqBand[]
+  eq: SuggestedEqBand[]
   comp: { threshold: number; ratio: number; attack: number; release: number; knee: number; wet: number; limit: boolean }
   deess: boolean
   /** True when SNR < 25 dB: the chain becomes noise reduction → EQ → compressor → soft gate. */
   noisyRoom: boolean
   /** Noise-reduction plugin to add first in the chain (manual setup: profiles can't be written to Wave Link). Null when the room is quiet. */
-  noiseReduction: NoiseReductionPlan | null
+  noiseReduction: NoiseReductionGuide | null
   /** Ordered chain to set up in Wave Link, e.g. ['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate']. */
   chain: string[]
 }
 
+/** NoiseReductionPlan as the app holds it: steps and alternatives are message keys. */
+export interface NoiseReductionGuide {
+  plugin: 'ReaFIR'
+  steps: Msg[]
+  alternatives: Msg[]
+}
+
+/** Exported (English) form of the noise-reduction plan, as written to the settings JSON and community summaries. */
 export interface NoiseReductionPlan {
   plugin: 'ReaFIR'
   /** Step-by-step instructions (mode Subtract, capture profile while silent, reduction amount, FFT size). */

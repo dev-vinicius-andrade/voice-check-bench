@@ -3,7 +3,7 @@
 import { bestControl, sessionSlots } from '../session/bestControl'
 import { pickSuggestionBase, suggest } from '../settings/suggest'
 import { isAnalysisError, type Suggestion, type Take } from '../types'
-import type { BenchState } from './api'
+import type { BenchState, TakeGroup } from './api'
 
 type S<K extends keyof BenchState> = Pick<BenchState, K>
 
@@ -41,20 +41,19 @@ export const selectSuggestion = (s: S<'takes' | 'session' | 'fxDist' | 'A'>): Su
   return base ? suggest(base, selectFxDist(s)) : null
 }
 
-function sessionLabel(takes: readonly Take[], sid: string): string {
-  if (sid === 'free') return 'Free takes'
+/** When a session started: its first take, else the timestamp in its id ('s' + Date.now()); null for free takes. */
+function sessionCreated(takes: readonly Take[], sid: string): number | null {
+  if (sid === 'free') return null
   const t = takes.find((x) => x.session === sid)
-  const d = new Date(t?.created ?? Number(sid.slice(1)))
-  return `Session · ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  const ms = t ? Date.parse(t.created) : Number(sid.slice(1))
+  return Number.isFinite(ms) ? ms : null
 }
 
-export const selectTakeGroups = (
-  s: S<'takes' | 'session'>,
-): { session: string; label: string; current: boolean; takes: Take[] }[] => {
+export const selectTakeGroups = (s: S<'takes' | 'session'>): TakeGroup[] => {
   const sessions = [...new Set([...s.takes].sort((a, b) => b.id - a.id).map((t) => t.session))]
   return sessions.map((sid) => ({
     session: sid,
-    label: sessionLabel(s.takes, sid),
+    created: sessionCreated(s.takes, sid),
     current: sid === s.session,
     takes: s.takes.filter((t) => t.session === sid).sort((a, b) => a.id - b.id),
   }))

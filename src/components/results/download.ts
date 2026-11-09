@@ -13,10 +13,6 @@ export function downloadFile(name: string, data: BlobPart, type: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-/** Column/heading name: drops "Control · " and shortens "Processed · " to "FX · ". */
-export const shortName = (name: string): string =>
-  name.replace(/^Control · /, '').replace(/^Processed · /, 'FX · ')
-
 /** Save a take as a 16-bit mono WAV. */
 export const downloadTakeWav = (take: Take): void =>
   downloadFile(wavFileName(take.name), encodeWav(take.samples, take.sampleRate), 'audio/wav')

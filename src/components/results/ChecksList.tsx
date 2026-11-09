@@ -8,24 +8,26 @@ import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useTranslation } from 'react-i18next'
 import type { Check, Status } from '../../types'
+import { useMsg } from '../common/MsgText'
 
 const PILL: Record<Status, 'success' | 'warning' | 'error'> = { good: 'success', warn: 'warning', bad: 'error' }
 
 function CheckRow({ c }: { c: Check }) {
   const { t } = useTranslation()
+  const tm = useMsg()
   return (
     <Paper className="grid grid-cols-[58px_minmax(0,1fr)] items-start gap-2.5 px-2.5 py-2">
       <Chip label={t(`results.checks.${c.status}`)} color={PILL[c.status]} size="small" />
       <div className="min-w-0">
         <div>
-          <Typography component="span" sx={{ fontWeight: 700 }}>{c.title}</Typography>
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>{c.value}</Typography>
+          <Typography component="span" sx={{ fontWeight: 700 }}>{tm(c.titleMsg)}</Typography>
+          {c.valueMsg && <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>{tm(c.valueMsg)}</Typography>}
         </div>
-        <Typography variant="body2" color="text.secondary">{c.detail}</Typography>
-        {c.fix && (
+        <Typography variant="body2" color="text.secondary">{tm(c.detailMsg)}</Typography>
+        {c.fixMsg && (
           <Typography variant="body2" sx={{ mt: 0.25 }}>
             <Box component="span" sx={{ color: 'primary.main', fontWeight: 700 }}>{t('results.checks.try')} </Box>
-            {c.fix}
+            {tm(c.fixMsg)}
           </Typography>
         )}
       </div>

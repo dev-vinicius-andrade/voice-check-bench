@@ -1,4 +1,5 @@
 // localStorage JSON helpers. Every access is wrapped; bad or missing data yields defaults.
+import { isMainsSetting, type MainsSetting } from '../audio/mains'
 import { DEFAULT_MIC } from '../mics/catalog'
 import type { ChartView, DeviceChoice, MicProfile, Screen, StepRef } from '../types'
 
@@ -15,6 +16,7 @@ export interface UiPrefs {
 const UI_KEY = 'vcb-ui'
 const DEVS_KEY = 'vcb-devs'
 const MIC_KEY = 'vcb-mic'
+const MAINS_KEY = 'vcb-mains'
 const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'setup', 'step', 'results']
 const VIEWS: readonly ChartView[] = ['a', 'ab', 'diff']
 const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
@@ -80,12 +82,15 @@ export function saveDeviceChoice(c: DeviceChoice): void {
   writePref(DEVS_KEY, c)
 }
 
+/** Model stored by older versions when "Other" was picked; it now means "not listed" (model ''). */
+const LEGACY_OTHER = 'Other'
+
 /** The person's mic profile ('vcb-mic'); unknown values fall back to 'unknown', bad data to DEFAULT_MIC. */
 export function loadMicProfile(): MicProfile {
   const raw = readPref<unknown>(MIC_KEY, null)
   if (!isObject(raw)) return { ...DEFAULT_MIC }
   return {
-    model: typeof raw.model === 'string' ? raw.model : DEFAULT_MIC.model,
+    model: typeof raw.model === 'string' && raw.model !== LEGACY_OTHER ? raw.model : DEFAULT_MIC.model,
     kind: MIC_KINDS.find((k) => k === raw.kind) ?? DEFAULT_MIC.kind,
     pattern: MIC_PATTERNS.find((p) => p === raw.pattern) ?? DEFAULT_MIC.pattern,
     address: MIC_ADDRESSES.find((a) => a === raw.address) ?? DEFAULT_MIC.address,
@@ -94,4 +99,14 @@ export function loadMicProfile(): MicProfile {
 
 export function saveMicProfile(m: MicProfile): void {
   writePref(MIC_KEY, m)
+}
+
+/** Mains frequency setting ('vcb-mains'): 50, 60 or 'auto' (default, also for bad data). */
+export function loadMains(): MainsSetting {
+  const raw = readPref<unknown>(MAINS_KEY, 'auto')
+  return isMainsSetting(raw) ? raw : 'auto'
+}
+
+export function saveMains(m: MainsSetting): void {
+  writePref(MAINS_KEY, m)
 }

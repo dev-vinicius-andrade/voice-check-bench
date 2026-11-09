@@ -82,8 +82,10 @@ describe('selectTakeGroups', () => {
     const takes = [mkTake(1, 's1', 'c2'), mkTake(5, 'free', null), mkTake(3, 's1', 'c8'), mkTake(2, 's0', 'c2')]
     const g = selectTakeGroups(state({ takes }))
     expect(g.map((x) => x.session)).toEqual(['free', 's1', 's0'])
-    expect(g[0].label).toBe('Free takes')
-    expect(g[1].label.startsWith('Session · ')).toBe(true)
+    expect(g[0].created).toBeNull()
+    // a session starts at its first take ('created' of take 1 = 1 ms after the epoch)
+    expect(g[1].created).toBe(1)
+    expect(g[2].created).toBe(2)
     expect(g.map((x) => x.current)).toEqual([false, true, false])
     expect(g[1].takes.map((t) => t.id)).toEqual([1, 3])
   })

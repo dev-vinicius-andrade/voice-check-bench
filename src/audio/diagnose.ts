@@ -1,4 +1,7 @@
 // Checks ported 1:1 from the prototype diagnose() (docs/prototype/voice-check.html). Pure.
+// Text is message keys under `engine.check.<id>.*` (src/i18n/locales/<lang>/engine.json); numbers travel as
+// params and the strings format them (`{{v, number(…)}}`), so the UI shows them in the active locale.
+import type { Msg } from '../plain/types'
 import type { Analysis, Check, CheckId, Status } from '../types'
 import { STRONG_TONE_DB } from './analyze'
 import { deviations } from './reference'
@@ -6,108 +9,88 @@ import { deviations } from './reference'
 /** Signed number with one decimal: "+1.5", "-2.0", "0.0". */
 export const f1 = (v: number): string => (v > 0 ? '+' : '') + v.toFixed(1)
 
+const msg = (key: string, params?: Msg['params']): Msg => (params ? { key, params } : { key })
+
+/** Band checks in BANDS order (index 1..8); rumble (index 0) has its own rule. */
+const BAND_CHECKS: readonly CheckId[] = ['boom', 'warmth', 'mud', 'body', 'definition', 'presence', 'sibilance', 'air']
+
 export function diagnose(a: Analysis): Check[] {
   const C: Check[] = []
   const r = a.rel
-  const add = (id: CheckId, status: Status, title: string, value: string, detail: string, fix: string): void => {
-    C.push({ id, status, title, value, detail, fix })
+  /** `detail`/`fix` are suffixes under engine.check.<id>; fix is dropped when the check is good. */
+  const add = (id: CheckId, status: Status, value: Msg | undefined, detail: string, fix: string, params?: Msg['params']): void => {
+    const k = `engine.check.${id}`
+    const c: Check = { id, status, titleMsg: msg(`${k}.title`), detailMsg: msg(`${k}.${detail}`, params) }
+    if (value) c.valueMsg = value
+    if (status !== 'good' && fix) c.fixMsg = msg(`${k}.${fix}`, params)
+    C.push(c)
   }
 
   // level
   {
     const v = a.speechMed
     const s: Status = v >= -26 && v <= -16 ? 'good' : v >= -32 && v <= -12 ? 'warn' : 'bad'
-    add('level', s, 'Speech level', `${v.toFixed(1)} dBFS median`,
-      s === 'good' ? 'Comfortable level for calls and streams.' : v < -26 ? 'Voice is quiet; listeners will turn you up, raising noise too.' : 'Voice is hot; risk of distortion and listener fatigue.',
-      s === 'good' ? '' : v < -26 ? 'Raise compressor makeup gain (ReaComp wet) 3–6 dB, or Wave XLR gain a few dB.' : 'Lower Wave XLR gain or compressor makeup by 3–6 dB.')
+    const side = s === 'good' ? 'good' : v < -26 ? 'quiet' : 'hot'
+    add('level', s, msg('engine.check.level.value', { v }), side, side === 'quiet' ? 'fixQuiet' : 'fixHot')
   }
   {
     const s: Status = a.clip > 0 ? 'bad' : a.peak > -1 ? 'warn' : 'good'
-    add('peaks', s, 'Peaks / clipping', `peak ${a.peak.toFixed(1)} dBFS · ${a.clip} clipped samples`,
-      s === 'good' ? 'Headroom is fine.' : 'Peaks hit the ceiling and will crackle.',
-      s === 'good' ? '' : "Lower gain 2–3 dB; keep ReaComp 'Limit output' on.")
+    add('peaks', s, msg('engine.check.peaks.value', { peak: a.peak, clip: a.clip }), s === 'good' ? 'good' : 'bad', 'fix')
   }
   {
     const n = a.noise
     const s: Status = n < -70 ? 'good' : n < -58 ? 'warn' : 'bad'
-    add('noise', s, 'Background noise', `${n.toFixed(1)} dBFS in silence · SNR ${a.snr.toFixed(0)} dB`,
-      (a.noiseFromQuiet ? '' : 'No clean 3 s silence found; estimate is rough. ') + (s === 'good' ? 'Pauses are clean.' : 'Hiss, fans or room noise are audible in pauses.'),
-      s === 'good' ? '' : 'Move away from PC fans, lower gain and speak closer, or tighten ReaGate threshold.')
+    const detail = a.noiseFromQuiet ? (s === 'good' ? 'good' : 'bad') : s === 'good' ? 'roughGood' : 'roughBad'
+    add('noise', s, msg('engine.check.noise.value', { noise: n, snr: a.snr }), detail, 'fix')
   }
   if (a.quietBroken) {
-    add('silence', 'warn', 'Silence window', 'sound in first 3 s',
-      'Something loud happened during the 3 s silence, so the noise reading may be off.',
-      "Re-record and stay fully silent until the status says 'Read now'.")
+    add('silence', 'warn', msg('engine.check.silence.value'), 'detail', 'fix')
   }
   if (a.hum.length) {
+    // strongest peak; on a tie the first one wins (analyze lists the local mains family first)
     const w = a.hum.reduce((m, h) => (h.db > m.db ? h : m))
     let s: Status = w.db < 6 ? 'good' : w.db < 12 ? 'warn' : 'bad'
     const gated = a.noise < -75
     if (gated && s === 'bad') s = 'warn'
-    add('hum', s, 'Mains hum', `strongest ${w.hz} Hz, +${w.db.toFixed(1)} dB over neighbours`,
-      s === 'good' ? 'No tonal hum in pauses.' : gated ? 'Pauses are silent, but the hum is still there under your voice while you talk (the gate only hides it in pauses).' : 'A steady buzz sits under your voice.',
-      s === 'good' ? '' : 'Ground loop: try another USB port (rear, on the motherboard), unplug chargers on the same strip, keep XLR cable away from power bricks. ReaGate hides it in pauses only.')
+    add('hum', s, msg('engine.check.hum.value', { hz: w.hz, db: w.db }), s === 'good' ? 'good' : gated ? 'gated' : 'bad', 'fix', { hz: w.hz })
   }
   // noisy-room checks: need a usable silence window (noiseBands are NaN without one)
   if (a.noiseBands.length > 0 && a.noiseBands.every(Number.isFinite)) {
     const strong = a.tones.some((t) => t.db >= STRONG_TONE_DB)
     const s: Status = strong ? 'warn' : 'good'
-    add('tones', s, 'Fan / machine tones',
-      a.tones.length ? a.tones.slice(0, 3).map((t) => `${t.hz} Hz +${t.db.toFixed(0)} dB`).join(', ') : 'no steady tones',
-      strong ? 'Steady tones from fans, servers or other machines sit under your voice.' : 'No strong steady tones in pauses.',
-      strong ? 'Turn the mic so its least sensitive side faces the machine; the suggested settings add narrow EQ notches at these tones.' : '')
+    const top = a.tones.slice(0, 3)
+    const value = top.length
+      ? msg(`engine.check.tones.value${top.length}`, Object.fromEntries(top.flatMap((t, i) => [[`hz${i + 1}`, t.hz], [`db${i + 1}`, t.db]])))
+      : msg('engine.check.tones.none')
+    add('tones', s, value, strong ? 'bad' : 'good', 'fix')
     const v = (a.bandSnr[4] + a.bandSnr[5] + a.bandSnr[6]) / 3
     if (Number.isFinite(v)) {
       const sb: Status = v < 15 ? 'bad' : v < 25 ? 'warn' : 'good'
-      add('bandsnr', sb, 'Voice vs room (per band)', `voice bands ${v.toFixed(0)} dB over the room`,
-        sb === 'good' ? 'Your voice is well above the room noise where clarity lives (640 Hz–5 kHz).'
-          : sb === 'warn' ? 'The room noise is close to your voice where clarity lives (640 Hz–5 kHz).'
-          : 'The room noise competes with your voice where clarity lives (640 Hz–5 kHz).',
-        sb === 'good' ? '' : 'Speak closer and keep the noise off-axis, then use the noise-reduction step in the suggested settings.')
+      add('bandsnr', sb, msg('engine.check.bandsnr.value', { v }), sb, 'fix')
     }
   }
 
   const dv = deviations(r)
+  const vsRef = (v: number): Msg => msg('engine.check.vsReference', { dev: v })
   const grade = (v: number): Status => (Math.abs(v) <= 3 ? 'good' : Math.abs(v) <= 6 ? 'warn' : 'bad')
-  const band = (id: CheckId, i: number, title: string, okTxt: string, hiTxt: string, loTxt: string, hiFix: string, loFix: string): void => {
-    const v = dv[i]
-    const s = grade(v)
-    const hi = v > 0
-    add(id, s, title, `${f1(v)} dB vs reference`, s === 'good' ? okTxt : hi ? hiTxt : loTxt, s === 'good' ? '' : hi ? hiFix : loFix)
-  }
   {
     const v = dv[0]
     const s: Status = v <= 3 ? 'good' : v <= 8 ? 'warn' : 'bad'
-    add('rumble', s, 'Rumble (40–80 Hz)', `${f1(v)} dB vs reference`,
-      s === 'good' ? 'Low-end rumble is controlled.' : 'Desk thumps, footsteps and AC rumble muddy the signal.',
-      s === 'good' ? '' : "Keep Wave XLR Lowcut on (try 120 Hz); use a boom arm or shock mount so desk bumps don't reach the mic.")
+    add('rumble', s, vsRef(v), s === 'good' ? 'good' : 'bad', 'fix')
   }
-  band('boom', 1, 'Boom (80–160 Hz)', 'Bass is in a healthy range.', 'Too much bass, usually proximity effect from being very close to a dynamic mic.', 'Voice is thin in the bass.',
-    'Back off 2–3 cm from the mic, or set ReaEQ low shelf at 150 Hz to -4/-5 dB.', 'Move 2 cm closer, or reduce the 150 Hz low shelf cut.')
-  band('warmth', 2, 'Warmth (160–320 Hz)', 'Warmth is balanced.', 'Low-mid buildup makes the voice thick and muffled.', 'Voice lacks warmth and may sound thin.',
-    'ReaEQ: cut around 250 Hz by 3–4 dB, bandwidth ~1.5.', 'Reduce the 300 Hz cut to -2 dB.')
-  band('mud', 3, 'Mud / boxiness (320–640 Hz)', 'Low-mids are not masking your consonants.', "Boxy, cardboard sound that hides consonants; a top cause of 'not clear'.", 'Low-mids are scooped; voice can sound hollow.',
-    'ReaEQ: cut 400–500 Hz by 3–4 dB, bandwidth ~1.2.', 'Reduce the 300 Hz cut, or move it lower (200 Hz).')
-  band('body', 4, 'Body (640 Hz–1.25 kHz)', 'Core of the voice is solid.', 'Honky, nasal midrange.', 'The core of the voice is scooped out; lows and highs dominate, so it sounds hollow and distant.',
-    'ReaEQ: cut ~900 Hz by 2–3 dB, bandwidth ~1.', 'ReaEQ: add +2/+3 dB at ~1 kHz, bandwidth ~1.5, and ease back the low shelf and highs.')
-  band('definition', 5, 'Definition (1.25–2.5 kHz)', 'Vowel and consonant definition is fine.', "Forward, slightly nasal or 'telephone' tone.", 'Words lack definition.',
-    'ReaEQ: cut ~1.8 kHz by 2 dB.', 'ReaEQ: +2 dB around 2 kHz, bandwidth ~1.5.')
-  band('presence', 6, 'Presence (2.5–5 kHz)', 'Voice cuts through clearly.', 'Upper mids are pushed; can sound harsh or tiring.', 'Voice sounds dull and distant; this band carries clarity.',
-    'Lower the 4 kHz boost by 2–3 dB.', 'Raise the 4 kHz band to +4/+5 dB, and speak on-axis, straight into the capsule.')
-  band('sibilance', 7, 'Sibilance (5–10 kHz)', 'S and T sounds are balanced.', 'S sounds are sharp and can hiss.', 'Consonants are dull.',
-    'Turn on Elgato De-Esser, or lower the 10 kHz high shelf 2 dB; angle the mic slightly off your mouth.', 'Raise the 10 kHz high shelf to +4 dB.')
-  band('air', 8, 'Air (10–16 kHz)', 'Some sparkle on top.', 'Lots of top end; can sound brittle or hissy.', 'Very little top end. Common for budget dynamic mics.',
-    'Lower the 10 kHz high shelf 2 dB.', 'ReaEQ high shelf at 10 kHz +3 to +5 dB (watch sibilance).')
+  BAND_CHECKS.forEach((id, k) => {
+    const v = dv[k + 1]
+    const s = grade(v)
+    const hi = v > 0
+    add(id, s, vsRef(v), s === 'good' ? 'good' : hi ? 'high' : 'low', hi ? 'fixHigh' : 'fixLow')
+  })
   if (a.sibP95 > -6) {
-    add('harsh', 'warn', 'Harsh S peaks', `S-frames p95 ${a.sibP95.toFixed(1)} dB`,
-      'Individual S sounds spike hard even if the average is fine.', 'Turn on Elgato De-Esser (light setting) after the EQ.')
+    add('harsh', 'warn', msg('engine.check.harsh.value', { v: a.sibP95 }), 'detail', 'fix')
   }
   {
     const v = a.spread
     const s: Status = v <= 8 ? 'good' : v <= 12 ? 'warn' : 'bad'
-    add('consistency', s, 'Consistency', `${v.toFixed(1)} dB spread between seconds`,
-      s === 'good' ? 'Loudness is steady.' : 'Level jumps between phrases; listeners will ride the volume.',
-      s === 'good' ? '' : 'Keep the same distance (a fist away) and lower ReaComp threshold 3 dB.')
+    add('consistency', s, msg('engine.check.consistency.value', { v }), s === 'good' ? 'good' : 'bad', 'fix')
   }
   return C
 }

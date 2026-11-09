@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   loadDeviceChoice,
+  loadMains,
   loadMicProfile,
   loadUiPrefs,
   readPref,
   saveDeviceChoice,
+  saveMains,
   saveMicProfile,
   saveUiPrefs,
   writePref,
@@ -74,5 +76,20 @@ describe('prefs', () => {
     expect(loadMicProfile()).toEqual(DEFAULT_MIC)
     localStorage.setItem('vcb-mic', '{bad')
     expect(loadMicProfile()).toEqual(DEFAULT_MIC)
+  })
+
+  it('reads the legacy "Other" model as not listed', () => {
+    localStorage.setItem('vcb-mic', JSON.stringify({ model: 'Other', kind: 'dynamic', pattern: 'cardioid', address: 'end' }))
+    expect(loadMicProfile().model).toBe('')
+  })
+
+  it('round-trips the mains setting, auto by default and for bad data', () => {
+    expect(loadMains()).toBe('auto')
+    saveMains(60)
+    expect(loadMains()).toBe(60)
+    saveMains('auto')
+    expect(loadMains()).toBe('auto')
+    localStorage.setItem('vcb-mains', '"55"')
+    expect(loadMains()).toBe('auto')
   })
 })

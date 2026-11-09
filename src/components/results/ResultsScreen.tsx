@@ -10,7 +10,7 @@ import { AnalysisPanel } from './AnalysisPanel'
 import { DemoBanner } from './DemoBanner'
 import { PlainResults } from './PlainResults'
 import { TakesPanel } from './TakesPanel'
-import { shortName } from './download'
+import { useTakeName } from './useTakeName'
 
 function NoResults() {
   const { t } = useTranslation()
@@ -26,6 +26,7 @@ function NoResults() {
 
 export function ResultsScreen() {
   const { t } = useTranslation()
+  const tn = useTakeName()
   const A = useTakeA()
   let main = <NoResults />
   if (A && isAnalysisError(A.analysis)) {
@@ -40,7 +41,7 @@ export function ResultsScreen() {
   return (
     <div className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 py-6">
       <DemoBanner />
-      {A && <TwoToneHeading first={t('results.heading')} second={shortName(A.name)} variant="h4" align="left" />}
+      {A && <TwoToneHeading first={t('results.heading')} second={tn(A)} variant="h4" align="left" />}
       <div className="grid items-start gap-4 min-[980px]:grid-cols-[1fr_340px]">
         <div className="min-w-0">{main}</div>
         <TakesPanel />

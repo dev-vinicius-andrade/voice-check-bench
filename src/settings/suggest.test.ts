@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { analyze } from '../audio/analyze'
 import { fakeAnalysis, prng, syntheticTake } from '../audio/testSignals'
 import type { Analysis, AnalysisResult, MicProfile, StepKey, Take } from '../types'
-import { isNotch, pickSuggestionBase, suggest, suggestionToJson, suggestionToText } from './suggest'
+import type { Msg } from '../plain/types'
+import { englishText } from './english'
+import { isNotch, joinMsgs, pickSuggestionBase, suggest, suggestionToJson, suggestionToText } from './suggest'
+
+/** English text of a hint (one message, or sentences joined); '' when absent. */
+const en = (m: Msg | readonly Msg[] | null | undefined): string =>
+  !m ? '' : Array.isArray(m) ? joinMsgs(m, englishText) : englishText(m as Msg)
 
 /** fakeAnalysis with the noisy-room fields set explicitly (empty = no silence window), overridable. */
 const an = (over: Partial<Analysis> = {}): Analysis => ({
@@ -65,7 +71,7 @@ describe('suggest', () => {
     // gate: min(noise+12, speech-25) = -58 ; comp: speech-6 = -30, out = -30 + 6/3 = -28, makeup = 8
     expect(s?.gate).toEqual({ threshold: -58, attack: 1, hold: 150, release: 200, hysteresis: -6, wet: 0, dry: -20 })
     expect(s?.comp).toEqual({ threshold: -30, ratio: 3, attack: 5, release: 100, knee: 6, wet: 8, limit: true })
-    expect(s?.gainHint).toBe('')
+    expect(s?.gainHint).toBeNull()
     expect(s?.eq).toEqual([])
     expect(s?.lowcut).toBe(80)
     expect(s?.deess).toBe(false)
@@ -93,17 +99,17 @@ describe('suggest', () => {
     const off = 10 / 7
     const shelf = s?.eq.find((e) => e.type === 'Low Shelf')
     expect(shelf?.gain).toBe(Math.round(-(10 - off) * 0.7 * 2) / 2)
-    expect(shelf?.why).toBe(`Boom +${(10 - off).toFixed(1)} dB on the raw mic`)
+    expect(en(shelf?.why)).toBe(`Boom +${(10 - off).toFixed(1)} dB on the raw mic`)
     expect(s?.lowcut).toBe(120)
-    expect(s?.gainHint).toBe('The raw take is quiet (-40 dBFS). Raise the Wave XLR gain about 10 dB first, then record the control takes again. The gate and compressor values depend on it.')
+    expect(en(s?.gainHint)).toBe('The raw take is quiet (-40 dBFS). Raise the Wave XLR gain about 10 dB first, then record the control takes again. The gate and compressor values depend on it.')
     const hot = suggest(mkTake(an({ speechMed: -10 })), '8 cm')
-    expect(hot?.gainHint).toBe('The raw take is hot (-10 dBFS). Lower the Wave XLR gain about 10 dB and record the control takes again.')
+    expect(en(hot?.gainHint)).toBe('The raw take is hot (-10 dBFS). Lower the Wave XLR gain about 10 dB and record the control takes again.')
   })
   it('on a noisy input keeps the gate above the reduced noise, caps the high shelf and explains why', () => {
     const s = suggest(mkTake(an({ noise: -37, speechMed: -25, snr: 12 })), '8 cm')
     // the gate runs after ReaFIR: it opens above the estimated noise after reduction (noise - 10)
     expect(s?.gate.threshold).toBeGreaterThan(-37 - 10)
-    expect(s?.noiseHint).toMatch(/only 12 dB under your voice/)
+    expect(en(s?.noiseHint)).toMatch(/only 12 dB under your voice/)
     const hs = s?.eq.find((e) => e.type === 'High Shelf')
     if (hs) expect(hs.gain).toBeLessThanOrEqual(2)
     expect(suggestionToText(s!)).toMatch(/FIRST: The input is noisy/)
@@ -184,7 +190,7 @@ describe('suggest in a noisy room (SNR < 25)', () => {
     expect(withRoom?.eq).toEqual(plain?.eq)
     expect(withRoom?.gate).toEqual(plain?.gate)
     expect(withRoom?.comp).toEqual(plain?.comp)
-    expect(withRoom?.noiseHint).toBe('')
+    expect(withRoom?.noiseHint).toEqual([])
     expect(withRoom?.chain).toEqual(['ReaGate', 'ReaEQ', 'ReaComp'])
   })
 
@@ -195,13 +201,13 @@ describe('suggest in a noisy room (SNR < 25)', () => {
     const nr = s?.noiseReduction
     expect(nr?.plugin).toBe('ReaFIR')
     expect(nr?.steps).toHaveLength(5)
-    expect(nr?.steps[0]).toBe('In Wave Link → your mic → Effects, add "ReaFIR (ReaPlugs Edition)" and drag it to the top.')
-    expect(nr?.steps[1]).toBe('Mode: Subtract. FFT size: 4096.')
-    expect(nr?.steps[2]).toMatch(/Automatically build noise profile/)
-    expect(nr?.steps[3]).toMatch(/about 10–12 dB/)
-    expect(nr?.alternatives).toEqual(['Elgato Noise Removal (in Wave Link)', 'Voice Focus by ai-coustics (in Wave Link)', 'NVIDIA Broadcast — Noise Removal (RTX GPUs)'])
+    expect(en(nr?.steps[0])).toBe('In Wave Link → your mic → Effects, add "ReaFIR (ReaPlugs Edition)" and drag it to the top.')
+    expect(en(nr?.steps[1])).toBe('Mode: Subtract. FFT size: 4096.')
+    expect(en(nr?.steps[2])).toMatch(/Automatically build noise profile/)
+    expect(en(nr?.steps[3])).toMatch(/about 10–12 dB/)
+    expect(nr?.alternatives.map(englishText)).toEqual(['Elgato Noise Removal (in Wave Link)', 'Voice Focus by ai-coustics (in Wave Link)', 'NVIDIA Broadcast — Noise Removal (RTX GPUs)'])
     // voice less than 15 dB over the room: stronger reduction
-    expect(suggest(mkTake(noisyRoom({ snr: 12 })), '8 cm')?.noiseReduction?.steps[3]).toMatch(/about 15 dB\./)
+    expect(en(suggest(mkTake(noisyRoom({ snr: 12 })), '8 cm')?.noiseReduction?.steps[3])).toMatch(/about 15 dB\./)
     expect(suggest(mkTake(noisyRoom({ snr: 24.9 })), '8 cm')?.noisyRoom).toBe(true)
     expect(suggest(mkTake(noisyRoom({ snr: 25 })), '8 cm')?.noisyRoom).toBe(false)
   })
@@ -216,7 +222,7 @@ describe('suggest in a noisy room (SNR < 25)', () => {
       expect(e.gain).toBeGreaterThanOrEqual(-12)
       expect(e.gain).toBeLessThanOrEqual(-6)
     }
-    expect(n[0].why).toBe('Fan/machine tone +30.0 dB')
+    expect(en(n[0].why)).toBe('Fan/machine tone +30.0 dB')
     expect(s?.eq.slice(-n.length)).toEqual(n)
     expect(suggest(mkTake(noisyRoom({ tones: [{ hz: 500, db: 11.9 }] })), '8 cm')?.eq.filter(isNotch)).toEqual([])
     // quiet room: tones never become notches
@@ -245,9 +251,9 @@ describe('suggest in a noisy room (SNR < 25)', () => {
 
   it('turns the high shelf into a cut when the room dominates above 5 kHz', () => {
     const hs = (bandSnr: number[]) => suggest(mkTake(noisyRoom({ bandSnr })), '8 cm')?.eq.find((e) => e.type === 'High Shelf')
-    expect(hs([5, 8, 14, 10, 20, 22, 18, 8, 6])).toMatchObject({ freq: 10000, gain: -2, why: 'Room noise dominates above 5 kHz' })
-    expect(hs([5, 8, 14, 10, 20, 22, 18, 4, 3])).toMatchObject({ gain: -4, why: 'Room noise dominates above 5 kHz' })
-    expect(hs([5, 8, 14, 10, 20, 22, 18, 12, 6])?.why ?? 'Sibilance').toMatch(/^Sibilance/)
+    expect(hs([5, 8, 14, 10, 20, 22, 18, 8, 6])).toMatchObject({ freq: 10000, gain: -2, why: { key: 'engine.suggest.why.roomAbove5k' } })
+    expect(hs([5, 8, 14, 10, 20, 22, 18, 4, 3])).toMatchObject({ gain: -4, why: { key: 'engine.suggest.why.roomAbove5k' } })
+    expect(en(hs([5, 8, 14, 10, 20, 22, 18, 12, 6])?.why) || 'Sibilance').toMatch(/^Sibilance/)
   })
 
   it('soft-expander gate and gentler compressor that does not pump the room up', () => {
@@ -275,14 +281,14 @@ describe('suggest in a noisy room (SNR < 25)', () => {
   it('adds the condenser hint from the mic profile, with no model names', () => {
     const hint = ' Condenser mics pick up more of the room: stay closer and lower the gain.'
     const cond = suggest(mkTake(noisyRoom()), '8 cm', mic('condenser'))
-    expect(cond?.noiseHint.endsWith('the closer to 30 dB, the cleaner.' + hint)).toBe(true)
-    expect(cond?.noiseHint).not.toContain('Any Mic 1')
-    expect(suggest(mkTake(noisyRoom()), '8 cm', mic('dynamic'))?.noiseHint.endsWith('the closer to 30 dB, the cleaner.')).toBe(true)
-    expect(suggest(mkTake(noisyRoom()), '8 cm')?.noiseHint.endsWith('the closer to 30 dB, the cleaner.')).toBe(true)
+    expect(en(cond?.noiseHint).endsWith('the closer to 30 dB, the cleaner.' + hint)).toBe(true)
+    expect(en(cond?.noiseHint)).not.toContain('Any Mic 1')
+    expect(en(suggest(mkTake(noisyRoom()), '8 cm', mic('dynamic'))?.noiseHint).endsWith('the closer to 30 dB, the cleaner.')).toBe(true)
+    expect(en(suggest(mkTake(noisyRoom()), '8 cm')?.noiseHint).endsWith('the closer to 30 dB, the cleaner.')).toBe(true)
     // default: the mic stored on the take; an explicit mic wins
     const onTake: Take = { ...mkTake(noisyRoom()), mic: mic('condenser') }
-    expect(suggest(onTake, '8 cm')?.noiseHint.endsWith(hint)).toBe(true)
-    expect(suggest(onTake, '8 cm', mic('dynamic'))?.noiseHint.endsWith(hint)).toBe(false)
+    expect(en(suggest(onTake, '8 cm')?.noiseHint).endsWith(hint)).toBe(true)
+    expect(en(suggest(onTake, '8 cm', mic('dynamic'))?.noiseHint).endsWith(hint)).toBe(false)
   })
 
   it('text sheet: chain order, ReaFIR steps, alternatives and notches', () => {

@@ -119,7 +119,7 @@
       },
       "fx": {
         "kind": "With your effects",
-        "title": "Your best distance · {{dist}}",
+        "title": "With your effects · {{dist}}",
         "head1": "One more time,",
         "head2": "with your effects on",
         "lead": "Read the same text at your best distance: {{dist}}. This time your voice goes through your effects, so you can hear what they change."
@@ -160,6 +160,10 @@
       "silence": "Stay quiet — we're listening to the room",
       "reading": "Now read the text out loud",
       "analyzing": "Checking your take…"
+    },
+    "reading": {
+      "note": "Read it naturally, at your usual voice and pace.",
+      "passage": "Last Tuesday, Kate packed a big bag of fresh bread, soft cheese and grapes. She took the bus past the old theater, then walked down to the shore. Seven gulls dove into the waves, and a friendly dog chased them, barking with joy."
     },
     "nav": {
       "next": "Next: {{dist}} →",

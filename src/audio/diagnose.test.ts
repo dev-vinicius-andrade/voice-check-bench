@@ -2,8 +2,21 @@
 import { describe, expect, it } from 'vitest'
 import type { Analysis, CheckId } from '../types'
 import { analyze } from './analyze'
+import { englishText } from '../settings/english'
+import type { Check } from '../types'
 import { countByStatus, diagnose, f1, topIssues } from './diagnose'
 import { fakeAnalysis, syntheticTake } from './testSignals'
+
+/** A check with its messages rendered in English (as the en locale shows them). */
+const toEn = (c: Check) => ({
+  id: c.id,
+  status: c.status,
+  title: englishText(c.titleMsg),
+  value: c.valueMsg ? englishText(c.valueMsg) : '',
+  detail: englishText(c.detailMsg),
+  fix: c.fixMsg ? englishText(c.fixMsg) : '',
+})
+const diagEn = (a: Analysis) => diagnose(a).map(toEn)
 
 const ALL_IDS: CheckId[] = [
   'level', 'peaks', 'noise', 'silence', 'hum', 'tones', 'bandsnr',
@@ -13,7 +26,7 @@ const ALL_IDS: CheckId[] = [
 
 describe('diagnose', () => {
   it('gives unique ids and valid statuses on a synthetic take, in the prototype order', () => {
-    const checks = diagnose(analyze(syntheticTake(), 48000) as Analysis)
+    const checks = diagEn(analyze(syntheticTake(), 48000) as Analysis)
     const ids = checks.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids).toEqual(ALL_IDS.filter((id) => ids.includes(id)))
@@ -28,12 +41,12 @@ describe('diagnose', () => {
 
   it('emits all 18 checks in order when every optional check applies', () => {
     const a = fakeAnalysis({ quietBroken: true, hum: [{ hz: 50, db: 3 }, { hz: 60, db: 8 }], sibP95: -4 })
-    const checks = diagnose(a)
+    const checks = diagEn(a)
     expect(checks.map((c) => c.id)).toEqual(ALL_IDS)
   })
 
   it('a reference-shaped take passes the tone checks', () => {
-    const checks = diagnose(fakeAnalysis())
+    const checks = diagEn(fakeAnalysis())
     expect(checks.map((c) => c.id)).not.toContain('silence')
     expect(checks.map((c) => c.id)).not.toContain('hum')
     expect(checks.map((c) => c.id)).not.toContain('harsh')
@@ -45,30 +58,30 @@ describe('diagnose', () => {
 
   it('ports thresholds and texts from the prototype', () => {
     const a = fakeAnalysis({ speechMed: -30, clip: 3, peak: 0, noise: -60, snr: 30, noiseFromQuiet: false, hum: [{ hz: 60, db: 14 }], spread: 13 })
-    const by = Object.fromEntries(diagnose(a).map((c) => [c.id, c]))
+    const by = Object.fromEntries(diagEn(a).map((c) => [c.id, c]))
     expect(by.level).toMatchObject({ status: 'warn', value: '-30.0 dBFS median', detail: 'Voice is quiet; listeners will turn you up, raising noise too.' })
     expect(by.peaks).toMatchObject({ status: 'bad', value: 'peak 0.0 dBFS · 3 clipped samples' })
     expect(by.noise).toMatchObject({ status: 'warn', value: '-60.0 dBFS in silence · SNR 30 dB', detail: 'No clean 3 s silence found; estimate is rough. Hiss, fans or room noise are audible in pauses.' })
-    expect(by.hum).toMatchObject({ status: 'bad', value: 'strongest 60 Hz, +14.0 dB over neighbours', detail: 'A steady buzz sits under your voice.' })
+    expect(by.hum).toMatchObject({ status: 'bad', value: 'strongest 60 Hz, +14.0 dB over neighbours', detail: 'A steady 60 Hz buzz from the power line sits under your voice.' })
     expect(by.consistency).toMatchObject({ status: 'bad', value: '13.0 dB spread between seconds' })
     // gated noise floor downgrades bad hum to warn
-    const gated = diagnose(fakeAnalysis({ noise: -80, hum: [{ hz: 50, db: 20 }] })).find((c) => c.id === 'hum')
+    const gated = diagEn(fakeAnalysis({ noise: -80, hum: [{ hz: 50, db: 20 }] })).find((c) => c.id === 'hum')
     expect(gated?.status).toBe('warn')
   })
 
   it('grades band deviations: |v| <= 3 good, <= 6 warn, else bad; rumble one-sided', () => {
     // level-matching offset is the mean over bands 1..7, so shift only band 8 (air) and band 0 (rumble)
     const rel = [-18 + 9, -4, -1, 2, 0, -6, -7, -11, -17 - 5]
-    const by = Object.fromEntries(diagnose(fakeAnalysis({ rel })).map((c) => [c.id, c]))
+    const by = Object.fromEntries(diagEn(fakeAnalysis({ rel })).map((c) => [c.id, c]))
     expect(by.air).toMatchObject({ status: 'warn', value: '-5.0 dB vs reference', detail: 'Very little top end. Common for budget dynamic mics.' })
     expect(by.rumble).toMatchObject({ status: 'bad', value: '+9.0 dB vs reference' })
-    const low = Object.fromEntries(diagnose(fakeAnalysis({ rel: [-40, -4, -1, 2, 0, -6, -7, -11, -17] })).map((c) => [c.id, c]))
+    const low = Object.fromEntries(diagEn(fakeAnalysis({ rel: [-40, -4, -1, 2, 0, -6, -7, -11, -17] })).map((c) => [c.id, c]))
     expect(low.rumble.status).toBe('good')
   })
 })
 
 describe('noisy-room checks', () => {
-  const by = (a: Analysis) => Object.fromEntries(diagnose(a).map((c) => [c.id, c]))
+  const by = (a: Analysis) => Object.fromEntries(diagEn(a).map((c) => [c.id, c]))
   // bandSnr 4..6 average = target
   const withVoiceSnr = (target: number) => {
     const speechBands = [-40, -40, -40, -40, -40, -40, -40, -40, -40]
@@ -107,7 +120,7 @@ describe('noisy-room checks', () => {
   })
 
   it('skips both without a silence window (NaN noise bands)', () => {
-    const ids = diagnose(fakeAnalysis({ noiseBands: Array(9).fill(NaN), tones: [] })).map((c) => c.id)
+    const ids = diagEn(fakeAnalysis({ noiseBands: Array(9).fill(NaN), tones: [] })).map((c) => c.id)
     expect(ids).not.toContain('tones')
     expect(ids).not.toContain('bandsnr')
   })
@@ -119,7 +132,7 @@ describe('generic copy', () => {
       speechMed: -40, clip: 5, noise: -40, snr: 10, quietBroken: true, hum: [{ hz: 60, db: 20 }], sibP95: -2, spread: 20,
       tones: [{ hz: 780, db: 20 }], bandSnr: Array(9).fill(5),
     })
-    const texts = [-12, 12].flatMap((d) => diagnose({ ...worst, rel: worst.rel.map((v, i) => (i % 2 ? v + d : v - d)) }))
+    const texts = [-12, 12].flatMap((d) => diagEn({ ...worst, rel: worst.rel.map((v, i) => (i % 2 ? v + d : v - d)) }))
       .flatMap((c) => [c.title, c.value, c.detail, c.fix])
     expect(texts.join(' ')).not.toMatch(/K688|K669|SM7B|SM58|Fifine|Shure|Rode|Yeti/)
   })

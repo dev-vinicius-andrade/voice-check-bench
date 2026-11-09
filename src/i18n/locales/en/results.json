@@ -16,7 +16,8 @@
     "score": {
       "overline": "Your voice today",
       "aria": "Clarity score: {{score}} out of 100",
-      "outOf": "out of 100"
+      "outOf": "out of 100",
+      "beforeAfter": "Without your effects: {{before}} → with them: {{after}}"
     },
     "ratings": {
       "aria": "How you sound"

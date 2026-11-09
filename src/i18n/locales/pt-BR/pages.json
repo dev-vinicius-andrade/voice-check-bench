@@ -1,1 +1,140 @@
-{}
+{
+  "pages": {
+    "home": {
+      "overline": "Grátis · no seu navegador · nada é enviado",
+      "headFirst": "Soe mais claro",
+      "headSecond": "no ambiente que você tem",
+      "lead": "Leia um texto curto em voz alta quatro vezes. Você vai ver o que deixa sua voz difícil de ouvir e receber configurações feitas para seu microfone e seu ambiente.",
+      "demo": "Ver um resultado de exemplo",
+      "compat": "Funciona melhor no Chrome ou no Edge · Configurações prontas para Wave Link + ReaPlugs · Código aberto no GitHub",
+      "stepsLabel": "Como o teste funciona",
+      "steps": {
+        "mic": { "title": "Conte qual é seu microfone", "sub": "Não sabe qual é? Tudo bem." },
+        "raw": { "title": "Três gravações curtas", "sub": "Só o microfone, em três distâncias" },
+        "fx": { "title": "Uma gravação com seus efeitos", "sub": "Ouça o antes e o depois" },
+        "settings": { "title": "Suas configurações", "sub": "Copie ou aplique" }
+      },
+      "featuresLabel": "Recursos",
+      "features": {
+        "rooms": {
+          "title": "Feito para ambientes de verdade",
+          "text": "Ventilador, trânsito, computador zumbindo? Ele descobre o que atrapalha sua voz e mostra como diminuir isso."
+        },
+        "owners": {
+          "title": "Aprenda com quem tem seu microfone",
+          "text": "Veja o que funcionou para outras pessoas que têm o mesmo microfone."
+        },
+        "private": {
+          "title": "Privado por padrão",
+          "text": "Suas gravações nunca saem do seu navegador. Compartilhar é sempre uma escolha sua."
+        }
+      }
+    },
+    "how": {
+      "headFirst": "Como",
+      "headSecond": "funciona",
+      "lead": "Você lê o mesmo texto curto quatro vezes, e o navegador compara as gravações. É como provar a mesma camisa sob luzes diferentes: a camisa é a mesma, então toda diferença vem da luz. Aqui, a diferença vem da sua distância, do seu ambiente e dos seus efeitos.",
+      "takes": {
+        "title": "As quatro gravações",
+        "intro": "Você lê o mesmo texto curto quatro vezes. Cada gravação começa com 3 segundos de silêncio.",
+        "raw": "<b>Três gravações só com o microfone, a 2, 8 e 15 cm</b> (mais ou menos um dedo, um punho e uma mão aberta de distância). Bem perto, o microfone aumenta o grave, como um locutor de rádio chegando perto. Mais longe, ele ouve mais o ambiente. Comparar as gravações mostra qual distância soa mais clara para você.",
+        "silence": "<b>Primeiro, 3 segundos de silêncio.</b> Enquanto você fica quieto, a página ouve só o ambiente: o quanto ele é barulhento e se tem um ventilador, uma geladeira ou trânsito zumbindo junto.",
+        "fx": "<b>Uma gravação pelos seus efeitos.</b> Você grava na sua melhor distância e ela é comparada com a gravação só do microfone, para você ouvir o que seus efeitos mudam: um antes e depois."
+      },
+      "measures": {
+        "title": "O que a gente ouve",
+        "speech": { "term": "O quanto você está alto", "def": "O volume da sua voz enquanto você lê. Baixo demais, as pessoas aumentam seu volume, com ruído e tudo. Alto demais, estala." },
+        "noise": { "term": "O quanto o ambiente está alto", "def": "Medido nos 3 segundos de silêncio: o chiado, o zumbido e o som de fundo quando ninguém está falando." },
+        "snr": { "term": "Voz acima do ambiente", "def": "O quanto sua voz é mais alta que o ambiente. Pense em falar numa biblioteca ou numa estação de trem. Uma diferença de 30 dB ou mais soa limpa." },
+        "tone": { "term": "Som da sua voz", "def": "Sua voz, do grave ao agudo, comparada com uma voz típica, como conferir o grave e o agudo de um aparelho de som. Mostra o que está forte ou fraco demais." },
+        "tones": { "term": "Ventiladores e máquinas", "def": "Apitos ou zumbidos constantes na parte silenciosa, como um ventilador, um ar-condicionado ou um computador." },
+        "bandSnr": { "term": "Onde o ambiente cobre você", "def": "Voz acima do ambiente em cada parte da sua voz, do grave ao agudo. Aumentar uma parte em que o ambiente está mais alto que você só aumenta o ruído." },
+        "sibilance": { "term": "S chiado", "def": "O quanto seus sons de S e X chiam em comparação com o resto da sua voz." },
+        "consistency": { "term": "Constância", "def": "O quanto seu volume sobe e desce enquanto você lê." }
+      },
+      "chain": {
+        "title": "As configurações sugeridas",
+        "intro": "As configurações são para os efeitos gratuitos ReaPlugs no Wave Link. Pense num lava-rápido: cada estação faz um trabalho, em ordem. Num ambiente barulhento, eles rodam na ordem abaixo. Num ambiente silencioso, o ReaFIR fica de fora e a ordem é ReaGate → ReaEQ → ReaComp.",
+        "ReaFIR": { "role": "redução de ruído", "def": "Ouve alguns segundos do seu ambiente em silêncio e depois tira esse som da sua voz, como um fone com cancelamento de ruído para seu microfone. Só é usado em ambientes barulhentos." },
+        "ReaEQ": { "role": "timbre", "def": "Equilibra o som da sua voz, como os botões de grave e agudo de um aparelho de som. Também pode cortar um apito constante de um ventilador ou máquina." },
+        "ReaComp": { "role": "nivelador de volume", "def": "Mantém seu volume estável baixando com cuidado as partes mais fortes, para as palavras mais baixas não se perderem." },
+        "ReaGate": { "role": "silêncio entre as palavras", "def": "Abaixa o microfone entre as frases para suas pausas ficarem silenciosas, como uma porta que fecha quando você para de falar. Num ambiente barulhento ele age de leve, para nunca cortar palavras." }
+      },
+      "apply": {
+        "title": "Usando as configurações",
+        "intro": "Copie os valores sugeridos na página de Resultados. Depois escolha um jeito:",
+        "hand": "<b>Na mão:</b> abra a janela de cada efeito no Wave Link e digite os valores.",
+        "tool": "<b>Com a nossa ferramenta:</b> baixe o arquivo JSON em Resultados, feche o Wave Link pela bandeja (os ícones pequenos perto do relógio) e rode <code>{{cmd}}</code>. Ela salva antes uma cópia de segurança do Settings.json.",
+        "reafir": "<b>O ReaFIR é sempre configurado na mão:</b> ele precisa aprender o ruído do seu ambiente com alguns segundos de silêncio."
+      },
+      "tips": {
+        "title": "Dicas para ambientes barulhentos",
+        "closer": "Chegue mais perto do microfone. Cada vez que você corta a distância pela metade, sua voz fica uns 6 dB mais alta que o ambiente, como falar do outro lado da mesa em vez do outro lado da sala.",
+        "aim": "Vire o lado surdo do microfone para o barulho: a parte de trás de um microfone cardioide, as laterais de um supercardioide.",
+        "off": "Desligue ventiladores, ar-condicionado e outras máquinas enquanto grava, se puder.",
+        "boost": "Não aumente partes da sua voz em que o ambiente está mais alto que você. Isso só aumenta o ruído.",
+        "target": "Busque deixar sua voz pelo menos 30 dB mais alta que o ambiente."
+      },
+      "cta": "Cinco minutos, quatro gravações e configurações que você pode usar hoje."
+    },
+    "community": {
+      "headFirst": "Pessoas com",
+      "headSecond": "seu microfone",
+      "lead": "Resultados que as pessoas escolheram compartilhar como issues públicas no GitHub, agrupados por modelo de microfone. Veja o que é normal para um microfone como seu.",
+      "sectionLabel": "Resultados compartilhados",
+      "empty": "Nenhum resultado compartilhado ainda — seja a primeira pessoa",
+      "start": "Começar o teste →",
+      "loading": "Carregando os resultados compartilhados…",
+      "search": "Buscar modelo de microfone",
+      "noMatch": "Nenhum microfone corresponde a “{{query}}”.",
+      "updated": "Atualizado em {{date}}",
+      "tableLabel": "Resultados compartilhados por modelo de microfone",
+      "col": {
+        "mic": "Microfone",
+        "reports": "Relatos",
+        "snr": "Voz acima do ambiente",
+        "dist": "Distância mais escolhida",
+        "noisy": "Ambientes barulhentos"
+      },
+      "votes": "{{dist}} ({{votes}} de {{reports}})",
+      "share": {
+        "title": "Como compartilhar",
+        "s1": "Termine um teste.",
+        "s2": "Abra Resultados.",
+        "s3": "Clique em “Compartilhar com a comunidade”.",
+        "s4": "Confira o resumo no GitHub.",
+        "s5": "Envie a issue.",
+        "note": "Você precisa de uma conta no GitHub. A issue é pública e não contém áudio.",
+        "all": "Ver todos os resultados compartilhados no GitHub"
+      }
+    },
+    "privacy": {
+      "headFirst": "Seu áudio",
+      "headSecond": "fica com você",
+      "lead": "Tudo é verificado dentro do seu navegador. Nada é enviado, a não ser que você escolha compartilhar um resumo.",
+      "local": {
+        "title": "No seu computador",
+        "takes": "Suas gravações e os resultados delas ficam salvos neste navegador (no armazenamento IndexedDB dele).",
+        "prefs": "Suas escolhas, como os dados do microfone, as entradas escolhidas e a última tela, ficam salvas no localStorage deste navegador.",
+        "noUpload": "Nada é enviado para nenhum servidor.",
+        "delete": "<b>Apagar tudo</b> na página de Resultados remove todas as gravações deste navegador."
+      },
+      "share": {
+        "title": "Quando você compartilha",
+        "text": "Compartilhar é sempre uma escolha sua. Isso abre uma issue pública no GitHub, na sua própria conta, com os dados do seu microfone, os números medidos e as configurações sugeridas. Ela não contém áudio, nomes de dispositivos nem datas, e você confere antes de publicar."
+      },
+      "remove": {
+        "title": "Removendo um resultado compartilhado",
+        "text": "Feche ou edite a issue no GitHub, ou mande um e-mail para <link>{{email}}</link> pedindo para tirar o resultado dos números da comunidade."
+      },
+      "tracking": {
+        "title": "Sem rastreamento",
+        "text": "Sem analytics, sem cookies, sem anúncios."
+      },
+      "tool": {
+        "title": "A ferramenta do Wave Link",
+        "text": "<code>{{file}}</code> roda no seu próprio computador. Ela só lê e grava o Settings.json do Wave Link, e salva uma cópia de segurança antes de mudar o arquivo."
+      }
+    }
+  }
+}

@@ -13,7 +13,7 @@ import { fmtNum, fmtSigned } from '../../i18n/format'
 import { BANDS, deviations } from '../../audio/reference'
 import { isAnalysisError, type Analysis, type Check, type CheckId, type Status, type Take } from '../../types'
 import { useBench } from '../../store/benchStore'
-import { shortName } from './download'
+import { useTakeName } from './useTakeName'
 import { useBestControl, useSlots } from '../../store/hooks'
 
 interface Row {
@@ -50,6 +50,7 @@ interface Col { take: Take; a: Analysis; checks: Check[] }
 /** Session takes (or A and B) side by side, cells coloured by the matching check (prototype renderCompare). */
 export function CompareTable({ A, B }: { A: Take; B: Take | null }) {
   const { t } = useTranslation()
+  const tn = useTakeName()
   const slots = useSlots(A.session)
   const best = useBestControl(A.session)
   const idA = useBench((s) => s.A)
@@ -75,9 +76,9 @@ export function CompareTable({ A, B }: { A: Take; B: Take | null }) {
             <TableRow>
               <TableCell />
               {cols.map(({ take }) => (
-                <TableCell key={take.id} align="right" title={take.name} sx={{ fontWeight: 700, verticalAlign: 'bottom', minWidth: 90 }}>
+                <TableCell key={take.id} align="right" title={tn(take)} sx={{ fontWeight: 700, verticalAlign: 'bottom', minWidth: 90 }}>
                   <span className="inline-flex flex-wrap items-center justify-end gap-1">
-                    {shortName(take.name)}
+                    {tn(take)}
                     {take.id === idA && <Chip label="A" color="primary" size="small" />}
                     {take.id === idB && <Chip label="B" color="info" size="small" />}
                     {take.id === bestId && <Chip label={t('results.compare.best')} color="success" size="small" />}

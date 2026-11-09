@@ -1,15 +1,19 @@
 // zustand store implementing src/store/api.ts with the prototype's rules (docs/prototype/voice-check.html).
 import { create } from 'zustand'
 import { analyze } from '../audio/analyze'
+import { resolveMains, type MainsSetting } from '../audio/mains'
 import { MAX_SEC, QUIET_SEC } from '../audio/reference'
 import { DEV_MATCH, STEPS, fillDistance } from '../session/steps'
 import { bestControl, sessionSlots } from '../session/bestControl'
 import { DEFAULT_MIC, findMic } from '../mics/catalog'
+import type { Msg } from '../plain/types'
 import {
   loadDeviceChoice,
+  loadMains,
   loadMicProfile,
   loadUiPrefs,
   saveDeviceChoice,
+  saveMains,
   saveMicProfile,
   saveUiPrefs,
   type UiPrefs,
@@ -54,6 +58,7 @@ export function initialBenchState(): BenchState {
     lastTakeId: null,
     freeTakeName: '',
     micProfile: { ...DEFAULT_MIC },
+    mains: 'auto',
     status: null,
   }
 }
@@ -67,12 +72,19 @@ const dbDo = (fn: (db: TakesDb) => Promise<void>): void => {
     .catch(() => undefined)
 }
 let booting: Promise<void> | null = null
+/** Bumped on every mains change so an older re-analysis pass stops and never overwrites a newer one. */
+let mainsRun = 0
 let recTimer: ReturnType<typeof setInterval> | null = null
 const stopTimer = (): void => {
   if (recTimer !== null) clearInterval(recTimer)
   recTimer = null
 }
 
+/** Status line message under engine.status. */
+const st = (key: string, params?: Msg['params']): Msg => (params ? { key: `engine.status.${key}`, params } : { key: `engine.status.${key}` })
+/** Analysis with the mains setting resolved ('auto' → locale region). */
+const analyzeWith = (samples: Float32Array, sampleRate: number, mains: MainsSetting) =>
+  analyze(samples, sampleRate, { mains: resolveMains(mains) })
 const errName = (e: unknown): string => (e instanceof Error ? e.name : 'Error')
 const errMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 const yieldToLoop = (): Promise<void> => new Promise((res) => setTimeout(res, 0))
@@ -124,7 +136,7 @@ export const useBench = create<BenchStore>()((set, get) => {
       setMicOn(await getEngine().open(deviceId))
       set({ status: null })
     } catch (e) {
-      get().setStatus(`Could not open this input (${errName(e)}).`, true)
+      get().setStatus(st('openInput', { error: errName(e) }), true)
     }
   }
 
@@ -134,7 +146,7 @@ export const useBench = create<BenchStore>()((set, get) => {
     if (!kind || s.mic.status !== 'on') return true
     const id = s.deviceChoice[kind]
     if (!id) {
-      s.setStatus(`Pick the ${kind === 'raw' ? 'raw mic' : 'effects'} input with Change.`, true)
+      s.setStatus(st(kind === 'raw' ? 'pickRaw' : 'pickFx'), true)
       return false
     }
     if (s.mic.deviceId === id) return true
@@ -142,26 +154,27 @@ export const useBench = create<BenchStore>()((set, get) => {
       setMicOn(await getEngine().open(id))
       return true
     } catch (e) {
-      get().setStatus(`Could not open ${labelOf(id) || 'that input'} (${errName(e)}). Pick another with Change.`, true)
+      const name = labelOf(id)
+      get().setStatus(name ? st('openNamed', { name, error: errName(e) }) : st('openUnnamed', { error: errName(e) }), true)
       return false
     }
   }
 
   const finishTake = (samples: Float32Array, sampleRate: number, at: BenchState): void => {
-    const st = at.step === 'free' ? null : STEPS[at.step]
+    const step = at.step === 'free' ? null : STEPS[at.step]
     try {
-      const analysis = analyze(samples, sampleRate)
+      const analysis = analyzeWith(samples, sampleRate, get().mains)
       const s = get()
-      const fxDist = st?.key === 'fx' && s.fxDist === null ? selectFxDist(s) : s.fxDist
+      const fxDist = step?.key === 'fx' && s.fxDist === null ? selectFxDist(s) : s.fxDist
       const devLabel = s.mic.label
-      const name = st
-        ? fillDistance(st.title, fxDist ?? selectFxDist(s))
+      const name = step
+        ? fillDistance(step.title, fxDist ?? selectFxDist(s))
         : s.freeTakeName.trim() || `Free take · ${devLabel.replace(/\s*\(.*?\)\s*$/, '') || 'input'}`
       const take: Take = {
         id: Date.now(),
         name,
-        session: st ? at.session : 'free',
-        step: st ? st.key : null,
+        session: step ? at.session : 'free',
+        step: step ? step.key : null,
         device: devLabel,
         sampleRate,
         samples,
@@ -173,7 +186,7 @@ export const useBench = create<BenchStore>()((set, get) => {
         takes: [...s.takes, take],
         fxDist,
         lastTakeId: take.id,
-        ...(st ? {} : { freeTakeName: '' }),
+        ...(step ? {} : { freeTakeName: '' }),
       })
       // demo takes live in memory only
       if (take.session !== DEMO_SESSION) dbDo((db) => db.put(take))
@@ -199,11 +212,12 @@ export const useBench = create<BenchStore>()((set, get) => {
           fxDist: ui.fxDist,
           deviceChoice: loadDeviceChoice(),
           micProfile: loadMicProfile(),
+          mains: loadMains(),
         })
         const db = await getDb()
         const takes: Take[] = []
         for (const t of await db.all().catch(() => [])) {
-          takes.push({ ...t, analysis: analyze(t.samples, t.sampleRate) })
+          takes.push({ ...t, analysis: analyzeWith(t.samples, t.sampleRate, get().mains) })
           await yieldToLoop()
         }
         set({ takes, storageAvailable: db.available })
@@ -211,7 +225,7 @@ export const useBench = create<BenchStore>()((set, get) => {
         // ready last: listeners (hash routing, demo loader) see the restored screen
         set({ ready: true })
         if (!getEngine().isSupported()) {
-          get().setStatus("This browser can't record here. Open the page via http://localhost in Chrome or Edge.", true)
+          get().setStatus(st('unsupported'), true)
           return
         }
         try {
@@ -239,8 +253,8 @@ export const useBench = create<BenchStore>()((set, get) => {
         setMicOn(dev)
         await switchToKind(guidedKind(get()))
       } catch (e) {
-        const msg = `Could not open the microphone (${errName(e)}${errMessage(e) ? ': ' + errMessage(e) : ''}). Allow microphone access in the address bar, then reload.`
-        set({ mic: { status: 'error', deviceId: null, label: '', error: msg }, status: { message: msg, error: true } })
+        const msg = st('micDenied', { error: errName(e) + (errMessage(e) ? ': ' + errMessage(e) : '') })
+        set({ mic: { status: 'error', deviceId: null, label: '', error: msg }, status: { msg, error: true } })
       }
     },
 
@@ -292,7 +306,7 @@ export const useBench = create<BenchStore>()((set, get) => {
       const s = get()
       if (s.recorder.phase !== 'idle') return
       if (s.mic.status !== 'on') {
-        s.setStatus('Enable the microphone first.', true)
+        s.setStatus(st('enableFirst'), true)
         return
       }
       if (s.step !== 'free' && !(await switchToKind(STEPS[s.step]?.dev ?? null))) return
@@ -301,7 +315,7 @@ export const useBench = create<BenchStore>()((set, get) => {
       try {
         engine.startRecording()
       } catch (e) {
-        get().setStatus(`Could not start recording (${errMessage(e)}).`, true)
+        get().setStatus(st('startFailed', { error: errMessage(e) }), true)
         return
       }
       set({ recorder: { phase: 'silence', elapsed: 0 }, status: null })
@@ -325,10 +339,7 @@ export const useBench = create<BenchStore>()((set, get) => {
       const sampleRate = engine.sampleRate
       if (samples.length < sampleRate * MIN_SEC) {
         set({ recorder: { phase: 'idle', elapsed: 0 } })
-        s.setStatus(
-          `Too short (${(samples.length / sampleRate).toFixed(1)} s). Record at least ${MIN_SEC} s: ${QUIET_SEC} s of silence, then the text.`,
-          true,
-        )
+        s.setStatus(st('tooShort', { sec: samples.length / sampleRate, min: MIN_SEC, quiet: QUIET_SEC }), true)
         return
       }
       set({ recorder: { phase: 'analyzing', elapsed: s.recorder.elapsed } })
@@ -396,7 +407,23 @@ export const useBench = create<BenchStore>()((set, get) => {
       saveMicProfile(micProfile)
       set({ micProfile })
     },
-    setStatus: (message, error = false) => set({ status: { message, error } }),
+    setMains(mains) {
+      if (mains === get().mains) return
+      saveMains(mains)
+      set({ mains })
+      const run = ++mainsRun
+      void (async () => {
+        const analyses = new Map<number, Take['analysis']>()
+        for (const t of get().takes) {
+          analyses.set(t.id, analyzeWith(t.samples, t.sampleRate, mains))
+          await yieldToLoop()
+          if (run !== mainsRun) return
+        }
+        // takes recorded meanwhile were already analyzed with the new setting
+        set({ takes: get().takes.map((t) => ({ ...t, analysis: analyses.get(t.id) ?? t.analysis })) })
+      })()
+    },
+    setStatus: (msg, error = false) => set({ status: { msg, error } }),
     clearStatus: () => set({ status: null }),
   }
 })

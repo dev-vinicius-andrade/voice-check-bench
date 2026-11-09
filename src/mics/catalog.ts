@@ -1,4 +1,5 @@
 // Known microphones (suggestion list for the "Your microphone" card) and mic-dependent advice. Pure.
+import type { Msg } from '../plain/types'
 import type { MicProfile } from '../types'
 
 /** Common USB/XLR podcast mics. Picking one pre-fills kind/pattern/address; the person can change them. */
@@ -29,16 +30,15 @@ export function findMic(model: string): MicProfile | undefined {
   return m ? MIC_CATALOG.find((e) => norm(e.model) === m) : undefined
 }
 
-/** Where to speak into the mic. */
-export function addressTip(mic: Pick<MicProfile, 'address'>): string {
-  if (mic.address === 'end') return 'Speak straight into the top of the mic.'
-  if (mic.address === 'side') return 'Speak into the front side of the mic (usually where the logo is), not the top.'
-  return 'Point the capsule at your mouth.'
-}
+/** Label of the "Other / not listed" choice. Picking it stores model '' (never a translated label). */
+export const MIC_OTHER_LABEL: Msg = { key: 'engine.mic.other' }
 
-/** How to place the mic relative to the loudest noise source, from its pickup pattern. */
-export function placementTip(mic: Pick<MicProfile, 'pattern'>): string {
-  if (mic.pattern === 'cardioid') return 'Point the back of the mic at the loudest noise source (fan, PC, server).'
-  if (mic.pattern === 'supercardioid') return "Keep the loudest noise at the mic's sides, about 125° off-axis."
-  return "Move the mic closer to you and away from the noise; this pickup pattern won't reject it."
-}
+/** Where to speak into the mic (`engine.mic.address.<end|side|unknown>`). */
+export const addressTip = (mic: Pick<MicProfile, 'address'>): Msg => ({
+  key: `engine.mic.address.${mic.address === 'end' || mic.address === 'side' ? mic.address : 'unknown'}`,
+})
+
+/** How to place the mic relative to the loudest noise source, from its pickup pattern (`engine.mic.placement.<cardioid|supercardioid|other>`). */
+export const placementTip = (mic: Pick<MicProfile, 'pattern'>): Msg => ({
+  key: `engine.mic.placement.${mic.pattern === 'cardioid' || mic.pattern === 'supercardioid' ? mic.pattern : 'other'}`,
+})

@@ -6,6 +6,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
+import { NOT_ENOUGH_SPEECH_KEY } from '../../audio/analyze'
 import { diagnose } from '../../audio/diagnose'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError, type Analysis, type ChartView, type Take } from '../../types'
@@ -20,6 +21,7 @@ import { SummaryActions } from './SummaryActions'
 import { SuggestedSettings } from './SuggestedSettings'
 import { VerdictAlert } from './VerdictAlert'
 import { useTakeB } from '../../store/hooks'
+import { useTakeName } from './useTakeName'
 
 function Who({ label, color, name }: { label: string; color: 'primary' | 'info'; name: string }) {
   return (
@@ -58,6 +60,7 @@ function AnalysisBody({ A, a, b, view }: { A: Take; a: Analysis; b: Take | null;
 
 export function AnalysisPanel({ A }: { A: Take }) {
   const { t } = useTranslation()
+  const tn = useTakeName()
   const B = useTakeB()
   const storedView = useBench((s) => s.view)
   const setView = useBench((s) => s.setView)
@@ -68,8 +71,8 @@ export function AnalysisPanel({ A }: { A: Take }) {
     <section aria-label={t('results.analysis.aria')} className="grid min-w-0 gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-          <Who label="A" color="primary" name={A.name} />
-          {B && <Who label="B" color="info" name={B.name} />}
+          <Who label="A" color="primary" name={tn(A)} />
+          {B && <Who label="B" color="info" name={tn(B)} />}
         </div>
         <ToggleButtonGroup
           exclusive
@@ -86,7 +89,7 @@ export function AnalysisPanel({ A }: { A: Take }) {
       {isAnalysisError(A.analysis) ? (
         <Alert severity="error">
           <AlertTitle>{t('results.analysis.error')}</AlertTitle>
-          {A.analysis.error}
+          {t(NOT_ENOUGH_SPEECH_KEY)}
         </Alert>
       ) : (
         <AnalysisBody A={A} a={A.analysis} b={okB} view={view} />

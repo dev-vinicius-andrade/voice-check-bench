@@ -108,6 +108,7 @@ Contract: `Screen` in src/types.ts adds 'home' | 'how' | 'community' | 'privacy'
 Audience: people who know nothing about audio. Every screen leads with plain words and actions; numbers and terms are optional detail.
 
 **Message keys, not text.** Framework-free modules return `{ key: string; params?: Record<string, string | number> }` (type `Msg`, src/plain/types.ts). The UI renders them with i18n (v0.6). English source strings live in `src/i18n/locales/en.json`.
+Engine text is `Msg` too (v0.6): `Check` has `titleMsg`/`valueMsg?`/`detailMsg`/`fixMsg?`; suggestion hints, ReaFIR steps, alternatives and EQ reasons, `failureHint`, mic tips and store status lines (`StatusMessage { msg, error }`) return keys under `engine.*` (`<locale>/engine.json`), numbers as params formatted in the string (`{{v, number(…)}}`); the downloaded .txt sheet and settings JSON stay English (`englishText`), "Copy as text" is localized.
 
 **Clarity score (src/plain/score.ts)** — `clarityScore(a: Analysis): { score: number; main: 'noise' | 'level' | 'tone' | 'none' }`. Penalties, then `score = round(clamp(100 − Σ, 0, 100))`:
 - noise: `clamp((30 − snr) × 1.5, 0, 45)`; +5 if any tone ≥ 12 dB or hum ≥ 12 dB.

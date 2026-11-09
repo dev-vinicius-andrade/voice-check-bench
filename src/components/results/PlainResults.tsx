@@ -16,7 +16,7 @@ const scrollToSettings = (): void =>
 
 /** Plain-first results for take A: score → ratings → next actions → summaries → collapsed technical details. */
 export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
-  const { score, ratings, actions, ctx } = usePlainResults(A, a)
+  const { score, ratings, actions, ctx, before } = usePlainResults(A, a)
   const [open, setOpen] = useDetailsOpen()
   const pendingScroll = useRef(false)
 
@@ -36,7 +36,7 @@ export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
 
   return (
     <div className="grid min-w-0 gap-4">
-      <ScoreHero score={score} />
+      <ScoreHero score={score} before={before} />
       <RatingCards ratings={ratings} />
       <NextActions actions={actions} ctx={ctx} onShowSettings={showSettings} />
       <PlainSummaries A={A} />

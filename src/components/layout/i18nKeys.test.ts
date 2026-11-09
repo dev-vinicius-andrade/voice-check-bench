@@ -4,10 +4,8 @@ import common from '../../i18n/locales/en/common.json'
 import pages from '../../i18n/locales/en/pages.json'
 import wizard from '../../i18n/locales/en/wizard.json'
 import { STEPS, STEP_PARTS, stepKey, stepText } from '../../session/steps'
-import type { MicAddress, MicPattern } from '../../types'
 import { APPLY, CHAIN, HOME_STEPS, MEASURES, PRIVACY_LOCAL, ROOM_TIPS, SHARE_STEPS, TAKES } from '../pages/howItWorksData'
-import { ADDRESSES, KINDS, PATTERNS, addressKey, placementKey } from '../setup/micOptions'
-import { FAILURE_IDS } from '../step/failureKey'
+import { ADDRESSES, KINDS, PATTERNS } from '../setup/micOptions'
 
 const EN: Record<string, unknown> = { ...common, ...wizard, ...pages }
 
@@ -58,16 +56,14 @@ describe('i18n keys used by setup, step, pages and layout', () => {
     }
   })
 
-  it('mic options, tips and failure hints resolve', () => {
+  // mic tips and failure hints are engine messages: see src/store/engineKeys.test.ts
+  it('mic options resolve', () => {
     const keys: string[] = []
     for (const [group, values] of [['kind', KINDS], ['pattern', PATTERNS], ['address', ADDRESSES]] as const) {
       keys.push(`wizard.mic.${group}Label`)
       for (const v of values) keys.push(`wizard.mic.${group}.${v}`, `wizard.mic.${group}Help.${v}`)
     }
-    for (const pattern of PATTERNS as readonly MicPattern[]) keys.push(placementKey({ pattern }))
-    for (const address of ADDRESSES as readonly MicAddress[]) keys.push(addressKey({ address }))
     for (const kind of ['raw', 'fx']) keys.push(`wizard.access.${kind}.title`, `wizard.access.${kind}.hint`)
-    for (const id of FAILURE_IDS) keys.push(`wizard.take.failure.${id}`)
     expect(keys.filter((k) => lookup(k) === undefined)).toEqual([])
   })
 

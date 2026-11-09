@@ -6,14 +6,13 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { downloadTakeWav } from '../results/download'
 import { useMsg } from '../common/MsgText'
-import { quickStats } from '../../audio/quickStats'
+import { failureHint, quickStats } from '../../audio/quickStats'
 import { QUIET_SEC } from '../../audio/reference'
 import { fmtDb, fmtDbfs, fmtNum } from '../../i18n/format'
 import { clarityScore, scoreBand } from '../../plain/score'
 import { useBench } from '../../store/benchStore'
 import { isAnalysisError } from '../../types'
 import type { Take } from '../../types'
-import { failureKey } from './failureKey'
 
 interface TakeSummaryProps {
   take: Take
@@ -40,11 +39,12 @@ function PlayRow({ take, label }: { take: Take; label: string }) {
 /** A take that could not be analysed: what happened and what to do, small numbers below. */
 function FailedTake({ take }: TakeSummaryProps) {
   const { t } = useTranslation()
+  const tm = useMsg()
   const q = quickStats(take.samples, take.sampleRate)
   return (
     <Paper className="grid gap-2.5 px-4 py-3.5" sx={{ borderLeft: 4, borderLeftColor: BORDER.hard }}>
       <Typography sx={{ fontWeight: 700 }}>{t('wizard.take.failed')}</Typography>
-      <Typography variant="body2">{t(failureKey(q))}</Typography>
+      <Typography variant="body2">{tm(failureHint(q))}</Typography>
       <Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>
         {t('wizard.take.failedDetails', {
           duration: t('common.units.seconds', { value: fmtNum(q.duration, 1) }),

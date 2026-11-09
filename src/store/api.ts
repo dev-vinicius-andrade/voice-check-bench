@@ -2,12 +2,15 @@
 // and the UI components are written against this file in parallel. Change only with all parties.
 import type { ChartView, DeviceChoice, DeviceKind, MicProfile, Screen, StepRef, Suggestion, Take } from '../types'
 import type { InputDevice } from '../audio/AudioEngine'
+import type { MainsSetting } from '../audio/mains'
+import type { Msg } from '../plain/types'
 
 export type MicStatus = 'off' | 'connecting' | 'on' | 'error'
 export type RecorderPhase = 'idle' | 'silence' | 'reading' | 'analyzing'
 
+/** Status line text is a message key (`engine.status.*`), rendered by StatusSnackbar. */
 export interface StatusMessage {
-  message: string
+  msg: Msg
   error: boolean
 }
 
@@ -28,13 +31,15 @@ export interface BenchState {
   fxDist: string | null
   devices: InputDevice[]
   deviceChoice: DeviceChoice
-  mic: { status: MicStatus; deviceId: string | null; label: string; error: string | null }
+  mic: { status: MicStatus; deviceId: string | null; label: string; error: Msg | null }
   recorder: { phase: RecorderPhase; /** seconds since record was pressed */ elapsed: number }
   /** Take recorded on the current free-take screen (guided steps use the session slot). */
   lastTakeId: number | null
   freeTakeName: string
   /** The person's mic (saved in localStorage key 'vcb-mic'; copied onto each new take). */
   micProfile: MicProfile
+  /** Mains frequency setting (localStorage 'vcb-mains'); 'auto' resolves from the locale region at analysis time. */
+  mains: MainsSetting
   status: StatusMessage | null
 }
 
@@ -69,11 +74,22 @@ export interface BenchActions {
   setFreeTakeName(name: string): void
   setFxDist(dist: string): void
   setMicProfile(patch: Partial<MicProfile>): void
-  setStatus(message: string, error?: boolean): void
+  /** Save the mains setting and re-analyze every take with it. */
+  setMains(mains: MainsSetting): void
+  setStatus(msg: Msg, error?: boolean): void
   clearStatus(): void
 }
 
 export type BenchStore = BenchState & BenchActions
+
+/** A session's takes. The UI labels it: free takes, or "Session · <created, formatted>". */
+export interface TakeGroup {
+  session: string
+  /** Session start (ms since epoch); null for the free-takes group. */
+  created: number | null
+  current: boolean
+  takes: Take[]
+}
 
 /** Pure derived data. Implemented in selectors.ts. */
 export interface BenchSelectors {
@@ -89,7 +105,7 @@ export interface BenchSelectors {
   /** Suggestion from the raw take at fxDist, else best control, else take A if it is a raw control. */
   selectSuggestion(s: BenchState): Suggestion | null
   /** Takes grouped by session, newest session first, takes oldest first inside a group. */
-  selectTakeGroups(s: BenchState): { session: string; label: string; current: boolean; takes: Take[] }[]
+  selectTakeGroups(s: BenchState): TakeGroup[]
   /** Next enabled on the step screen. */
   selectCanGoNext(s: BenchState): boolean
 }

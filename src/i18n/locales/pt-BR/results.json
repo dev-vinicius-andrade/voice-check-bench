@@ -1,1 +1,222 @@
-{}
+{
+  "results": {
+    "heading": "Seus resultados",
+    "empty": {
+      "title": "Nenhuma gravação ainda",
+      "body": "Você ainda não gravou nada. Comece pela etapa 1 para verificar sua voz.",
+      "button": "Ir para a etapa 1"
+    },
+    "demo": {
+      "body": "Estes são dados de exemplo — suas gravações não são afetadas.",
+      "start": "Começar seu próprio teste"
+    },
+    "term": {
+      "info": "O que significa “{{term}}”?"
+    },
+    "score": {
+      "overline": "Sua voz hoje",
+      "aria": "Nota de clareza: {{score}} de 100",
+      "outOf": "de 100",
+      "beforeAfter": "Sem seus efeitos: {{before}} → com eles: {{after}}"
+    },
+    "ratings": {
+      "aria": "Como você soa"
+    },
+    "next": {
+      "title": "O que fazer agora",
+      "none": "Nada para corrigir agora. Continue assim.",
+      "cost": {
+        "free": "Grátis",
+        "minutes": "Alguns minutos"
+      },
+      "showHow": "Mostre como",
+      "hideHow": "Esconder"
+    },
+    "how": {
+      "placement": {
+        "distanceKnown": "Sua melhor distância nesta sessão: {{everyday}}, {{dist}}.",
+        "distanceDefault": "Um bom ponto de partida é {{everyday}} entre sua boca e o microfone: {{dist}}."
+      },
+      "gain": {
+        "term": "Gain",
+        "what": "é o volume de entrada: o quanto o microfone é aumentado antes de qualquer outra coisa.",
+        "where": "Ajuste no botão de gain da sua interface de áudio, ou no controle de gain do microfone no Wave Link.",
+        "steps": "Mexa um pouco de cada vez e grave de novo para conferir."
+      }
+    },
+    "summary": {
+      "beforeAfter": {
+        "belowQuarter": "Seus efeitos deixaram o ambiente {{db}} dB mais baixo em relação à sua voz — menos de um quarto do volume.",
+        "quarter": "Seus efeitos deixaram o ambiente {{db}} dB mais baixo em relação à sua voz — mais ou menos um quarto do volume.",
+        "half": "Seus efeitos deixaram o ambiente {{db}} dB mais baixo em relação à sua voz — mais ou menos metade do volume.",
+        "some": "Seus efeitos deixaram o ambiente {{db}} dB mais baixo em relação à sua voz.",
+        "little": "Seus efeitos ainda quase não mudaram o ruído do ambiente. Os passos de redução de ruído nos detalhes técnicos podem ajudar."
+      },
+      "community": {
+        "behind": "Quem tem este microfone costuma ter a voz uns {{db}} dB mais acima do ruído do ambiente do que você tem agora.",
+        "ahead": "Sua voz fica uns {{db}} dB mais acima do ruído do ambiente do que a da maioria das pessoas com este microfone.",
+        "same": "Sua voz se destaca do ambiente mais ou menos como a da maioria das pessoas com este microfone."
+      }
+    },
+    "details": {
+      "title": "Mostrar os detalhes técnicos"
+    },
+    "analysis": {
+      "aria": "Análise técnica",
+      "chartView": "Ver como gráfico",
+      "error": "Não foi possível analisar esta gravação",
+      "referenceNote": "As faixas de referência são metas aproximadas para voz falada com o microfone perto. Confie mais nos seus ouvidos do que em qualquer número sozinho."
+    },
+    "verdict": {
+      "fixFirst": "Corrija primeiro: {{list}}",
+      "balanced": "Equilibrado. Nada se destaca.",
+      "quietBroken": "A medida do ruído pode estar errada: houve som nos primeiros 3 s.",
+      "startWith": "Comece por: {{fix}}"
+    },
+    "stats": {
+      "speech": "Voz",
+      "noise": "Ruído",
+      "snr": "SNR",
+      "issues": "Problemas",
+      "issuesUnit": "ruim · atenção",
+      "b": "B: {{value}}"
+    },
+    "room": {
+      "title": "Ruído do ambiente",
+      "fromQuiet": "Medido nos segundos de silêncio antes da leitura.",
+      "estimated": "Estimado pelos momentos mais silenciosos da gravação.",
+      "bars": "As barras mostram o quanto sua voz fica acima do ambiente em cada oitava: abaixo de 10 dB o ruído ganha, de 20 dB para cima fica claro.",
+      "noiseFloor": "Ruído de fundo <b>{{value}}</b> dBFS",
+      "steadyTones": "Tons constantes:",
+      "chartAria": "Voz acima do ruído do ambiente por oitava, em dB"
+    },
+    "noiseKind": {
+      "quiet": "Ambiente silencioso",
+      "hum": "Zumbido da rede elétrica",
+      "tonal": "Tons de ventilador / máquina",
+      "broadband": "Ruído de banda larga"
+    },
+    "band": {
+      "0": "Ronco",
+      "1": "Grave cheio",
+      "2": "Calor",
+      "3": "Embolado / caixa",
+      "4": "Corpo",
+      "5": "Definição",
+      "6": "Presença",
+      "7": "Sibilância",
+      "8": "Ar"
+    },
+    "chart": {
+      "titleTone": "Equilíbrio de timbre vs voz de referência",
+      "titleDiff": "Diferença A − B por oitava",
+      "noteTone": "0 = igual a uma curva de voz falada clara. Para cima = demais daquela faixa, para baixo = de menos. Dentro de ±3 dB está bom, ±6 dB já dá para notar.",
+      "noteDiff": "Barras para cima: A tem mais daquela faixa que B (depois de igualar o volume). Com A = processada e B = só o microfone, isto é o que seus efeitos mudam.",
+      "ariaTone": "Desvio da voz de referência por oitava",
+      "ariaDiff": "Diferença entre gravações por oitava",
+      "zones": "±3 dB / ±6 dB"
+    },
+    "beforeAfter": {
+      "title": "Antes / depois",
+      "snr": "SNR",
+      "voiceBandSnr": "SNR na faixa da voz",
+      "noiseFloor": "Ruído de fundo",
+      "lowered": "Seus efeitos baixaram o ambiente em {{db}} dB",
+      "little": "A redução de ruído fez pouca diferença — confira o perfil do ReaFIR"
+    },
+    "community": {
+      "title": "Pessoas com este microfone",
+      "reports_one": "{{count}} relato",
+      "reports_many": "{{count}} relatos",
+      "reports_other": "{{count}} relatos",
+      "none": "Ainda não há dados da comunidade para {{model}} — seja a primeira pessoa a compartilhar.",
+      "rawSnr": "SNR sem efeitos: típico <b>{{median}}</b> dB ({{p25}}–{{p75}})",
+      "rawSnrYours": "SNR sem efeitos: seu <b>{{yours}}</b> dB · típico <b>{{median}}</b> dB ({{p25}}–{{p75}})",
+      "bestDistance": "Melhor distância: a mais votada é <b>{{dist}}</b> ({{votes}} de {{reports}})",
+      "typicalEq": "EQ típica que usaram:",
+      "chartAria": "Desvio da voz de referência por oitava: você vs mediana da comunidade",
+      "you": "Você",
+      "median": "Mediana da comunidade"
+    },
+    "compare": {
+      "titleSession": "Comparar as gravações desta sessão",
+      "title": "Comparar gravações",
+      "speech": "Volume da voz",
+      "noise": "Ruído de fundo",
+      "snr": "SNR",
+      "consistency": "Constância",
+      "problems": "Problemas (ruim · atenção)",
+      "best": "melhor"
+    },
+    "checks": {
+      "title": "Verificações de A",
+      "none": "Nenhum problema encontrado.",
+      "passing_one": "{{count}} verificação ok",
+      "passing_many": "{{count}} verificações ok",
+      "passing_other": "{{count}} verificações ok",
+      "try": "Tente:",
+      "good": "ok",
+      "warn": "atenção",
+      "bad": "ruim"
+    },
+    "copy": {
+      "copied": "Copiado ✓",
+      "saved": "Salvo como arquivo"
+    },
+    "settings": {
+      "title": "Configurações sugeridas do ReaPlugs",
+      "copyText": "Copiar como texto",
+      "downloadTxt": "Baixar .txt",
+      "downloadJson": "Baixar .json",
+      "basedOn": "Com base na gravação sem efeitos “{{name}}”.",
+      "levels": "Voz {{speech}} dBFS, ruído {{noise}} dBFS.",
+      "keepMic": "Mantenha o microfone a {{dist}} e o gain do Wave XLR como está.",
+      "effectsOrder": "Ordem dos efeitos:",
+      "applyBefore": "Os valores são um ponto de partida: mais ou menos 70% da correção medida, para não exagerar. Digite os valores na janela de cada plugin (Wave Link → microfone → Effects → o ícone de controles deslizantes), ou feche o Wave Link e rode",
+      "applyAfter": "(veja tools/README.md). Depois, grave uma gravação com efeitos para conferir.",
+      "order_ordinal_other": "{{count}}º",
+      "hardware": "hardware",
+      "noBands": "Nenhuma banda necessária",
+      "notch": "notch",
+      "on": "ligado",
+      "off": "desligado",
+      "onLight": "ligado (leve)",
+      "whyGateNoisy": "Expansor suave logo acima do ambiente que sobra depois da redução de ruído: as pausas abaixam, as palavras ficam inteiras.",
+      "whyGate": "Uns 12 dB acima do ruído do ambiente, bem abaixo da sua voz.",
+      "whyEq": "Frequency · Gain dB · Bandwidth em oitavas. Use só estas bandas.",
+      "whyComp": "Busca deixar a voz por volta de -20 dBFS.",
+      "whyLowcut": "Ronco extra no microfone sem efeitos.",
+      "whyDeess": "Os sons de S dão picos no microfone sem efeitos.",
+      "nrTitle": "{{plugin}} (redução de ruído)",
+      "nrAlternatives": "Prefere não usar o {{plugin}}? Alternativas: {{list}}."
+    },
+    "share": {
+      "copy": "Copiar resumo anônimo",
+      "copyTitle": "Perfil do microfone, números da análise e valores sugeridos desta sessão. Sem áudio, nomes de dispositivos ou datas.",
+      "label": "Compartilhar com a comunidade",
+      "needMic": "Primeiro informe o modelo do seu microfone na tela de preparação",
+      "note": "Abre uma issue pública no GitHub com o perfil do seu microfone e os números da análise (sem áudio). Você revisa antes de publicar.",
+      "truncated": "O resumo ficou longo demais para o link: cole no campo Summary."
+    },
+    "takes": {
+      "title": "Gravações",
+      "deleteAll": "Apagar tudo",
+      "deleteConfirm": "Clique de novo para apagar todas as gravações",
+      "hintAB": "Marque A e B em duas gravações quaisquer para comparar.",
+      "storageBlocked": "Este navegador bloqueia o armazenamento local aqui, então as gravações só duram até você fechar a aba.",
+      "none": "Nenhuma gravação ainda.",
+      "newSession": "Nova sessão",
+      "freeTake": "Fazer uma gravação livre",
+      "notAnalyzed": "{{sec}} s · não analisada",
+      "levels": "voz {{speech}} · ruído {{noise}} dBFS",
+      "showA": "Mostrar como A",
+      "compareB": "Comparar como B",
+      "play": "Ouvir",
+      "playAria": "Ouvir {{name}}",
+      "download": "Baixar WAV",
+      "downloadAria": "Baixar {{name}} como WAV",
+      "delete": "Apagar gravação",
+      "deleteAria": "Apagar {{name}}"
+    }
+  }
+}

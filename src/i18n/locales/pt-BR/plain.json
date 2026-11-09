@@ -1,1 +1,188 @@
-{}
+{
+  "plain": {
+    "score": {
+      "clear": "Claro e limpo",
+      "good": "Bom — faltam só uns detalhes",
+      "ok": {
+        "noise": "Dá para entender, mas o ambiente está barulhento",
+        "level": "Dá para entender, mas seu volume precisa de ajuste",
+        "tone": "Dá para entender, mas sua voz soa um pouco estranha",
+        "none": "Dá para entender, com alguns probleminhas"
+      },
+      "hard": {
+        "noise": "Difícil de entender: o ambiente está barulhento demais",
+        "level": "Difícil de entender: seu volume está muito fora",
+        "tone": "Difícil de entender: sua voz não parece sua",
+        "none": "Difícil de entender: vários detalhes se somam"
+      },
+      "explain": {
+        "clear": "Sua voz chega clara, e o ambiente não atrapalha.",
+        "good": "Você soa bem. Umas mudanças pequenas vão deixar ainda melhor.",
+        "ok": {
+          "noise": "Dá para acompanhar você, mas o ruído de fundo disputa com sua voz.",
+          "level": "Dá para acompanhar você, mas quem ouve vai ter que ajustar o volume.",
+          "tone": "Dá para acompanhar você, mas sua voz não soa bem natural.",
+          "none": "Dá para acompanhar você. Alguns detalhes se somam, então corrija um de cada vez."
+        },
+        "hard": {
+          "noise": "O ruído de fundo está quase tão alto quanto sua voz, então as palavras se perdem.",
+          "level": "Seu volume está muito fora, então quem ouve vai sofrer ou ouvir estalos.",
+          "tone": "Sua voz está longe do natural, então fica mais difícil entender as palavras.",
+          "none": "Muitos probleminhas se somam. Comece pela primeira dica."
+        }
+      }
+    },
+    "rating": {
+      "noise": {
+        "title": "Ruído de fundo",
+        "label": {
+          "quiet": "Silencioso",
+          "noticeable": "Dá para notar",
+          "loud": "Alto"
+        },
+        "explain": {
+          "quiet": "Suas pausas estão limpas.",
+          "tonal": "Dá para ouvir bem um ventilador ou uma máquina.",
+          "hum": "Dá para ouvir um zumbido elétrico grave.",
+          "broadband": "Dá para ouvir um chiado constante ou o barulho do ambiente."
+        }
+      },
+      "volume": {
+        "title": "Seu volume",
+        "label": {
+          "good": "Bom",
+          "tooQuiet": "Baixo demais",
+          "tooLoud": "Alto demais",
+          "distorting": "Distorcendo"
+        },
+        "explain": {
+          "good": "Sua voz está num volume confortável.",
+          "tooQuiet": "Quem ouve vai ter que aumentar seu volume, e isso aumenta o ambiente junto.",
+          "tooLoud": "Você está perto do limite, então os momentos mais fortes podem estourar.",
+          "distorting": "Seus momentos mais fortes batem no limite e estalam."
+        }
+      },
+      "voice": {
+        "title": "Som da sua voz",
+        "label": {
+          "natural": "Natural",
+          "mild": {
+            "boomy": "Graves um pouco demais",
+            "boxy": "Um pouco de som de caixa",
+            "hollow": "Um pouco oca",
+            "muffled": "Um pouco abafada",
+            "harsh": "Um pouco estridente",
+            "sharpS": "S um pouco chiado",
+            "dull": "Um pouco sem brilho",
+            "thin": "Um pouco fina"
+          },
+          "strong": {
+            "boomy": "Graves demais",
+            "boxy": "Muito som de caixa",
+            "hollow": "Muito oca",
+            "muffled": "Muito abafada",
+            "harsh": "Muito estridente",
+            "sharpS": "S muito chiado",
+            "dull": "Muito sem brilho",
+            "thin": "Muito fina"
+          }
+        },
+        "explain": {
+          "natural": "Sua voz soa como você.",
+          "boomy": "Grave demais, então as palavras se embolam.",
+          "boxy": "Um som de caixa de papelão cobre suas palavras.",
+          "hollow": "Sua voz soa oca e distante.",
+          "muffled": "Sua voz soa abafada, como se você falasse através de um pano.",
+          "harsh": "Os agudos estão fortes demais, então o som pode ficar estridente e cansativo.",
+          "sharpS": "Os sons de S saem fortes e chiados.",
+          "dull": "Falta brilho nos agudos, então as consoantes soam apagadas.",
+          "thin": "Falta grave, então sua voz soa fina."
+        }
+      }
+    },
+    "action": {
+      "placement": {
+        "cardioid": "Vire a parte de trás do microfone para o barulho mais forte, como um ventilador ou o computador",
+        "supercardioid": "Deixe o barulho mais forte ao lado do microfone, um pouco para trás",
+        "other": "Chegue o microfone mais perto de você e mais longe do barulho"
+      },
+      "moveCloser": "Chegue mais perto: mais ou menos um punho de distância ({{cm}} cm)",
+      "fans": "Desligue os ventiladores ou máquinas que puder enquanto grava",
+      "noiseReduction": "Ligue a redução de ruído com as nossas configurações prontas",
+      "gainUp": "Aumente um pouco o volume de entrada (gain)",
+      "gainDown": "Diminua um pouco o volume de entrada (gain)",
+      "backOff": "Afaste-se um pouco — o grave aumenta quando você fica muito perto",
+      "speakInto": {
+        "end": "Fale direto na ponta do microfone",
+        "side": "Fale direto na frente do microfone, onde geralmente fica a logo",
+        "unknown": "Fale direto no microfone"
+      },
+      "angleMic": "Incline o microfone um pouco para o lado da sua boca",
+      "eqSettings": "Use as nossas configurações de EQ prontas",
+      "usbPort": "Ligue sua interface de áudio em outra porta USB (na parte de trás do computador)"
+    },
+    "distance": {
+      "finger": "mais ou menos a largura de um dedo",
+      "fist": "mais ou menos um punho",
+      "hand": "mais ou menos uma mão aberta",
+      "other": "{{dist}}"
+    },
+    "glossary": {
+      "gain": {
+        "term": "Gain (ganho)",
+        "meaning": "O quanto o sinal do microfone é aumentado antes de qualquer outra coisa.",
+        "analogy": "Como o botão de volume de um amplificador de guitarra: mais deixa você mais alto, e o ambiente também."
+      },
+      "noise": {
+        "term": "Ruído",
+        "meaning": "Qualquer som que não é sua voz, como ventilador, chiado, trânsito ou zumbido.",
+        "analogy": "Como a conversa da mesa ao lado num café."
+      },
+      "snr": {
+        "term": "Relação sinal-ruído (SNR)",
+        "meaning": "O quanto sua voz é mais alta que o ambiente.",
+        "analogy": "Como falar numa biblioteca silenciosa ou numa estação de trem lotada."
+      },
+      "db": {
+        "term": "Decibel (dB)",
+        "meaning": "A unidade que diz o quanto um som é mais alto que outro.",
+        "analogy": "Como degraus de uma escada: a cada 10 dB a mais, o som parece umas duas vezes mais alto."
+      },
+      "eq": {
+        "term": "EQ (equalizador)",
+        "meaning": "Aumenta ou diminui partes da sua voz, do grave mais fundo ao agudo mais brilhante.",
+        "analogy": "Como os botões de grave e agudo de um aparelho de som."
+      },
+      "noiseReduction": {
+        "term": "Redução de ruído",
+        "meaning": "Aprende como o ambiente soa enquanto você fica em silêncio e depois tira esse som da sua voz.",
+        "analogy": "Como um fone com cancelamento de ruído, só que para seu microfone."
+      },
+      "compressor": {
+        "term": "Compressor",
+        "meaning": "Deixa seu volume mais uniforme, baixando com cuidado as partes mais fortes.",
+        "analogy": "Como um amigo que abaixa a TV sempre que entra um comercial no último volume."
+      },
+      "gate": {
+        "term": "Gate",
+        "meaning": "Abaixa o microfone quando você para de falar, para suas pausas ficarem silenciosas.",
+        "analogy": "Como uma porta que abre quando você fala e fecha quando você para."
+      },
+      "sibilance": {
+        "term": "Sibilância",
+        "meaning": "O chiado dos sons de S, X e T.",
+        "analogy": "Como o chiado de uma cobra, quando ele aparece demais."
+      },
+      "proximityEffect": {
+        "term": "Efeito de proximidade",
+        "meaning": "O grave extra que aparece quando você fica muito perto do microfone.",
+        "analogy": "Como a voz grave de um locutor de rádio quando ele chega bem perto do microfone."
+      },
+      "cardioid": {
+        "term": "Cardioide",
+        "meaning": "Um microfone que ouve principalmente pela frente e quase nada por trás.",
+        "analogy": "Como uma lanterna que ilumina o que está na frente dela, não atrás."
+      }
+    }
+  }
+}

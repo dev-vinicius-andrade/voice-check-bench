@@ -1,11 +1,13 @@
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
-import type { NoiseReductionPlan } from '../../types'
+import type { NoiseReductionGuide } from '../../types'
+import { useMsg } from '../common/MsgText'
 
 /** The manual noise-reduction setup (ReaFIR steps) and the alternatives, styled like a plugin card. */
-export function NoiseReductionCard({ plan, tag }: { plan: NoiseReductionPlan; tag: string }) {
+export function NoiseReductionCard({ plan, tag }: { plan: NoiseReductionGuide; tag: string }) {
   const { t } = useTranslation()
+  const tm = useMsg()
   const steps = plan.steps ?? []
   const alternatives = plan.alternatives ?? []
   return (
@@ -17,13 +19,13 @@ export function NoiseReductionCard({ plan, tag }: { plan: NoiseReductionPlan; ta
       {steps.length > 0 && (
         <ol className="m-0 grid list-decimal gap-1 pl-5">
           {steps.map((step) => (
-            <Typography key={step} component="li" variant="body2">{step}</Typography>
+            <Typography key={step.key} component="li" variant="body2">{tm(step)}</Typography>
           ))}
         </ol>
       )}
       {alternatives.length > 0 && (
         <Typography variant="caption" color="text.secondary">
-          {t('results.settings.nrAlternatives', { plugin: plan.plugin, list: alternatives.join(' · ') })}
+          {t('results.settings.nrAlternatives', { plugin: plan.plugin, list: alternatives.map(tm).join(' · ') })}
         </Typography>
       )}
     </Paper>

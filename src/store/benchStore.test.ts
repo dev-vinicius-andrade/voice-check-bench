@@ -4,6 +4,8 @@ import type { AnalysisResult, StepKey, Take } from '../types'
 import type { BenchState } from './api'
 import { initialBenchState, patchMicProfile, useBench } from './benchStore'
 import { DEFAULT_MIC } from '../mics/catalog'
+import { analyze } from '../audio/analyze'
+import { englishText } from '../settings/english'
 
 const fake = vi.hoisted(() => {
   const engine = {
@@ -175,7 +177,8 @@ describe('recording', () => {
     fake.samples = new Float32Array(48000 * 4)
     st().stopRecording()
     expect(st().recorder.phase).toBe('idle')
-    expect(st().status).toEqual({ message: 'Too short (4.0 s). Record at least 5 s: 3 s of silence, then the text.', error: true })
+    expect(st().status).toEqual({ msg: { key: 'engine.status.tooShort', params: { sec: 4, min: 5, quiet: 3 } }, error: true })
+    expect(englishText(st().status!.msg)).toBe('Too short (4.0 s). Record at least 5 s: 3 s of silence, then the text.')
     expect(st().takes).toEqual([])
   })
 
@@ -237,7 +240,9 @@ describe('enableMic', () => {
     fake.openWithFallback.mockRejectedValueOnce(Object.assign(new Error('denied'), { name: 'NotAllowedError' }))
     await st().enableMic()
     expect(st().mic.status).toBe('error')
-    expect(st().status?.message).toBe(
+    expect(st().status?.msg).toEqual({ key: 'engine.status.micDenied', params: { error: 'NotAllowedError: denied' } })
+    expect(st().mic.error).toEqual(st().status?.msg)
+    expect(englishText(st().status!.msg)).toBe(
       'Could not open the microphone (NotAllowedError: denied). Allow microphone access in the address bar, then reload.',
     )
   })
@@ -301,5 +306,43 @@ describe('mic profile', () => {
     const want = { model: 'Rode NT-USB', kind: 'dynamic', pattern: 'cardioid', address: 'side' }
     expect(st().micProfile).toEqual(want)
     expect(JSON.parse(localStorage.getItem('vcb-mic') ?? '{}')).toEqual(want)
+  })
+})
+
+describe('mains setting', () => {
+  afterEach(() => localStorage.clear())
+
+  it('defaults to auto, saves a choice and re-analyzes every take with it', async () => {
+    expect(initialBenchState().mains).toBe('auto')
+    reset({ takes: [mkTake(1, 's1', 'c2'), mkTake(2, 's1', 'c8')] })
+    st().setMains(60)
+    expect(st().mains).toBe(60)
+    expect(JSON.parse(localStorage.getItem('vcb-mains') ?? 'null')).toBe(60)
+    await vi.waitFor(() => expect(vi.mocked(analyze)).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(analyze).mock.calls.map((c) => c[2])).toEqual([{ mains: 60 }, { mains: 60 }])
+    st().setMains(50)
+    await vi.waitFor(() => expect(vi.mocked(analyze)).toHaveBeenCalledTimes(4))
+    expect(vi.mocked(analyze).mock.calls[3][2]).toEqual({ mains: 50 })
+  })
+
+  it('resolves auto from the browser region at analysis time', async () => {
+    reset({ takes: [mkTake(1, 's1', 'c2')], mains: 60 })
+    const langs = vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['pt-BR'])
+    st().setMains('auto')
+    await vi.waitFor(() => expect(vi.mocked(analyze)).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(analyze).mock.calls[0][2]).toEqual({ mains: 60 })
+    langs.mockReturnValue(['de-DE'])
+    st().setMains(60)
+    st().setMains('auto')
+    await vi.waitFor(() => expect(vi.mocked(analyze).mock.calls.at(-1)?.[2]).toEqual({ mains: 50 }))
+    langs.mockRestore()
+  })
+
+  it('is restored on bootstrap', async () => {
+    vi.resetModules()
+    const mod = await import('./benchStore')
+    localStorage.setItem('vcb-mains', '50')
+    await mod.useBench.getState().bootstrap()
+    expect(mod.useBench.getState().mains).toBe(50)
   })
 })

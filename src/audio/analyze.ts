@@ -1,6 +1,7 @@
 // Take analysis ported 1:1 from the prototype analyze() (docs/prototype/voice-check.html). Pure.
 import type { AnalysisResult, HumPeak, NoiseKind, NoiseTone } from '../types'
 import { adb, db, median, pct, powerSpec } from './dsp'
+import { humFrequencies, type Mains } from './mains'
 import { BANDS, QUIET_SEC } from './reference'
 
 /** dB above the noise floor that a 50 ms frame needs to count as speech, tried in order. */
@@ -8,13 +9,20 @@ export const SPEECH_MARGINS = [15, 10, 6] as const
 
 export const NOT_ENOUGH_SPEECH =
   'Not enough speech detected. Speak louder or closer, or check the selected input.'
+/** Message key for NOT_ENOUGH_SPEECH (the only analysis error), for the UI. */
+export const NOT_ENOUGH_SPEECH_KEY = 'engine.analysis.notEnoughSpeech'
+
+export interface AnalyzeOptions {
+  /** Local mains frequency: its hum family (50/100/150 or 60/120/180) is listed first in `hum`. Unset: prototype order. */
+  mains?: Mains
+}
 
 /**
  * Analyze a mono take: the first QUIET_SEC seconds are room silence, then speech.
  * 50 ms frames, robust noise estimate, speech mask, per-second spread, 8192-pt long-term
  * spectra, hum peaks in the silence window, 2048-pt sibilance per speech frame.
  */
-export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
+export function analyze(x: Float32Array, sampleRate: number, opts: AnalyzeOptions = {}): AnalysisResult {
   const sr = sampleRate
   const win = Math.round(0.05 * sr)
   const nF = Math.floor(x.length / win)
@@ -122,10 +130,11 @@ export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
   const ref = eS[4]
   const rel = eS.map((e) => e - ref)
 
-  // hum (neighbour bins outside the spectrum read as undefined and sort last, exactly as in the prototype)
+  // hum (neighbour bins outside the spectrum read as undefined and sort last, exactly as in the prototype).
+  // The local mains family comes first, so it wins ties; the other family is still reported when stronger.
   const hum: HumPeak[] = []
   if (cN > 0) {
-    for (const h of [50, 60, 100, 120, 150, 180]) {
+    for (const h of humFrequencies(opts.mains)) {
       const i = Math.round(h / binHz)
       const nb: number[] = []
       for (let k = i - 20; k <= i + 20; k++) if (Math.abs(k - i) > 2) nb.push(specN[k])

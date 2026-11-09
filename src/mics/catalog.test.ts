@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { englishText } from '../settings/english'
 import { DEFAULT_MIC, MIC_CATALOG, addressTip, findMic, placementTip } from './catalog'
 
 describe('mic catalog', () => {
@@ -16,15 +17,16 @@ describe('mic catalog', () => {
   })
 
   it('gives address tips per address', () => {
-    expect(addressTip({ address: 'end' })).toMatch(/top of the mic/)
-    expect(addressTip({ address: 'side' })).toMatch(/front side/)
-    expect(addressTip(DEFAULT_MIC)).toBe('Point the capsule at your mouth.')
+    expect(addressTip({ address: 'end' })).toEqual({ key: 'engine.mic.address.end' })
+    expect(englishText(addressTip({ address: 'end' }))).toMatch(/top of the mic/)
+    expect(englishText(addressTip({ address: 'side' }))).toMatch(/front side/)
+    expect(englishText(addressTip(DEFAULT_MIC))).toBe('Point the capsule at your mouth.')
   })
 
   it('gives placement tips per pattern', () => {
-    expect(placementTip({ pattern: 'cardioid' })).toMatch(/back of the mic/)
-    expect(placementTip({ pattern: 'supercardioid' })).toMatch(/125°/)
+    expect(englishText(placementTip({ pattern: 'cardioid' }))).toMatch(/back of the mic/)
+    expect(englishText(placementTip({ pattern: 'supercardioid' }))).toMatch(/125°/)
     for (const pattern of ['omni', 'figure8', 'unknown'] as const)
-      expect(placementTip({ pattern })).toMatch(/won't reject it/)
+      expect(placementTip({ pattern })).toEqual({ key: 'engine.mic.placement.other' })
   })
 })

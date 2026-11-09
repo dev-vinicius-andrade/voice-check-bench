@@ -1,1 +1,189 @@
-{}
+{
+  "wizard": {
+    "setup": {
+      "overline": "Antes de começar",
+      "headFirst": "Descubra o que está deixando",
+      "headSecond": "sua voz pouco clara",
+      "lead": "Você vai ler o mesmo texto curto quatro vezes. As três primeiras usam só o microfone, em três distâncias. A última passa pelos seus efeitos. Tudo fica neste navegador.",
+      "previous": "Ver seus últimos resultados",
+      "start": "Começar a etapa 1 →",
+      "takeRaw": "Só o microfone, sem efeitos · Entrada: {{input}}",
+      "takeFx": "Com seus efeitos · Entrada: {{input}}"
+    },
+    "mic": {
+      "title": "Qual microfone você tem?",
+      "lead": "Não sabe? Tudo bem — escolha 'Não sei'. Modelos conhecidos preenchem o resto, e você pode mudar o que não bater.",
+      "model": "Modelo do microfone",
+      "other": "Outro",
+      "kindLabel": "Que tipo de microfone é?",
+      "patternLabel": "Para que lado ele ouve?",
+      "addressLabel": "Onde você fala nele?",
+      "kind": {
+        "dynamic": "Dinâmico",
+        "condenser": "Condensador",
+        "unknown": "Não sei"
+      },
+      "kindHelp": {
+        "dynamic": "Dinâmico: a maioria dos microfones de podcast e de jogos. Ele ouve mais o que está perto, então o ambiente atrapalha menos.",
+        "condenser": "Condensador: muito sensível. Pega detalhes finos da sua voz, e também mais do ambiente.",
+        "unknown": "Não sabe? Sem problema. Você vai receber dicas que servem para os dois tipos."
+      },
+      "pattern": {
+        "cardioid": "Cardioide",
+        "supercardioid": "Supercardioide",
+        "omni": "Omni",
+        "figure8": "Figura 8",
+        "unknown": "Não sei"
+      },
+      "patternHelp": {
+        "cardioid": "Cardioide: ouve o que está na frente e ignora o que está atrás. A maioria dos microfones de voz funciona assim.",
+        "supercardioid": "Supercardioide: ouve uma área estreita na frente e ignora os lados, mas ouve um pouco por trás.",
+        "omni": "Omni: ouve tudo em volta por igual, então também ouve o ambiente inteiro.",
+        "figure8": "Figura 8: ouve a frente e a parte de trás, e ignora os lados.",
+        "unknown": "Não sabe? A maioria dos microfones de voz é cardioide: ouve a frente e ignora a parte de trás."
+      },
+      "address": {
+        "end": "A ponta",
+        "side": "A lateral",
+        "unknown": "Não sei"
+      },
+      "addressHelp": {
+        "end": "Ponta: você fala na ponta do microfone, como num microfone de mão no palco.",
+        "side": "Lateral: você fala na frente do microfone, geralmente onde fica a logo. Comum em microfones grandes de estúdio.",
+        "unknown": "Não sabe? Aponte a parte com a grade de metal direto para sua boca."
+      },
+      "tip": {
+        "address": {
+          "end": "Fale direto na ponta do microfone.",
+          "side": "Fale na frente do microfone (geralmente onde fica a logo), não na ponta.",
+          "unknown": "Aponte o microfone direto para sua boca."
+        },
+        "placement": {
+          "cardioid": "Vire a parte de trás do microfone para o barulho mais forte, como um ventilador ou o computador.",
+          "supercardioid": "Deixe o barulho mais forte ao lado do microfone, um pouco para trás.",
+          "other": "Chegue o microfone mais perto de você e mais longe do barulho."
+        }
+      },
+      "community_one": "{{count}} pessoa compartilhou resultados com este microfone",
+      "community_many": "{{count}} pessoas compartilharam resultados com este microfone",
+      "community_other": "{{count}} pessoas compartilharam resultados com este microfone",
+      "communitySnr": "normalmente {{snr}} mais alto que o ambiente",
+      "communityDist": "a maioria escolheu {{dist}}"
+    },
+    "access": {
+      "title": "Acesso ao microfone",
+      "leadOff": "O navegador vai pedir permissão uma vez. Nós desligamos o filtro de ruído e o volume automático dele, para ouvir seu microfone de verdade.",
+      "leadOn": "Escolha a entrada para cada tipo de gravação. A página troca entre elas sozinha. Clique em Testar e fale para ver o medidor se mexer.",
+      "listening": "Ouvindo:",
+      "listeningChip": "Ouvindo",
+      "input": "Entrada",
+      "testHint": "Abra esta entrada e veja o medidor",
+      "raw": {
+        "title": "Só o microfone, sem efeitos",
+        "hint": "Etapas 1–3 · as gravações de teste"
+      },
+      "fx": {
+        "title": "Com seus efeitos",
+        "hint": "Etapa 4 · com seus efeitos ligados"
+      }
+    },
+    "room": {
+      "label": "Ambiente:",
+      "quiet": "silencioso",
+      "some": "um pouco barulhento",
+      "noisy": "barulhento — as dicas vão se adaptar",
+      "measuring": "medindo…",
+      "detail": "Momento mais silencioso nos últimos 2 segundos: {{level}}"
+    },
+    "steps": {
+      "overline": "Etapa {{n}} de {{total}} · {{kind}}",
+      "c2": {
+        "kind": "Só o microfone",
+        "title": "Mais ou menos um dedo de distância · {{dist}}",
+        "head1": "Grave bem de perto,",
+        "head2": "a mais ou menos um dedo",
+        "lead": "Deixe a boca a mais ou menos a largura de um dedo do microfone ({{dist}}) e fale direto nele. Tão perto assim, o grave aumenta. Esta gravação mostra o quanto."
+      },
+      "c8": {
+        "kind": "Só o microfone",
+        "title": "Mais ou menos um punho de distância · {{dist}}",
+        "head1": "Agora um pouco mais longe,",
+        "head2": "a mais ou menos um punho",
+        "lead": "Deixe mais ou menos um punho entre sua boca e o microfone ({{dist}}). Continue falando direto nele, no mesmo volume de antes."
+      },
+      "c15": {
+        "kind": "Só o microfone",
+        "title": "Mais ou menos uma mão aberta de distância · {{dist}}",
+        "head1": "Agora mais para trás,",
+        "head2": "a mais ou menos uma mão aberta",
+        "lead": "Deixe mais ou menos uma mão aberta entre sua boca e o microfone ({{dist}}). Mesma direção, mesmo volume de antes."
+      },
+      "fx": {
+        "kind": "Com seus efeitos",
+        "title": "Com seus efeitos · {{dist}}",
+        "head1": "Mais uma vez,",
+        "head2": "com seus efeitos ligados",
+        "lead": "Leia o mesmo texto na sua melhor distância: {{dist}}. Desta vez sua voz passa pelos seus efeitos, para você ouvir o que eles mudam."
+      }
+    },
+    "free": {
+      "overline": "Gravação livre",
+      "head1": "Grave qualquer configuração",
+      "head2": "que quiser testar",
+      "lead": "Escolha uma entrada abaixo, dê um nome para a gravação e compare com suas outras gravações depois.",
+      "placeholder": "Dê um nome, ex.: Com efeitos · 8 cm · EQ nova",
+      "nameLabel": "Nome da gravação"
+    },
+    "stepper": {
+      "setup": "Preparação",
+      "fx": "Efeitos",
+      "results": "Resultados"
+    },
+    "ruler": {
+      "mouth": "boca",
+      "everyday": "{{everyday}} de distância · {{dist}}",
+      "plain": "{{dist}} de distância"
+    },
+    "input": {
+      "label": "Entrada:",
+      "notConnected": "não conectada",
+      "device": "Dispositivo de entrada"
+    },
+    "record": {
+      "start": "Gravar",
+      "again": "Gravar de novo",
+      "stop": "Parar",
+      "key": "Espaço",
+      "keyHint": "para começar e parar"
+    },
+    "cue": {
+      "idle": "Clique em gravar. Fique em silêncio por {{sec}} segundos e depois leia o texto em voz alta.",
+      "silence": "Fique em silêncio — estamos ouvindo o ambiente",
+      "reading": "Agora leia o texto em voz alta",
+      "analyzing": "Verificando sua gravação…"
+    },
+    "reading": {
+      "note": "Leia com naturalidade, com sua voz e seu ritmo de sempre.",
+      "passage": "Ontem à noite, o vento norte soprou forte sobre a cidade. A menina abriu a janela, olhou para o céu e decidiu terminar o livro antigo que ganhou do avô. Depois, preparou um café e chamou os amigos para jogar."
+    },
+    "nav": {
+      "next": "Próxima: {{dist}} →",
+      "nextFx": "Próxima: com efeitos →",
+      "results": "Ver resultados →"
+    },
+    "take": {
+      "saved": "Salvo. Clareza {{score}} de 100: {{headline}}",
+      "details": "Detalhes: sua voz {{speech}} · ambiente {{noise}} · voz acima do ambiente {{snr}}",
+      "quietBroken": "Ouvimos som nos primeiros {{sec}} segundos, então a medida do ambiente pode estar errada. Grave de novo e fique em silêncio até a contagem acabar.",
+      "replace": "Não gostou? Clique em gravar de novo para substituir.",
+      "failed": "Não conseguimos verificar esta gravação",
+      "failedDetails": "Detalhes: {{duration}} de duração · pico {{peak}} · parte silenciosa {{silence}} · leitura {{reading}} · entrada {{device}}",
+      "failure": {
+        "silent": "Só captamos silêncio. Esta entrada não está ouvindo seu microfone. Clique em Trocar e escolha outra entrada, ou confira se seu programa de áudio manda o microfone para ela.",
+        "tooQuiet": "Sua voz quase não chegou ao microfone. Aumente o volume de entrada (gain) no microfone ou na interface de áudio, ou confira se escolheu a entrada certa.",
+        "noisyPause": "A parte silenciosa estava quase tão alta quanto sua leitura. Fique em silêncio até a contagem acabar e pause qualquer outra coisa que toque som nesta entrada, como música ou uma chamada.",
+        "tooShort": "Seu volume parece bom, mas faltou fala. Leia o texto inteiro depois da contagem e continue até o fim."
+      }
+    }
+  }
+}

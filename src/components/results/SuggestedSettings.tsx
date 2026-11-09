@@ -7,13 +7,15 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { fmtNum } from '../../i18n/format'
-import { suggestionToJson, suggestionToText } from '../../settings/suggest'
+import { joinMsgs, suggestionToJson, suggestionToText } from '../../settings/suggest'
 import { useSuggestion } from '../../store/hooks'
 import { isAnalysisError, type Suggestion } from '../../types'
+import { useMsg } from '../common/MsgText'
 import { downloadFile } from './download'
 import { NoiseReductionCard } from './NoiseReductionCard'
 import { PluginCard } from './PluginCard'
 import { pluginCards, tagOf } from './pluginCards'
+import { useTakeName } from './useTakeName'
 
 function ChainRow({ chain }: { chain: string[] }) {
   const { t } = useTranslation()
@@ -32,12 +34,15 @@ function ChainRow({ chain }: { chain: string[] }) {
 
 type CopyState = 'idle' | 'copied' | 'saved'
 
+/** "Copy as text" copies the sheet in the active language; the downloaded .txt stays English. */
 function useCopy(s: Suggestion): [CopyState, () => void] {
+  const tm = useMsg()
+  const tn = useTakeName()
   const [state, setState] = useState<CopyState>('idle')
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
   const copy = async (): Promise<void> => {
-    const text = suggestionToText(s)
+    const text = suggestionToText(s, tm, tn(s.base))
     try {
       await navigator.clipboard.writeText(text)
       setState('copied')
@@ -53,11 +58,13 @@ function useCopy(s: Suggestion): [CopyState, () => void] {
 
 function SettingsPanel({ s }: { s: Suggestion }) {
   const { t } = useTranslation()
+  const tm = useMsg()
+  const tn = useTakeName()
   const [copyState, copy] = useCopy(s)
   const copyLabel = copyState === 'copied' ? t('results.copy.copied') : copyState === 'saved' ? t('results.copy.saved') : t('results.settings.copyText')
   const a = isAnalysisError(s.base.analysis) ? null : s.base.analysis
   const based = [
-    t('results.settings.basedOn', { name: s.base.name }),
+    t('results.settings.basedOn', { name: tn(s.base) }),
     a ? t('results.settings.levels', { speech: fmtNum(a.speechMed, 1), noise: fmtNum(a.noise, 0) }) : '',
     t('results.settings.keepMic', { dist: s.dist }),
   ]
@@ -81,9 +88,9 @@ function SettingsPanel({ s }: { s: Suggestion }) {
           </Button>
         </div>
       </div>
-      {s.noiseHint && <Alert severity="error">{s.noiseHint}</Alert>}
+      {s.noiseHint.length > 0 && <Alert severity="error">{joinMsgs(s.noiseHint, tm)}</Alert>}
       {s.gainHint ? (
-        <Alert severity="warning">{s.gainHint}</Alert>
+        <Alert severity="warning">{tm(s.gainHint)}</Alert>
       ) : (
         <Typography variant="body2" color="text.secondary">{based.filter(Boolean).join(' ')}</Typography>
       )}
