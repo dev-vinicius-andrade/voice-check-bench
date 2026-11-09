@@ -4,7 +4,8 @@ export type StepKey = 'c2' | 'c8' | 'c15' | 'fx'
 export type DeviceKind = 'raw' | 'fx'
 export type Status = 'good' | 'warn' | 'bad'
 export type ChartView = 'a' | 'ab' | 'diff'
-export type Screen = 'setup' | 'step' | 'results'
+/** Wizard screens (setup/step/results) plus content pages. Hash routes: #/ home, #/how-it-works, #/community, #/privacy, #/check (setup/step), #/results. */
+export type Screen = 'home' | 'how' | 'community' | 'privacy' | 'setup' | 'step' | 'results'
 /** Index into STEPS, or 'free' for a free take. */
 export type StepRef = number | 'free'
 

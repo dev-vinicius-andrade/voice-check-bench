@@ -21,3 +21,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 13. `[x]` **Issue form, validation, aggregation, Action** — Careful. `.github/ISSUE_TEMPLATE/mic-result.yml`, `src/community/validate.ts`, `src/community/aggregate.ts`, `tools/community/aggregate.ts`, `.github/workflows/community.yml`.
 14. `[x]` **Share + community display UI** — Medium. `src/community/summary.ts`, `shareUrl.ts`, `useCommunity.ts`, ShareCommunityButton, CommunityMicCard, setup CommunityMicLine.
 15. `[x]` **Integration** — orchestrator. Real WAV → summary → share URL (5.2 kB, no device names) → issue body → validate → aggregate.
+
+## v0.4 — Site pages (SPEC "Site pages")
+16. `[ ]` **Routing, nav, footer, demo** — Careful. Hash routing in the store, TopBar nav, Footer, demo session loader + banner.
+17. `[ ]` **Content pages** — Medium. Home, How it works, Community, Privacy.
