@@ -76,6 +76,19 @@ export interface Check {
   fix: string
 }
 
+export type MicKind = 'dynamic' | 'condenser' | 'unknown'
+export type MicPattern = 'cardioid' | 'supercardioid' | 'omni' | 'figure8' | 'unknown'
+export type MicAddress = 'end' | 'side' | 'unknown'
+
+/** The person's microphone. Free-text model (e.g. "Fifine K688", "Shure SM7B") plus the traits that change advice. */
+export interface MicProfile {
+  model: string
+  kind: MicKind
+  pattern: MicPattern
+  /** end = speak into the top (most dynamics like SM58/K688); side = speak into the side (SM7B, many condensers). */
+  address: MicAddress
+}
+
 /** What is persisted in IndexedDB (analysis is recomputed on load). */
 export interface StoredTake {
   id: number
@@ -86,6 +99,8 @@ export interface StoredTake {
   sampleRate: number
   samples: Float32Array
   created: string
+  /** Mic profile at record time (absent on takes recorded before v0.2). */
+  mic?: MicProfile
 }
 
 export interface Take extends StoredTake {

@@ -12,7 +12,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 8. `[x]` **Integration check** — orchestrator. Full flow in the browser, light/dark, 400 px, reload persistence, build/lint/test.
 
 ## v0.2 — Noisy-room mode (SPEC "Noisy-room mode")
-9. `[ ]` **Noise diagnosis** — Careful. analyze.ts (speechBands, noiseBands, bandSnr, tones, noiseKind), diagnose.ts (tones, bandsnr checks), bestControl weighting, testSignals fixture update, tests incl. `_test/control-2-cm-raw.wav` (server + ceiling fan: expect tones near 200, 770–790, 1560 Hz; noiseKind tonal; snr < 20). Depends: types.
+9. `[ ]` **Noise diagnosis** — Careful. Also: make every diagnose text generic (no model names). analyze.ts (speechBands, noiseBands, bandSnr, tones, noiseKind), diagnose.ts (tones, bandsnr checks), bestControl weighting, testSignals fixture update, tests incl. `_test/control-2-cm-raw.wav` (server + ceiling fan: expect tones near 200, 770–790, 1560 Hz; noiseKind tonal; snr < 20). Depends: types.
 10. `[ ]` **Noisy-room suggestions** — Careful. suggest.ts per SPEC (chain, ReaFIR plan, notches, no boosts in noisy bands, compressor/expander), text/JSON, tests. Depends: types (uses Analysis fields; tests use fakeAnalysis with explicit values).
-11. `[ ]` **Room noise UI** — Medium. Setup room reading + placement tip, step tip, results RoomNoisePanel + BeforeAfterCard, SuggestedSettings chain + ReaFIR steps. Depends: types.
+11. `[ ]` **Room noise + mic profile UI** — Careful. src/mics/catalog.ts; store micProfile/setMicProfile + prefs 'vcb-mic' + take.mic; Setup 'Your microphone' card, room reading + placement tip; step tips from profile; generic step copy; results RoomNoisePanel + BeforeAfterCard + 'Copy anonymized summary'; SuggestedSettings chain + ReaFIR steps. Depends: types.
 12. `[ ]` **Integration** — orchestrator. Real WAV check, browser check, commit.

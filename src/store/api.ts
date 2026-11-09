@@ -1,6 +1,6 @@
 // Store contract. Owned by the orchestrator: the store implementation (benchStore.ts, selectors.ts)
 // and the UI components are written against this file in parallel. Change only with all parties.
-import type { ChartView, DeviceChoice, DeviceKind, Screen, StepRef, Suggestion, Take } from '../types'
+import type { ChartView, DeviceChoice, DeviceKind, MicProfile, Screen, StepRef, Suggestion, Take } from '../types'
 import type { InputDevice } from '../audio/AudioEngine'
 
 export type MicStatus = 'off' | 'connecting' | 'on' | 'error'
@@ -33,6 +33,8 @@ export interface BenchState {
   /** Take recorded on the current free-take screen (guided steps use the session slot). */
   lastTakeId: number | null
   freeTakeName: string
+  /** The person's mic (saved in localStorage key 'vcb-mic'; copied onto each new take). */
+  micProfile: MicProfile
   status: StatusMessage | null
 }
 
@@ -66,6 +68,7 @@ export interface BenchActions {
   startFreeTake(): void
   setFreeTakeName(name: string): void
   setFxDist(dist: string): void
+  setMicProfile(patch: Partial<MicProfile>): void
   setStatus(message: string, error?: boolean): void
   clearStatus(): void
 }
