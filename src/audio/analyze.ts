@@ -3,6 +3,9 @@ import type { AnalysisResult, HumPeak } from '../types'
 import { adb, db, median, pct, powerSpec } from './dsp'
 import { BANDS, QUIET_SEC } from './reference'
 
+/** dB above the noise floor that a 50 ms frame needs to count as speech, tried in order. */
+export const SPEECH_MARGINS = [15, 10, 6] as const
+
 export const NOT_ENOUGH_SPEECH =
   'Not enough speech detected. Speak louder or closer, or check the selected input.'
 
@@ -46,13 +49,21 @@ export function analyze(x: Float32Array, sampleRate: number): AnalysisResult {
     quietLoud = true
   }
 
-  const sp: number[] = []
-  const spIdx: number[] = []
-  for (let f = noiseFromQuiet ? sStart : 0; f < nF; f++) {
-    if (fr[f] > noise + 15 && fr[f] > -70) {
-      sp.push(fr[f])
-      spIdx.push(f)
+  // Speech = frames clearly above the noise. Start with the prototype's 15 dB margin; on a noisy input
+  // (loud room, hum, low SNR) fall back to 10 then 6 dB so the take is still analyzed and the noise
+  // check reports the problem instead of the whole take being rejected.
+  let sp: number[] = []
+  let spIdx: number[] = []
+  for (const margin of SPEECH_MARGINS) {
+    sp = []
+    spIdx = []
+    for (let f = noiseFromQuiet ? sStart : 0; f < nF; f++) {
+      if (fr[f] > noise + margin && fr[f] > -70) {
+        sp.push(fr[f])
+        spIdx.push(f)
+      }
     }
+    if (sp.length >= 20) break
   }
   if (sp.length < 20) return { error: NOT_ENOUGH_SPEECH }
 

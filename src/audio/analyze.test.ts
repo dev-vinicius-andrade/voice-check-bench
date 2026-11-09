@@ -92,3 +92,24 @@ describe('analyze edge cases', () => {
     expect(analyze(new Float32Array(0), 48000)).toEqual({ error: ERROR })
   })
 })
+
+describe('analyze on a noisy input', () => {
+  it('still analyzes when the room is only ~13 dB below the voice (falls back to a smaller speech margin)', () => {
+    const sr = 48000
+    const x = new Float32Array(sr * 12)
+    let seed = 7
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296) * 2 - 1
+    for (let i = 0; i < x.length; i++) {
+      const noise = rnd() * 0.024 // ≈ -37 dBFS RMS room
+      const t = i / sr
+      const voice = t < 3 ? 0 : 0.12 * Math.max(0, Math.sin(2 * Math.PI * 4 * t)) * Math.sin(2 * Math.PI * 220 * t)
+      x[i] = noise + voice
+    }
+    const a = analyze(x, sr)
+    expect('error' in a).toBe(false)
+    if (!('error' in a)) {
+      expect(a.noise).toBeGreaterThan(-45)
+      expect(a.snr).toBeLessThan(20)
+    }
+  })
+})
