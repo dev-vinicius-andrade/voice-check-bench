@@ -159,3 +159,26 @@ Real case: following the noisy-room guide, ReaFIR set too strong produced a proc
 - **Processed vs raw comparison** (plain module, used by results and score): when A is a processed take and a raw control of the same session exists, flag: level drop > 8 dB ("your voice got much quieter"), bass loss (boom+warmth deviation drop > 12 dB → "thin"), presence/sibilance rise > 6 dB ("harsh"), and over-processing. Clarity score of a processed take: noise penalty uses SNR capped at 45 and adds an over-processing penalty up to 35 (zeroRatio/gateSwitches) plus 10 per flagged regression; headline `score.overprocessed` ("Too much processing: it's cutting your voice"). Next actions put "turn noise removal down" first.
 - **Suggestions:** ReaFIR reduction starts at about 6 dB ("drag the curve down a little — about 6 dB — then listen; stop at the first watery or robotic sound"), never "until the room drops 15 dB". `preferAi = snr < 15`: AI noise removal (Elgato Noise Removal, NVIDIA Broadcast, Voice Focus) is presented first and ReaFIR as the alternative. Gate dry stays −10 dB (never full silence). After noise reduction, a note to raise ReaComp Wet by the level lost (measured in the before/after).
 - **Processed take distance:** the processed step records at the best control distance; the step and the guide say so explicitly ("same distance as your best take: 2 cm").
+
+## Voice goals (v0.9)
+People decide what "good" means for them. Nothing is judged against a single curve anymore.
+- **Goal** `VoiceGoal = { style: 'natural' | 'warm' | 'clear' | 'bright'; perceived: PerceivedIssue[] }`, `PerceivedIssue = 'nasal' | 'muffled' | 'boomy' | 'thin' | 'harsh' | 'sharpS' | 'dull'`. Saved in localStorage `vcb-goal` (try/catch), editable on setup ("What do you want your voice to sound like?" + "How does your voice sound to you? (optional)") and on results ("Change goal" re-scores instantly; no re-recording).
+- **Target curve:** `targetDeviations(rel, goal)` = deviations(rel) minus the style offset per band (dB; bands rumble, boom, warmth, mud, body, definition, presence, sibilance, air):
+  - natural `[0, 0, 0, 0, 0, 0, 0, 0, 0]` (today's reference)
+  - warm `[0, +3, +2, 0, +1, 0, -1, -1, -1]` (radio / podcast: more bass and body)
+  - clear `[0, -1, -1, -1, 0, +2, +3, +1, +1]` (cuts through games and calls)
+  - bright `[0, 0, -1, 0, 0, 0, +1, +2, +3]` (more sparkle on top)
+  Same ±3 / ±6 dB tolerances around the target. Every consumer of deviations (diagnose band checks, plain ratings/score/actions, suggest EQ, bestControl, charts) takes the goal; charts label the zero line "your target".
+- **Perceived issues** (what the person hears) combine with what is measured:
+  - nasal ⇔ body (640 Hz–1.25 kHz) or definition (1.25–2.5 kHz) above target by > 1.5 dB · muffled ⇔ mud high or presence low · boomy ⇔ boom/warmth high · thin ⇔ boom+warmth low · harsh ⇔ presence high · sharpS ⇔ sibilance high or sibP95 > −6 · dull ⇔ sibilance+air low.
+  - Confirmed by measurement → priority in "What to do next" and the full EQ correction; a new EQ band for nasal: Band ~1000 Hz (centre at the larger of body/definition excess), −2 to −4 dB, bw 1.0.
+  - Not confirmed → an honest note ("We didn't measure this, but you hear it — here's a gentle tweak") and a gentle correction of 1.5 dB in that direction (never more), marked as "by ear".
+- Community summaries add `goal.style` (not perceived) so stats can be split by style later.
+
+## Profiles (v1.0)
+The app builds and keeps the person's configuration.
+- `Profile = { id, name, created, updated, mic: MicProfile, host: 'wavelink' | 'obs' | 'apps' | 'nvidia' | null, dist: string, goal: VoiceGoal, mains: 50 | 60 | 'auto', suggestion: SuggestionJson, devices?: DeviceChoice, validation: { rawScore, fxScore, snrGain, regressions: string[], date } | null, version: 1 }`. Stored in IndexedDB store `profiles` (same DB, version bump with migration) with in-memory fallback.
+- **Create:** results → "Save as profile" (name suggested from host + style, e.g. "Wave Link · Warm"). Allowed only when a processed take beats the raw control: fxScore ≥ rawScore + 5, no over-processing regressions. Otherwise the button explains why and links to the guide ("fix first"). A draft can still be saved explicitly as "Not validated yet" (validation null, shown with a warning chip).
+- **Profiles page** `#/profiles` (nav link): cards with name, mic, style, host, distance, validation chip (Validated · score raw → processed · date / Not validated), actions: Apply (guide with the profile's values; or the automatic tool), Re-test (starts a new session pre-set with the profile's devices, distance and goal; on completion offers to update the profile), Export (JSON file `voice-check-profile-<name>.json`), Duplicate, Rename, Delete (second-click confirm). Import button (file input; validated; never executes anything).
+- **Tool:** `tools/apply-reaplugs.py` accepts a profile JSON (uses `.suggestion`) as well as the plain settings JSON.
+- **Active profile:** one profile can be marked active; results compare new takes against it ("still matches your profile" / "your room changed: re-test").

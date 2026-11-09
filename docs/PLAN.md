@@ -41,3 +41,9 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 ## v0.8 — Over-processing safety (SPEC "Over-processing safety")
 26. `[ ]` **Detect over-processing** — Careful. analyze clamps + zeroRatio/gateSwitches, overprocessed check, processed-vs-raw comparison, score/actions/headline, en+pt-BR keys. Test with the real processed WAV.
 27. `[ ]` **Safer suggestions and guide** — Medium. ReaFIR 6 dB start, preferAi ordering, makeup note, processed step at best distance, guide copy en+pt-BR.
+
+## v0.9 — Voice goals (SPEC "Voice goals") / v1.0 — Profiles (SPEC "Profiles")
+28. `[ ]` **Goal engine** — Careful. VoiceGoal types, targetDeviations, goal threaded through diagnose/plain/suggest/bestControl, perceived-issue fusion, nasal EQ band, tests.
+29. `[ ]` **Goal UI** — Medium. Setup goal card, results "Change goal", charts "your target", en+pt-BR.
+30. `[ ]` **Profiles storage + logic** — Careful. IndexedDB store + migration, validation rule, import/export schema, tool reads profiles.
+31. `[ ]` **Profiles UI** — Medium. #/profiles page, Save as profile, Apply/Re-test/Export/Import/Duplicate/Rename/Delete, active profile compare, en+pt-BR.
