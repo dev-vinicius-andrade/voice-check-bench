@@ -43,3 +43,6 @@ Recordings never leave your computer. Takes are stored in the browser (IndexedDB
 | `npm test` | Unit tests (Vitest) |
 | `python tools/apply-reaplugs.py --show` | Print the current ReaPlugs values from Wave Link |
 | `python tools/apply-reaplugs.py --self-test` | Check the tool round-trips Wave Link's plugin data byte-identically |
+
+## Hosting
+The site is deployed to GitHub Pages by `.github/workflows/pages.yml` on every push to `main` (tests + build, then deploy). Custom domain: `voicecb.app.andradev.io` (`public/CNAME`). DNS: a `CNAME` record `voicecb.app` → `dev-vinicius-andrade.github.io`.
