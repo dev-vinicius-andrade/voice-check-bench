@@ -1,6 +1,6 @@
 // Store contract. Owned by the orchestrator: the store implementation (benchStore.ts, selectors.ts)
 // and the UI components are written against this file in parallel. Change only with all parties.
-import type { ChartView, DeviceChoice, DeviceKind, MicProfile, Screen, StepRef, Suggestion, Take } from '../types'
+import type { ChartView, DeviceChoice, DeviceKind, MicProfile, Screen, StepRef, Suggestion, Take, VoiceGoal } from '../types'
 import type { InputDevice } from '../audio/AudioEngine'
 import type { MainsSetting } from '../audio/mains'
 import type { Msg } from '../plain/types'
@@ -40,6 +40,8 @@ export interface BenchState {
   micProfile: MicProfile
   /** Mains frequency setting (localStorage 'vcb-mains'); 'auto' resolves from the locale region at analysis time. */
   mains: MainsSetting
+  /** Voice goal (style + perceived issues); every analysis-derived view targets it. */
+  goal: VoiceGoal
   status: StatusMessage | null
 }
 
@@ -74,6 +76,7 @@ export interface BenchActions {
   setFreeTakeName(name: string): void
   setFxDist(dist: string): void
   setMicProfile(patch: Partial<MicProfile>): void
+  setGoal(patch: Partial<VoiceGoal>): void
   /** Save the mains setting and re-analyze every take with it. */
   setMains(mains: MainsSetting): void
   setStatus(msg: Msg, error?: boolean): void

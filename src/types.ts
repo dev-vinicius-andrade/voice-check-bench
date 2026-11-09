@@ -190,3 +190,13 @@ export interface DeviceChoice {
   raw: string | null
   fx: string | null
 }
+
+// ---- Voice goals (v0.9, SPEC "Voice goals") ----
+export type VoiceStyle = 'natural' | 'warm' | 'clear' | 'bright'
+export type PerceivedIssue = 'nasal' | 'muffled' | 'boomy' | 'thin' | 'harsh' | 'sharpS' | 'dull'
+/** What the person wants and what they hear. Saved in localStorage 'vcb-goal'. */
+export interface VoiceGoal {
+  style: VoiceStyle
+  perceived: PerceivedIssue[]
+}
+export const DEFAULT_GOAL: VoiceGoal = { style: 'natural', perceived: [] }
