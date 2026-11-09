@@ -16,3 +16,4 @@ Stack: Vite 8 · React 19 · TypeScript 6 strict · MUI 9 + Emotion · Tailwind 
 - Components stay under ~150 lines; extract hooks for stateful logic. No `any`.
 - Browser storage access always in try/catch; the app must work when IndexedDB or localStorage is blocked.
 - Update `filemap.md` when adding or moving files.
+- UI text goes through i18n (`useTranslation()` → `t('area.key', params)`); English source strings in `src/i18n/locales/en/<area>.json`, Portuguese in `pt-BR/<area>.json`. Numbers/dates on screen via `src/i18n/format.ts`, never `toFixed` in components. Framework-free modules return `Msg` keys (src/plain/types.ts). Plugin and product names are never translated.

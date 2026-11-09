@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import en from '../i18n/locales/en.json'
+import en from '../i18n/locales/en/plain.json'
 import type { MicAddress, MicPattern } from '../types'
 import { nextActions } from './actions'
 import { everydayDistance } from './distances'

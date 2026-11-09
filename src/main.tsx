@@ -4,6 +4,7 @@ import { StyledEngineProvider, ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import GlobalStyles from '@mui/material/GlobalStyles'
 import './index.css'
+import './i18n'
 import { theme } from './theme'
 import App from './App'
 
