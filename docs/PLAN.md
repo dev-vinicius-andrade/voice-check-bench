@@ -32,3 +32,8 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 20. `[ ]` **Plain results UI** — Medium. After 18, 19.
 21. `[ ]` **Plain wizard, setup, pages + string extraction** — Medium. After 19.
 22. `[ ]` **pt-BR translation, reading passages, engine text keys (diagnose/suggest)** — Careful. After 20, 21.
+
+## v0.7 — Guided setup with interactive replicas (SPEC "Guided setup …")
+23. `[ ]` **Host picker + guide shell** (checklist, steps, "Show me how" entry points) — Medium. After 20–22.
+24. `[ ]` **ReaPlugs replicas** (ReaFIR, ReaEQ with computed curve, ReaComp, ReaGate) + Wave Link effects list replica — Careful.
+25. `[ ]` **OBS and app-only paths** — Medium.

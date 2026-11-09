@@ -136,3 +136,17 @@ Headline key by score: ≥ 85 `score.clear` ("Clear and clean") · 70–84 `scor
 
 ## Languages and localization (v0.6)
 i18next + react-i18next; locales `en` (source) and `pt-BR`; detection order: `?lang=` → saved choice (localStorage `vcb-lang`) → `navigator.languages` → en. Switcher in the top bar. Numbers/dates via `Intl` with the active locale (`-27,4 dBFS` in pt-BR); exported JSON and the Python tool stay locale-neutral. Plurals via i18next (`count`). Distances: cm, plus inches for `en-US`. Region setting (auto from locale, editable on setup): mains frequency 50 or 60 Hz — the hum check and hum advice use it. Reading passage per locale (original texts with plosives, sibilants and nasals; pt-BR keeps the current one). Product and plugin names and parameter labels (Wave Link, ReaFIR, Threshold, Ratio…) are never translated. Community data stays numeric and locale-free.
+
+## Guided setup with interactive plugin replicas (v0.7)
+Goal: show people exactly where to click and what to type, with their own values. No real screenshots of third-party software are shipped; panels are hand-built replicas (SVG/HTML + MUI) that mirror the layout and field names of the real windows.
+- **"What do you use?"** (asked at the start of the guide, saved): Elgato Wave Link · OBS Studio · Discord / Teams / Zoom only · NVIDIA Broadcast · Not sure. Not sure → a short explainer and a recommendation (Wave Link users → Wave Link path; otherwise OBS or app-only path).
+- **Wave Link + ReaPlugs path (first):** 1) open Wave Link → your mic → Effects (replica of the effects list with toggles, highlighting what to turn on/off and the order); 2) add a plugin (replica of "Add effect" → ReaPlugs entries); 3) one step per plugin in the suggested chain with a replica panel:
+  - ReaFIR: mode dropdown = Subtract, FFT size = 4096, "Automatically build noise profile" checkbox with a 3-second "stay silent" cue, curve sketch showing the profile being lowered.
+  - ReaEQ: graph with the person's actual response curve computed from the suggested bands (shelf/band/notch formulas), numbered band nodes, band tabs 1..N, fields Type / Frequency (Hz) / Gain (dB) / Bandwidth (oct) filled with the values; the current band highlighted.
+  - ReaComp: Threshold slider + value, Ratio, Attack, Release, Knee size, Output mix Wet/Dry, "Limit output" checkbox.
+  - ReaGate: Threshold, Attack, Hold, Release, Hysteresis, Wet/Dry.
+  Each panel has numbered callouts (① click … ② type …) and a "Done, next" button; a checklist tracks progress; the alternative "apply automatically" path explains `tools/apply-reaplugs.py` (Wave Link closed).
+- **OBS path (second):** Audio Mixer → ⋮ → Filters; built-in Noise Suppression (RNNoise), Expander/Noise Gate, 3-Band EQ, Compressor, Limiter with values mapped from the suggestion; option to load ReaPlugs VSTs via the "VST 2.x Plug-in" filter.
+- **App-only path:** what to switch on/off in Discord/Teams/Zoom (noise suppression, echo cancellation, auto gain) + the free physical actions.
+- Replicas are generic in style (theme colors, not Cockos/Elgato branding) but keep field names and order identical to the software so people recognise them. Plugin labels are never translated; surrounding text is.
+- Reference for building the replicas: the real windows can be captured locally during development; captures are not committed.
