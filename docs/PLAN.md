@@ -23,17 +23,17 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 15. `[x]` **Integration** — orchestrator. Real WAV → summary → share URL (5.2 kB, no device names) → issue body → validate → aggregate.
 
 ## v0.4 — Site pages (SPEC "Site pages")
-16. `[ ]` **Routing, nav, footer, demo** — Careful. Hash routing in the store, TopBar nav, Footer, demo session loader + banner.
-17. `[ ]` **Content pages** — Medium. Home, How it works, Community, Privacy.
+16. `[x]` **Routing, nav, footer, demo** — Careful. Hash routing in the store, TopBar nav, Footer, demo session loader + banner.
+17. `[x]` **Content pages** — Medium. Home, How it works, Community, Privacy.
 
 ## v0.5 — Plain language / v0.6 — Localization (SPEC "Plain language", "Languages and localization")
-18. `[ ]` **Plain engine** — Careful. src/plain/{types,score,ratings,actions,glossary}.ts + tests; returns message keys; English strings in src/i18n/locales/en.json (plain namespace).
-19. `[ ]` **i18n infrastructure** — Medium. i18next setup, detection, switcher, Intl helpers, region/mains setting. After task 16.
-20. `[ ]` **Plain results UI** — Medium. After 18, 19.
-21. `[ ]` **Plain wizard, setup, pages + string extraction** — Medium. After 19.
-22. `[ ]` **pt-BR translation, reading passages, engine text keys (diagnose/suggest)** — Careful. After 20, 21.
+18. `[x]` **Plain engine** — Careful. src/plain/{types,score,ratings,actions,glossary}.ts + tests; returns message keys; English strings in src/i18n/locales/en.json (plain namespace).
+19. `[x]` **i18n infrastructure** — Medium. i18next setup, detection, switcher, Intl helpers, region/mains setting. After task 16.
+20. `[x]` **Plain results UI** — Medium. After 18, 19.
+21. `[x]` **Plain wizard, setup, pages + string extraction** — Medium. After 19.
+22. `[x]` **pt-BR translation, reading passages, engine text keys (diagnose/suggest)** — Careful. After 20, 21.
 
 ## v0.7 — Guided setup with interactive replicas (SPEC "Guided setup …")
-23. `[ ]` **Host picker + guide shell** (checklist, steps, "Show me how" entry points) — Medium. After 20–22.
-24. `[ ]` **ReaPlugs replicas** (ReaFIR, ReaEQ with computed curve, ReaComp, ReaGate) + Wave Link effects list replica — Careful.
-25. `[ ]` **OBS and app-only paths** — Medium.
+23. `[x]` **Host picker + guide shell** (checklist, steps, "Show me how" entry points) — Medium. After 20–22.
+24. `[x]` **ReaPlugs replicas** (ReaFIR, ReaEQ with computed curve, ReaComp, ReaGate) + Wave Link effects list replica — Careful.
+25. `[x]` **OBS and app-only paths** — Medium.

@@ -1,0 +1,217 @@
+{
+  "guide": {
+    "entry": {
+      "valuesOnly": "Ver só os valores",
+      "stepByStep": "Configurar passo a passo"
+    },
+    "head": {
+      "first": "Configure",
+      "second": "passo a passo",
+      "lead": "Mostramos onde clicar e o que digitar, com os valores do seu próprio teste."
+    },
+    "empty": {
+      "title": "Ainda não há nada para configurar",
+      "text": "O guia usa as configurações do seu teste. Faça o teste primeiro (leva poucos minutos) e depois volte aqui.",
+      "start": "Começar o teste",
+      "finish": "Terminar o teste"
+    },
+    "host": {
+      "question": "O que você usa com seu microfone?",
+      "hint": "Guardamos sua resposta. Você pode mudar quando quiser.",
+      "picked": "Você escolheu: {{name}}",
+      "change": "Mudar",
+      "option": {
+        "wavelink": { "name": "Elgato Wave Link", "text": "O app da Elgato que mixa seu microfone e aplica efeitos nele." },
+        "obs": { "name": "OBS Studio", "text": "Você faz lives ou grava vídeos com o OBS." },
+        "apps": { "name": "Só Discord, Teams ou Zoom", "text": "Você só conversa em chamadas e não usa outro app de áudio." },
+        "nvidia": { "name": "NVIDIA Broadcast", "text": "O app da NVIDIA que remove o ruído de fundo (precisa de uma placa de vídeo RTX)." },
+        "unsure": { "name": "Não sei", "text": "Ajudamos você a escolher." }
+      },
+      "unsure": {
+        "title": "Como escolher",
+        "text": "O app que você escolher é onde os efeitos vão rodar. Fique com o primeiro que combina com você:",
+        "wavelink": "Seu microfone está ligado a um aparelho da Elgato (como um Wave XLR) ou você já tem o Wave Link: use o Wave Link.",
+        "obs": "Você faz lives ou grava vídeos: use o OBS Studio.",
+        "apps": "Você só conversa em chamadas: use as configurações do próprio Discord, Teams ou Zoom.",
+        "pick": "Usar {{name}}"
+      }
+    },
+    "nav": {
+      "done": "Feito, próximo",
+      "back": "Voltar",
+      "progress": "Passo {{n}} de {{total}}",
+      "allDone": "Tudo pronto. Grave o take com efeitos para ouvir a diferença.",
+      "restart": "Recomeçar"
+    },
+    "field": {
+      "set": "Coloque {{field}} em {{value}}.",
+      "type": "Digite {{value}} em {{field}}.",
+      "choose": "Coloque {{field}} em \"{{value}}\".",
+      "tick": "Marque \"{{field}}\".",
+      "add": "Adicione \"{{name}}\"."
+    },
+    "test": {
+      "title": "Teste",
+      "lead": "Agora ouça a diferença.",
+      "a1": "Volte para o teste.",
+      "a2": "Grave o último take, aquele com seus efeitos.",
+      "a3": "Veja a nota de antes e depois.",
+      "button": "Gravar o take com efeitos"
+    },
+    "wl": {
+      "effects": {
+        "title": "Abra os efeitos do seu microfone",
+        "lead": "Só os efeitos que escolhemos devem ficar ligados. Outros efeitos brigariam com eles.",
+        "a1": "Abra o Wave Link e clique no seu microfone.",
+        "a2": "Abra a aba Effects.",
+        "a3": "Desligue estes: {{list}}.",
+        "deess": "Deixe o Elgato De-Esser ligado, bem de leve: ele suaviza os sons de S muito fortes."
+      },
+      "add": {
+        "title": "Adicione o {{plugin}}",
+        "lead": "Efeito {{n}} de {{total}}. A ordem importa: {{order}}.",
+        "a1": "Se o {{plugin}} não estiver na lista, clique em \"+ Add effect\" e escolha \"{{plugin}} (ReaPlugs Edition)\".",
+        "a2": "Arraste para a posição {{n}} da lista.",
+        "a3": "Clique no ícone de controles deslizantes para abrir a janela dele."
+      },
+      "reafir": {
+        "setup": {
+          "title": "ReaFIR: escolha o modo",
+          "lead": "O ReaFIR remove o som constante do seu ambiente, como ventiladores ou chiado."
+        },
+        "profile": {
+          "title": "ReaFIR: deixe ele aprender seu ambiente",
+          "lead": "O ReaFIR precisa ouvir só o ambiente, sem sua voz. Prepare-se para ficar em silêncio por uns 3 segundos.",
+          "a1": "Fique em silêncio total.",
+          "a3": "Conte até 3 mentalmente, ainda em silêncio.",
+          "a4": "Desmarque de novo."
+        },
+        "reduce": {
+          "title": "ReaFIR: abaixe o ambiente",
+          "lead": "A curva agora mostra seu ambiente. Abaixar a curva remove esse som.",
+          "a1": "Arraste a curva inteira para baixo até o ambiente cair cerca de {{amount}}.",
+          "a2": "Se sua voz ficar aguada ou robótica, suba um pouco de volta."
+        }
+      },
+      "eq": {
+        "title": "ReaEQ: banda {{n}} de {{total}}",
+        "lead": "Por que esta banda: {{why}}.",
+        "notch": "É um corte estreito para o tom de um ventilador ou máquina.",
+        "tabs": "Antes, use Add band ou Remove band até as abas irem de 1 a {{total}}.",
+        "tab": "Clique na aba {{n}}."
+      },
+      "eqFlat": {
+        "title": "ReaEQ: nada para mudar",
+        "lead": "Sua voz já soa natural. Deixe o ReaEQ plano: remova as bandas que ele tiver com Remove band, ou desligue o ReaEQ."
+      },
+      "comp": {
+        "title": "ReaComp: deixe seu volume mais uniforme",
+        "lead": "Ele abaixa os momentos mais altos, para suas palavras baixas e altas ficarem mais próximas."
+      },
+      "gate": {
+        "title": "ReaGate: silencie as pausas",
+        "lead": "Ele fecha quando você para de falar, para o ambiente não aparecer entre suas palavras.",
+        "leadNoisy": "Configure de leve: ele só abaixa um pouco o ambiente entre as palavras, para nunca cortar palavras baixas."
+      },
+      "lowcut": {
+        "title": "Ligue o corte de graves",
+        "lead": "O corte de graves (Lowcut) remove ronco (batidas na mesa, trânsito) antes de chegar nos efeitos.",
+        "a1": "No Wave Link, clique no seu microfone e encontre a chave Lowcut (nas configurações do microfone, não em Effects).",
+        "a2": "Ligue o Lowcut e escolha {{hz}}."
+      },
+      "auto": {
+        "title": "Aplicar automaticamente",
+        "text": "Se você se sente à vontade com um terminal, um pequeno script pode gravar esses valores no Wave Link para você.",
+        "a1": "Feche o Wave Link por completo.",
+        "a2": "Baixe o arquivo de configurações (\"Baixar .json\" nas configurações sugeridas dos seus resultados).",
+        "a3": "Rode este comando:",
+        "a4": "Ele salva uma cópia de segurança das suas configurações do Wave Link antes.",
+        "a5": "O ReaFIR ainda precisa ser configurado à mão: o script não consegue gravar o perfil de ruído dele."
+      }
+    },
+    "obs": {
+      "open": {
+        "title": "Abra os filtros do seu microfone",
+        "lead": "O OBS tem filtros próprios. Passamos seus valores para eles.",
+        "a1": "No OBS, encontre seu microfone no Audio Mixer.",
+        "a2": "Clique no menu ⋮ dele e escolha \"Filters\".",
+        "a3": "Adicione cada filtro dos próximos passos com o botão +, nessa ordem."
+      },
+      "noise": {
+        "title": "Noise Suppression",
+        "lead": "Remove o som constante do seu ambiente.",
+        "method": "Coloque Method em \"RNNoise\".",
+        "vst": "Prefere o ReaFIR? Adicione \"VST 2.x Plug-in\", escolha o ReaFIR e siga os passos do ReaFIR no guia do Wave Link."
+      },
+      "expander": {
+        "title": "Expander",
+        "lead": "Um expander suave abaixa o ambiente entre as palavras sem cortar palavras baixas."
+      },
+      "gate": {
+        "title": "Noise Gate",
+        "lead": "Um noise gate fecha quando você para de falar, para o ambiente não aparecer entre suas palavras."
+      },
+      "eq": {
+        "title": "3-Band EQ",
+        "lead": "Este EQ tem três controles: graves (abaixo de {{low}}), médios e agudos (acima de {{high}}). Estes valores chegam perto das suas configurações do ReaEQ.",
+        "notches": "Suas configurações também cortam tons de ventilador ou máquina, o que o 3-Band EQ não faz. Para isso, adicione \"VST 2.x Plug-in\" → ReaEQ no lugar dele e digite os valores do guia do Wave Link.",
+        "vst": "Para o resultado exato, adicione \"VST 2.x Plug-in\" → ReaEQ no lugar dele e digite os valores do guia do Wave Link."
+      },
+      "comp": {
+        "title": "Compressor",
+        "lead": "Ele abaixa os momentos mais altos, para suas palavras baixas e altas ficarem mais próximas."
+      },
+      "limiter": {
+        "title": "Limiter",
+        "lead": "Uma rede de segurança: nunca deixa sua voz passar do limite."
+      }
+    },
+    "nvidia": {
+      "install": {
+        "title": "Instale o NVIDIA Broadcast",
+        "lead": "Ele precisa de uma placa de vídeo NVIDIA RTX.",
+        "a1": "Baixe o NVIDIA Broadcast no site da NVIDIA e instale.",
+        "a2": "Abra o app e vá para a aba Microphone."
+      },
+      "enable": {
+        "title": "Ligue o Noise Removal",
+        "lead": "Ele remove o ambiente e mantém sua voz.",
+        "a1": "Em Source, escolha seu microfone.",
+        "a2": "Escolha o efeito \"Noise Removal\" e ligue.",
+        "a3": "Deixe a intensidade como está. Aumente só se o ambiente ainda aparecer."
+      },
+      "use": {
+        "title": "Use nos seus apps",
+        "lead": "Seus apps precisam ouvir o NVIDIA Broadcast, não o microfone direto.",
+        "a1": "No Discord, Teams, Zoom ou OBS, escolha \"Microphone (NVIDIA Broadcast)\" como microfone.",
+        "a2": "Desligue a supressão de ruído do próprio app, para os dois não brigarem."
+      }
+    },
+    "apps": {
+      "noise": {
+        "title": "Ligue a supressão de ruído",
+        "lead": "Todo app de chamada consegue remover o ruído do ambiente. Ligue:",
+        "discord": "Discord: User Settings → Voice & Video → Noise Suppression.",
+        "teams": "Teams: Settings → Devices → Noise suppression.",
+        "zoom": "Zoom: Settings → Audio → Suppress background noise."
+      },
+      "echo": {
+        "title": "Cancelamento de eco: só com caixas de som",
+        "lead": "Usa caixas de som? Deixe o cancelamento de eco ligado, para as pessoas não ouvirem a si mesmas. Usa fones de ouvido? Pode desligar: sua voz soa mais natural.",
+        "discord": "Discord: User Settings → Voice & Video → Echo Cancellation."
+      },
+      "gain": {
+        "title": "Volume automático",
+        "ok": "Seu volume está bom. Desligue o volume automático, para o app não ficar mudando.",
+        "fix": "Primeiro acerte o volume de entrada do seu microfone (veja seus resultados). Depois desligue o volume automático.",
+        "discord": "Discord: User Settings → Voice & Video → Automatic Gain Control.",
+        "zoom": "Zoom: Settings → Audio → Automatically adjust microphone volume."
+      },
+      "free": {
+        "title": "Coisas grátis que mais ajudam",
+        "lead": "Não custam nada e ajudam em qualquer app:",
+        "none": "Nada mais a fazer: seu microfone já está bem ajustado."
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { fmtNum } from '../../i18n/format'
 import { joinMsgs, suggestionToJson, suggestionToText } from '../../settings/suggest'
+import { useBench } from '../../store/benchStore'
 import { useSuggestion } from '../../store/hooks'
 import { isAnalysisError, type Suggestion } from '../../types'
 import { useMsg } from '../common/MsgText'
@@ -61,6 +62,7 @@ function SettingsPanel({ s }: { s: Suggestion }) {
   const tm = useMsg()
   const tn = useTakeName()
   const [copyState, copy] = useCopy(s)
+  const goTo = useBench((st) => st.goTo)
   const copyLabel = copyState === 'copied' ? t('results.copy.copied') : copyState === 'saved' ? t('results.copy.saved') : t('results.settings.copyText')
   const a = isAnalysisError(s.base.analysis) ? null : s.base.analysis
   const based = [
@@ -79,6 +81,7 @@ function SettingsPanel({ s }: { s: Suggestion }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Typography variant="h6" component="h2">{t('results.settings.title')}</Typography>
         <div className="flex flex-wrap gap-2">
+          <Button size="small" variant="contained" onClick={() => goTo('guide')}>{t('guide.entry.stepByStep')}</Button>
           <Button size="small" variant="outlined" onClick={copy}>{copyLabel}</Button>
           <Button size="small" variant="outlined" onClick={() => downloadFile('reaplugs-settings.txt', suggestionToText(s), 'text/plain')}>
             {t('results.settings.downloadTxt')}

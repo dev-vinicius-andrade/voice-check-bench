@@ -18,6 +18,7 @@ describe('hash ↔ screen mapping', () => {
     expect(hashToRoute('#privacy')).toBe('privacy')
     expect(hashToRoute('#/check')).toBe('check')
     expect(hashToRoute('#/results')).toBe('results')
+    expect(hashToRoute('#/guide')).toBe('guide')
     expect(hashToRoute('#/nope')).toBe('home')
   })
 
@@ -29,7 +30,8 @@ describe('hash ↔ screen mapping', () => {
     expect(screenToHash('setup')).toBe('#/check')
     expect(screenToHash('step')).toBe('#/check')
     expect(screenToHash('results')).toBe('#/results')
-    for (const s of ['home', 'how', 'community', 'privacy', 'results'] as const) expect(hashToRoute(screenToHash(s))).toBe(s)
+    expect(screenToHash('guide')).toBe('#/guide')
+    for (const s of ['home', 'how', 'community', 'privacy', 'results', 'guide'] as const) expect(hashToRoute(screenToHash(s))).toBe(s)
   })
 
   it('resolves #/check to setup, or to the store step once the session has takes', () => {
@@ -118,5 +120,16 @@ describe('useHashRoute', () => {
     history.replaceState(null, '', '#/community')
     mount()
     expect(st().screen).toBe('community')
+  })
+
+  it('opens the guide from #/guide once the store is ready', () => {
+    history.replaceState(null, '', '#/guide')
+    mount()
+    expect(st().screen).toBe('guide')
+    act(() => st().goTo('results'))
+    expect(location.hash).toBe('#/results')
+    setHash('#/guide')
+    expect(st().screen).toBe('guide')
+    expect(location.hash).toBe('#/guide')
   })
 })

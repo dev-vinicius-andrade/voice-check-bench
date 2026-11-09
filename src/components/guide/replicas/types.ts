@@ -34,5 +34,7 @@ export interface WaveLinkEffectsProps {
   /** Effects that must be switched off. */
   off: string[]
   highlight?: string
+  /** Hardware Lowcut to show switched on at this frequency; omitted = shown off. */
+  lowcut?: 80 | 120
   callouts?: Callout[]
 }

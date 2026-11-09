@@ -1,3 +1,4 @@
+import { GuideScreen } from './components/guide/GuideScreen'
 import { CommunityPage } from './components/pages/CommunityPage'
 import { HomePage } from './components/pages/HomePage'
 import { HowItWorksPage } from './components/pages/HowItWorksPage'
@@ -29,6 +30,7 @@ export default function App() {
         {screen === 'setup' && <SetupScreen />}
         {screen === 'step' && <StepScreen />}
         {screen === 'results' && <ResultsScreen />}
+        {screen === 'guide' && <GuideScreen />}
       </main>
       <Footer />
       <StatusSnackbar />

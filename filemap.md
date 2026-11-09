@@ -33,6 +33,8 @@
 - `src/audio/analyze.ts` — `analyze(samples, sampleRate, { mains? })`: levels, noise, speech mask, spectra, hum (local mains family first), sibilance, per-band speech/noise SNR, `findTones`, `classifyNoise` (noiseKind); `NOT_ENOUGH_SPEECH_KEY`
 - `src/audio/mains.ts` — mains frequency: `MainsSetting` (50 | 60 | 'auto'), 60 Hz regions, `regionOf`, `mainsForLocale`, `resolveMains`, `humFrequencies`
 - `src/audio/mains.test.ts` — locale region → 50/60 Hz, auto resolution, hum family order and preference
+- `src/audio/eqCurve.ts` — `eqResponseDb(bands, freqs)`: summed RBJ biquad magnitude (dB) of ReaEQ Low Shelf / Band / High Shelf bands (bandwidth in octaves) at 48 kHz, `biquad`, `logFreqs(n, lo, hi)`
+- `src/audio/eqCurve.test.ts` — flat without bands, +3 dB band peak, shelf plateaus, dB summing, narrow 0.1 oct notch
 - `src/audio/diagnose.ts` — `diagnose()` checks with ids (incl. tones, bandsnr; generic mic copy) as Msg keys `engine.check.*` (numbers as params), `countByStatus`, `topIssues`, `f1`
 - `src/audio/testSignals.ts` — test-only seeded PRNG, synthetic take (optional steady tones), `fakeAnalysis` fixture
 - `src/audio/dsp.test.ts` — FFT bin, Hann, percentile tests
@@ -62,7 +64,7 @@
 - `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
 - `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
 - `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records
-- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages; new visitor → home), `vcb-devs` device choice, `vcb-mic` mic profile with shape validation (legacy model 'Other' → ''), `vcb-mains` mains setting
+- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages and guide; new visitor → home), `vcb-devs` device choice, `vcb-mic` mic profile with shape validation (legacy model 'Other' → ''), `vcb-mains` mains setting
 - `src/mics/catalog.ts` — `MIC_CATALOG` known models (kind/pattern/address), `DEFAULT_MIC`, `findMic`, `addressTip`/`placementTip` (Msg `engine.mic.*`), `MIC_OTHER_LABEL`
 - `src/mics/catalog.test.ts` — catalog lookup and tip keys/texts
 - `src/plain/types.ts` — plain-language contract: `Msg` (key + params), `ClarityScore`, `Rating`, `Action` (cost, impact, how)
@@ -88,7 +90,7 @@
 - `src/components/results/usePlainResults.ts` — clarity score, ratings and next actions (+ ActionContext: take/profile mic, best and current distance, suggestion) for A; `stepDist()`
 - `src/components/results/ScoreHero.tsx` — SVG score ring (success ≥ 70 / warning 50–69 / error < 50), "Your voice today", headline + explanation
 - `src/components/results/RatingCards.tsx` — the three everyday rating cards (title, status-coloured label, explanation)
-- `src/components/results/NextActions.tsx` — numbered "What to do next" list with cost chip and "Show me how" (placement/gain panels inline, settings → details)
+- `src/components/results/NextActions.tsx` — numbered "What to do next" list with cost chip and "Show me how" (placement/gain panels inline, settings → #/guide, plus "See the values only" → details)
 - `src/components/results/HowPanels.tsx` — `PlacementHow` (mic-aware placement + address tip, everyday distance) and `GainHow` (gain in plain words, where to change it)
 - `src/components/results/PlainSummaries.tsx` — one-line plain before/after and community SNR summaries shown outside the details
 - `src/components/results/TechnicalDetails.tsx` — "Show the technical details" accordion (collapsed by default, mounts AnalysisPanel when open)
@@ -111,7 +113,7 @@
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart (A, A + B, A − B) with ±3/±6 zones and legend
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
 - `src/components/results/ChecksList.tsx` — problem checks, passing checks in a collapsed accordion
-- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel (`#suggested-settings`): effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON
+- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel (`#suggested-settings`): effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON, "Set it up step by step" → #/guide
 - `src/components/results/PluginCard.tsx` — one plugin's key/value settings card
 - `src/components/results/NoiseReductionCard.tsx` — ReaFIR (noise reduction) numbered setup steps and alternatives
 - `src/components/results/TakesPanel.tsx` — takes grouped by session, Delete all with second-click confirm, New session / free take
@@ -175,9 +177,44 @@
 - `src/hooks/useLevel.ts` — rAF input level in dBFS while the mic is on (~30 fps state updates)
 - `src/hooks/useBootstrap.ts` — runs `bootstrap()` once on mount
 - `src/hooks/useRecordingShortcuts.ts` — step screen keys: Space toggles recording, Enter = Next
-- `src/hooks/useHashRoute.ts` — hash routing: `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
-- `src/hooks/useHashRoute.test.ts` — hash ↔ screen mapping, #/check resolution, hook sync with history
+- `src/components/guide/GuideScreen.tsx` — route #/guide: page head, empty state (start/finish the check) without a suggestion, host picker, path for the picked host
+- `src/components/guide/hostPref.ts` — `Host` (wavelink/obs/apps/nvidia/unsure), `loadHost`/`saveHost` (localStorage `vcb-host`, fails soft), `useHost()`
+- `src/components/guide/HostPicker.tsx` — "What do you use for your mic?" cards, "Not sure" chooser with recommendations, compact "You picked" line with Change
+- `src/components/guide/GuideStepper.tsx` — vertical progress checklist (MUI Stepper): "Done, next" / "Back", jump to any step, all-done message
+- `src/components/guide/StepText.tsx` — step lead + numbered actions (numbers match replica callouts) + `StepNote`
+- `src/components/guide/guideFormat.ts` — `StepAction`, `calloutsOf`, value formatters for typed plugin values (dB, ms, Hz without separator, oct)
+- `src/components/guide/waveLinkSteps.ts` — `waveLinkSteps(s)` ordered Wave Link steps (effects → add + panel steps per chain plugin: ReaFIR setup/profile/reduce, one ReaEQ step per band or "flat", ReaComp, ReaGate → low cut → test), `offEffects(s)`
+- `src/components/guide/WaveLinkGuide.tsx` — Wave Link + ReaPlugs path: step titles/bodies with the WaveLinkEffects replica, "Apply automatically instead" aside
+- `src/components/guide/WaveLinkPanels.tsx` — ReaFIR / ReaEQ band / ReaComp / ReaGate steps: instructions with the person's values + replica panels with callouts
+- `src/components/guide/ApplyAutomatically.tsx` — aside explaining `tools/apply-reaplugs.py` (Wave Link closed, backup, ReaFIR by hand)
+- `src/components/guide/obsValues.ts` — `obsValues(s)`: OBS filter values from the suggestion (RNNoise when noisy, Expander or Noise Gate, 3-Band EQ averages, Compressor, Limiter −1 dB)
+- `src/components/guide/ObsGuide.tsx` — OBS Studio path (Audio Mixer → ⋮ → Filters, built-in filters, VST ReaPlugs alternatives)
+- `src/components/guide/NvidiaGuide.tsx` — NVIDIA Broadcast path (install, Noise Removal, pick its mic in apps)
+- `src/components/guide/AppsGuide.tsx` — Discord/Teams/Zoom path (noise suppression, echo cancellation, automatic gain, free physical actions from nextActions)
+- `src/components/guide/TestStep.tsx` — last step of every path: record the processed take (goes to the fx step)
+- `src/components/guide/waveLinkSteps.test.ts` · `GuidePaths.test.tsx` · `HostPicker.test.tsx` · `guideKeys.test.ts` — step lists from fixture suggestions (noisy/quiet, EQ bands), OBS mapping, rendered paths, host persistence, guide keys exist
+- `src/i18n/locales/{en,pt-BR}/guide.json` — `guide.*` strings (guide screen, host picker, Wave Link/OBS/NVIDIA/app paths, entry buttons)
+- `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
+- `src/hooks/useHashRoute.test.ts` — hash ↔ screen mapping, #/check resolution, #/guide, hook sync with history
 - `src/demo/demoSignals.ts` — `demoSamples()`: seeded synthetic voice (per-partial levels) + room noise + steady tones
 - `src/demo/demoTakes.ts` — `DEMO_SESSION`, `DEMO_MIC`, `buildDemoTakes()`: boomy 2 cm, balanced 8 cm, thin/noisy 15 cm, cleaner processed, fan tones 780/1560 Hz, analyzed
 - `src/demo/demoSession.ts` — `useDemo` ({active, dismissed}), `loadDemoSession()` (waits for bootstrap, adds demo takes, A/B, results), `exitDemo()`, `dismissDemoBanner()`
 - `src/demo/demoSession.test.ts` — demo take shapes, load/exit, never persisted (save path guard)
+- `src/components/guide/replicas/types.ts` — props contract for the plugin replicas (`Callout`, panel props); owned by the orchestrator
+- `src/components/guide/replicas/ReaEqPanel.tsx` — ReaEQ replica: response graph, band tabs 1..N (active selected), Enabled / Type / Log-scale row, Frequency (Hz) · Gain (dB) · Bandwidth (oct) rows with slider + exact value + note name, buttons, Show tabs/grid/phase
+- `src/components/guide/replicas/EqGraph.tsx` — ReaEQ SVG graph: log grid 20 Hz–20 kHz, ±18 dB, curve from `eqResponseDb`, numbered band nodes (active emphasised), master gain slider
+- `src/components/guide/replicas/ReaCompPanel.tsx` — ReaComp replica: Threshold strip, Pre-comp/Attack/Release, Classic attack/Auto release, Ratio, Knee size, Detector input, Lowpass/Highpass/RMS size, meter, Output mix Wet/Dry, Preview filter/Auto make-up/AA/Limit output
+- `src/components/guide/replicas/ReaGatePanel.tsx` — ReaGate replica: Threshold strip, Attack/Hold/Release/Pre-open, Hysteresis, Detector input, Lowpass/Highpass, meter, Output mix Wet/Dry/Noise
+- `src/components/guide/replicas/ReaFirPanel.tsx` — ReaFIR replica per phase: setup (Mode = Subtract, FFT size = 4096 highlighted), profile ("Automatically build noise profile" ticked + pulsing stay-silent hint), reduce
+- `src/components/guide/replicas/FirGraph.tsx` — ReaFIR SVG graph: flat line, illustrative noise profile, profile lowered ~11 dB
+- `src/components/guide/replicas/WaveLinkEffects.tsx` — Wave Link mic Effects replica: Lowcut row, effect rows (order number, settings, delete, on/off toggle) for chain + off, highlighted row, + Add effect
+- `src/components/guide/replicas/ReplicaFrame.tsx` — window-like frame (title bar, dark theme variables via class "dark", aria-hidden + inert drawing, visually hidden values summary), scales down to fit narrow screens
+- `src/components/guide/replicas/useFitScale.ts` — ResizeObserver scale (≤ 1) that fits a fixed-width panel into its container
+- `src/components/guide/replicas/Spot.tsx` — `Spot` (control wrapper that shows the callout marker for its target) and `CalloutMark` (22 px numbered primary circle)
+- `src/components/guide/replicas/calloutContext.ts` — callouts context, `calloutNumber` (unknown targets ignored)
+- `src/components/guide/replicas/controls.tsx` — inert look-alike controls: Check, Select, Btn, Field, HSlider, VSlider, Toggle, Group
+- `src/components/guide/replicas/strips.tsx` — ReaComp/ReaGate layout pieces: VStrip, ParamRow, FieldRow, Meter
+- `src/components/guide/replicas/fieldFormat.ts` — value-field text (`fmtExact`, `fmtHzField` without thousands separator, `fmtDbField`, `fmtMsField`), `noteName`, `scalePos`
+- `src/components/guide/replicas/replicaStyle.ts` — theme CSS variables for replicas (`RC`), `srOnly`, `highlightRing`
+- `src/components/guide/replicas/replicas.test.tsx` — each replica renders fixture values, callout markers for known targets (unknown ignored), EQ tab count, pt-BR formatting, ReaFIR phases, Wave Link rows
+- `src/i18n/locales/{en,pt-BR}/replicas.json` — `replicas.*`: replica summaries and helper hints (field and plugin names stay English)

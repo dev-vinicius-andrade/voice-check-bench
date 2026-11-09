@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import type { ActionContext } from '../../plain/actions'
 import type { Action } from '../../plain/types'
+import { useBench } from '../../store/benchStore'
 import { MsgText } from '../common/MsgText'
 import { GainHow, PlacementHow } from './HowPanels'
 
@@ -21,7 +22,8 @@ function ActionItem({ n, x, ctx, onShowSettings }: { n: number; x: Action; ctx: 
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const panelId = `how-${x.id}`
-  const onHow = (): void => (x.how === 'settings' ? onShowSettings() : setOpen((o) => !o))
+  const goTo = useBench((s) => s.goTo)
+  const onHow = (): void => (x.how === 'settings' ? goTo('guide') : setOpen((o) => !o))
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
       <Typography
@@ -42,9 +44,14 @@ function ActionItem({ n, x, ctx, onShowSettings }: { n: number; x: Action; ctx: 
               variant="text"
               onClick={onHow}
               aria-expanded={x.how === 'settings' ? undefined : open}
-              aria-controls={x.how === 'settings' ? 'suggested-settings' : panelId}
+              aria-controls={x.how === 'settings' ? undefined : panelId}
             >
               {open ? t('results.next.hideHow') : t('results.next.showHow')}
+            </Button>
+          )}
+          {x.how === 'settings' && (
+            <Button size="small" variant="text" color="inherit" onClick={onShowSettings} aria-controls="suggested-settings">
+              {t('guide.entry.valuesOnly')}
             </Button>
           )}
         </div>

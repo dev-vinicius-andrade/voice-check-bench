@@ -1,0 +1,217 @@
+{
+  "guide": {
+    "entry": {
+      "valuesOnly": "See the values only",
+      "stepByStep": "Set it up step by step"
+    },
+    "head": {
+      "first": "Set it up",
+      "second": "step by step",
+      "lead": "We show you where to click and what to type, with the values from your own check."
+    },
+    "empty": {
+      "title": "Nothing to set up yet",
+      "text": "The guide uses the settings from your check. Do the check first (it takes a few minutes), then come back here.",
+      "start": "Start the check",
+      "finish": "Finish the check"
+    },
+    "host": {
+      "question": "What do you use for your mic?",
+      "hint": "We remember your answer. You can change it any time.",
+      "picked": "You picked: {{name}}",
+      "change": "Change",
+      "option": {
+        "wavelink": { "name": "Elgato Wave Link", "text": "The Elgato app that mixes your mic and adds effects to it." },
+        "obs": { "name": "OBS Studio", "text": "You stream or record videos with OBS." },
+        "apps": { "name": "Discord, Teams or Zoom only", "text": "You just talk in calls and use no other audio app." },
+        "nvidia": { "name": "NVIDIA Broadcast", "text": "NVIDIA's app that removes background noise (needs an RTX graphics card)." },
+        "unsure": { "name": "Not sure", "text": "We help you choose." }
+      },
+      "unsure": {
+        "title": "How to choose",
+        "text": "The app you pick is where the effects run. Take the first one that fits you:",
+        "wavelink": "Your mic is plugged into an Elgato device (like a Wave XLR), or you already have Wave Link: use Wave Link.",
+        "obs": "You stream or record videos: use OBS Studio.",
+        "apps": "You only talk in calls: use the settings inside Discord, Teams or Zoom.",
+        "pick": "Use {{name}}"
+      }
+    },
+    "nav": {
+      "done": "Done, next",
+      "back": "Back",
+      "progress": "Step {{n}} of {{total}}",
+      "allDone": "All done. Record the take with effects to hear the difference.",
+      "restart": "Start over"
+    },
+    "field": {
+      "set": "Set {{field}} to {{value}}.",
+      "type": "Type {{value}} in {{field}}.",
+      "choose": "Set {{field}} to \"{{value}}\".",
+      "tick": "Tick \"{{field}}\".",
+      "add": "Add \"{{name}}\"."
+    },
+    "test": {
+      "title": "Test it",
+      "lead": "Now hear the difference.",
+      "a1": "Go back to the check.",
+      "a2": "Record the last take, the one with your effects.",
+      "a3": "Look at the score before and after.",
+      "button": "Record the take with effects"
+    },
+    "wl": {
+      "effects": {
+        "title": "Open your mic's effects",
+        "lead": "Only the effects we picked should be on. Other effects would fight with them.",
+        "a1": "Open Wave Link and click your mic.",
+        "a2": "Open the Effects tab.",
+        "a3": "Switch these off: {{list}}.",
+        "deess": "Keep Elgato De-Esser on, set lightly: it softens sharp S sounds."
+      },
+      "add": {
+        "title": "Add {{plugin}}",
+        "lead": "Effect {{n}} of {{total}}. The order matters: {{order}}.",
+        "a1": "If {{plugin}} is not in the list, click \"+ Add effect\" and pick \"{{plugin}} (ReaPlugs Edition)\".",
+        "a2": "Drag it to place {{n}} in the list.",
+        "a3": "Click its sliders icon to open its window."
+      },
+      "reafir": {
+        "setup": {
+          "title": "ReaFIR: pick the mode",
+          "lead": "ReaFIR removes the steady sound of your room, like fans or hiss."
+        },
+        "profile": {
+          "title": "ReaFIR: let it learn your room",
+          "lead": "ReaFIR needs to hear the room alone, without your voice. Get ready to stay quiet for about 3 seconds.",
+          "a1": "Stay completely silent.",
+          "a3": "Count to 3 in your head, still silent.",
+          "a4": "Untick it again."
+        },
+        "reduce": {
+          "title": "ReaFIR: turn the room down",
+          "lead": "The curve now shows your room. Lowering it removes that sound.",
+          "a1": "Drag the whole curve down until the room drops about {{amount}}.",
+          "a2": "If your voice sounds watery or robotic, move it back up a little."
+        }
+      },
+      "eq": {
+        "title": "ReaEQ: band {{n}} of {{total}}",
+        "lead": "Why this band: {{why}}.",
+        "notch": "It is a narrow cut for a fan or machine tone.",
+        "tabs": "First, use Add band or Remove band until the tabs go from 1 to {{total}}.",
+        "tab": "Click tab {{n}}."
+      },
+      "eqFlat": {
+        "title": "ReaEQ: nothing to change",
+        "lead": "Your voice already sounds natural. Leave ReaEQ flat: remove any bands it has with Remove band, or switch ReaEQ off."
+      },
+      "comp": {
+        "title": "ReaComp: even out your volume",
+        "lead": "It turns loud moments down, so your quiet and loud words end up closer."
+      },
+      "gate": {
+        "title": "ReaGate: quiet the pauses",
+        "lead": "It closes when you stop talking, so the room is not heard between your words.",
+        "leadNoisy": "Set gently: it only lowers the room a little between words, so quiet words are never cut."
+      },
+      "lowcut": {
+        "title": "Turn on the low cut",
+        "lead": "The low cut removes rumble (desk bumps, traffic) before it reaches the effects.",
+        "a1": "In Wave Link, click your mic and find the Lowcut switch (with the mic settings, not in Effects).",
+        "a2": "Switch Lowcut on and pick {{hz}}."
+      },
+      "auto": {
+        "title": "Apply automatically instead",
+        "text": "If you are comfortable with a terminal, a small script can write these values into Wave Link for you.",
+        "a1": "Close Wave Link completely.",
+        "a2": "Download the settings file (\"Download .json\" in the suggested settings of your results).",
+        "a3": "Run this command:",
+        "a4": "It saves a backup of your Wave Link settings first.",
+        "a5": "ReaFIR still has to be set up by hand: the script cannot write its noise profile."
+      }
+    },
+    "obs": {
+      "open": {
+        "title": "Open your mic's filters",
+        "lead": "OBS has its own filters. We map your values onto them.",
+        "a1": "In OBS, find your mic in the Audio Mixer.",
+        "a2": "Click its ⋮ menu and choose \"Filters\".",
+        "a3": "Add each filter of the next steps with the + button, in that order."
+      },
+      "noise": {
+        "title": "Noise Suppression",
+        "lead": "It removes the steady sound of your room.",
+        "method": "Set Method to \"RNNoise\".",
+        "vst": "Prefer ReaFIR? Add \"VST 2.x Plug-in\" instead, pick ReaFIR and follow the ReaFIR steps of the Wave Link guide."
+      },
+      "expander": {
+        "title": "Expander",
+        "lead": "A gentle expander lowers the room between words without cutting quiet words."
+      },
+      "gate": {
+        "title": "Noise Gate",
+        "lead": "A noise gate closes when you stop talking, so the room is not heard between your words."
+      },
+      "eq": {
+        "title": "3-Band EQ",
+        "lead": "This EQ has three controls: low (below {{low}}), mid, and high (above {{high}}). These values come close to your ReaEQ settings.",
+        "notches": "Your settings also cut fan or machine tones, which 3-Band EQ cannot do. For those, add \"VST 2.x Plug-in\" → ReaEQ instead and type the values from the Wave Link guide.",
+        "vst": "For the exact result, add \"VST 2.x Plug-in\" → ReaEQ instead and type the values from the Wave Link guide."
+      },
+      "comp": {
+        "title": "Compressor",
+        "lead": "It turns loud moments down, so your quiet and loud words end up closer."
+      },
+      "limiter": {
+        "title": "Limiter",
+        "lead": "A safety net: it never lets your voice go over the top."
+      }
+    },
+    "nvidia": {
+      "install": {
+        "title": "Install NVIDIA Broadcast",
+        "lead": "It needs an NVIDIA RTX graphics card.",
+        "a1": "Download NVIDIA Broadcast from NVIDIA's website and install it.",
+        "a2": "Open it and go to the Microphone tab."
+      },
+      "enable": {
+        "title": "Turn on Noise Removal",
+        "lead": "It removes the room and keeps your voice.",
+        "a1": "Under Source, pick your mic.",
+        "a2": "Choose the effect \"Noise Removal\" and switch it on.",
+        "a3": "Keep the strength where it is. Raise it only if the room is still heard."
+      },
+      "use": {
+        "title": "Use it in your apps",
+        "lead": "Your apps must listen to NVIDIA Broadcast, not to the mic directly.",
+        "a1": "In Discord, Teams, Zoom or OBS, pick \"Microphone (NVIDIA Broadcast)\" as your mic.",
+        "a2": "Switch off the app's own noise suppression, so the two do not fight."
+      }
+    },
+    "apps": {
+      "noise": {
+        "title": "Switch on noise suppression",
+        "lead": "Every call app can remove room noise. Turn it on:",
+        "discord": "Discord: User Settings → Voice & Video → Noise Suppression.",
+        "teams": "Teams: Settings → Devices → Noise suppression.",
+        "zoom": "Zoom: Settings → Audio → Suppress background noise."
+      },
+      "echo": {
+        "title": "Echo cancellation: only with speakers",
+        "lead": "Using speakers? Leave echo cancellation on, so people don't hear themselves. Using headphones? You can turn it off: your voice sounds more natural.",
+        "discord": "Discord: User Settings → Voice & Video → Echo Cancellation."
+      },
+      "gain": {
+        "title": "Automatic volume",
+        "ok": "Your volume is fine. Turn the automatic volume off, so the app doesn't keep changing it.",
+        "fix": "First fix your mic's input volume (see your results). Then turn the automatic volume off.",
+        "discord": "Discord: User Settings → Voice & Video → Automatic Gain Control.",
+        "zoom": "Zoom: Settings → Audio → Automatically adjust microphone volume."
+      },
+      "free": {
+        "title": "Free things that help most",
+        "lead": "These cost nothing and help in any app:",
+        "none": "Nothing else needed: your mic setup is already in good shape."
+      }
+    }
+  }
+}

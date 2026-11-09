@@ -38,3 +38,11 @@ export const fmtDateTime = (d: Date | string | number): string =>
   new Intl.DateTimeFormat(currentLocale(), { dateStyle: 'short', timeStyle: 'short' }).format(new Date(d))
 export const fmtDate = (d: Date | string | number): string =>
   new Intl.DateTimeFormat(currentLocale(), { dateStyle: 'medium' }).format(new Date(d))
+
+/**
+ * A value the person TYPES into a plugin or app field: always "." as the decimal separator, no grouping, any locale.
+ * Plugins (ReaPlugs, OBS) parse "1.5"; "1,5" may be misread. Use this for every value meant to be typed, fmtNum for prose.
+ */
+export const fmtInput = (v: number, digits = 1): string => (Number.isFinite(v) ? v.toFixed(digits) : '—')
+/** Same as fmtInput with an explicit "+" for positive values ("+3.0"). */
+export const fmtInputSigned = (v: number, digits = 1): string => (Number.isFinite(v) ? (v > 0 ? '+' : '') + v.toFixed(digits) : '—')

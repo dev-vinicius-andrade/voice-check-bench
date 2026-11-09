@@ -1,13 +1,13 @@
 // Plugin cards for the suggested settings (prototype renderSuggest). Plugin and parameter names stay literal;
 // values are formatted for the active locale; the reasons go through i18n.
 import type { TFunction } from 'i18next'
-import { fmtDb, fmtHz, fmtNum, fmtSigned } from '../../i18n/format'
+import { fmtHz, fmtInput, fmtInputSigned } from '../../i18n/format'
 import type { Suggestion } from '../../types'
 import type { PluginCardProps } from './PluginCard'
 
 const DEFAULT_CHAIN = ['ReaGate', 'ReaEQ', 'ReaComp']
 /** Whole numbers without decimals, others with one. */
-const num = (v: number): string => fmtNum(v, Number.isInteger(v) ? 0 : 1)
+const num = (v: number): string => fmtInput(v, Number.isInteger(v) ? 0 : 1)
 
 /** Plugin order to set up; older suggestions without a chain use the classic gate → EQ → compressor. */
 export const chainOf = (s: Suggestion): string[] => (s.chain?.length ? s.chain : DEFAULT_CHAIN)
@@ -40,7 +40,7 @@ export function pluginCards(t: TFunction, s: Suggestion): PluginCardProps[] {
       name: 'ReaEQ',
       tag: tagOf(t, s, 'ReaEQ'),
       rows: s.eq.length
-        ? s.eq.map((e, i): [string, string] => [`${i + 1}. ${eqLabel(e.type, e.bw)}`, `${fmtHz(e.freq)} · ${fmtSigned(e.gain, 1)} · ${fmtNum(e.bw, 1)}`])
+        ? s.eq.map((e, i): [string, string] => [`${i + 1}. ${eqLabel(e.type, e.bw)}`, `${fmtHz(e.freq)} · ${fmtInputSigned(e.gain, 1)} · ${fmtInput(e.bw, e.bw < 0.3 ? 2 : 1)}`])
         : [[t('results.settings.noBands'), '—']],
       why: t('results.settings.whyEq'),
     },
@@ -52,7 +52,7 @@ export function pluginCards(t: TFunction, s: Suggestion): PluginCardProps[] {
         ['Ratio', `${num(c.ratio)}:1`],
         ['Attack / Release', `${num(c.attack)} / ${num(c.release)} ms`],
         ['Knee size', `${num(c.knee)} dB`],
-        ['Wet (makeup)', fmtDb(c.wet, Number.isInteger(c.wet) ? 0 : 1)],
+        ['Wet (makeup)', `${fmtInputSigned(c.wet, Number.isInteger(c.wet) ? 0 : 1)} dB`],
         ['Limit output', t('results.settings.on')],
       ],
       why: t('results.settings.whyComp'),

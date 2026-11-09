@@ -1,0 +1,31 @@
+{
+  "replicas": {
+    "summaryTitle": "Valores para ajustar no {{plugin}}:",
+    "on": "ligado",
+    "off": "desligado",
+    "eq": {
+      "band": "Banda {{n}}: Type {{type}}, Frequency (Hz) {{freq}}, Gain (dB) {{gain}}, Bandwidth (oct) {{bw}}",
+      "selected": "Aba selecionada: banda {{n}}",
+      "none": "Nenhuma banda de EQ para adicionar."
+    },
+    "comp": {
+      "values": "Threshold {{threshold}} dB, Ratio {{ratio}}:1, Attack {{attack}} ms, Release {{release}} ms, Knee size {{knee}} dB, Wet {{wet}} dB, Limit output {{limit}}"
+    },
+    "gate": {
+      "values": "Threshold {{threshold}} dB, Attack {{attack}} ms, Hold {{hold}} ms, Release {{release}} ms, Hysteresis {{hysteresis}} dB, Wet {{wet}} dB, Dry {{dry}} dB"
+    },
+    "fir": {
+      "setup": "Mode: Subtract. FFT size: 4096.",
+      "profile": "Marque “Automatically build noise profile (enable during silence)” e fique em silêncio por uns 3 segundos; depois desmarque.",
+      "reduce": "Abaixe a curva inteira em cerca de 10–12 dB.",
+      "stay": "Fique em silêncio ~3 s",
+      "noiseProfile": "perfil do ruído",
+      "lowered": "abaixado ~10–12 dB"
+    },
+    "wl": {
+      "order": "Efeitos ligados, nesta ordem: {{list}}",
+      "off": "Desligue: {{list}}",
+      "highlight": "Este passo: {{name}}"
+    }
+  }
+}
