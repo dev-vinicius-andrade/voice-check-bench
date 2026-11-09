@@ -44,6 +44,11 @@ export interface Analysis {
   /** Steady tonal peaks in the silence window (fans, servers, whine), strongest first, at most 6. */
   tones: NoiseTone[]
   noiseKind: NoiseKind
+  // ---- over-processing signals (v0.8) ----
+  /** Share of samples that are exactly 0 (digital silence from a gate or noise remover cutting everything). 0..1 */
+  zeroRatio: number
+  /** Times per 10 s the signal flips between silence (< -80 dBFS) and sound on 20 ms frames: high = choppy. */
+  gateSwitches: number
 }
 
 export interface NoiseTone {
@@ -66,7 +71,7 @@ export const isAnalysisError = (a: AnalysisResult): a is AnalysisError => 'error
 export type CheckId =
   | 'level' | 'peaks' | 'noise' | 'silence' | 'hum'
   | 'rumble' | 'boom' | 'warmth' | 'mud' | 'body' | 'definition' | 'presence' | 'sibilance' | 'air'
-  | 'harsh' | 'consistency' | 'tones' | 'bandsnr'
+  | 'harsh' | 'consistency' | 'tones' | 'bandsnr' | 'overprocessed'
 
 /** One diagnosis line. Text is message keys (`engine.check.*`); numbers travel as params and are formatted by the UI. */
 export interface Check {
@@ -167,6 +172,8 @@ export interface NoiseReductionGuide {
   plugin: 'ReaFIR'
   steps: Msg[]
   alternatives: Msg[]
+  /** True when voice and room are so close (SNR < 15) that AI noise removal should be tried before ReaFIR. */
+  preferAi: boolean
 }
 
 /** Exported (English) form of the noise-reduction plan, as written to the settings JSON and community summaries. */
@@ -176,6 +183,7 @@ export interface NoiseReductionPlan {
   steps: string[]
   /** Other options if ReaFIR is not wanted (Elgato Noise Removal, Voice Focus, NVIDIA Broadcast). */
   alternatives: string[]
+  preferAi?: boolean
 }
 
 export interface DeviceChoice {

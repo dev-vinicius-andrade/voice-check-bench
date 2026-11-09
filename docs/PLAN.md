@@ -37,3 +37,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 23. `[x]` **Host picker + guide shell** (checklist, steps, "Show me how" entry points) — Medium. After 20–22.
 24. `[x]` **ReaPlugs replicas** (ReaFIR, ReaEQ with computed curve, ReaComp, ReaGate) + Wave Link effects list replica — Careful.
 25. `[x]` **OBS and app-only paths** — Medium.
+
+## v0.8 — Over-processing safety (SPEC "Over-processing safety")
+26. `[ ]` **Detect over-processing** — Careful. analyze clamps + zeroRatio/gateSwitches, overprocessed check, processed-vs-raw comparison, score/actions/headline, en+pt-BR keys. Test with the real processed WAV.
+27. `[ ]` **Safer suggestions and guide** — Medium. ReaFIR 6 dB start, preferAi ordering, makeup note, processed step at best distance, guide copy en+pt-BR.
