@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography'
 import { useBench } from '../../store/benchStore'
 import { TwoToneHeading } from '../common/TwoToneHeading'
 import { AnalysisPanel } from './AnalysisPanel'
+import { DemoBanner } from './DemoBanner'
 import { TakesPanel } from './TakesPanel'
 import { shortName } from './download'
 import { useTakeA } from '../../store/hooks'
@@ -25,6 +26,7 @@ export function ResultsScreen() {
   const A = useTakeA()
   return (
     <div className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 py-6">
+      <DemoBanner />
       {A && <TwoToneHeading first="Your results" second={shortName(A.name)} variant="h4" align="left" />}
       <div className="grid items-start gap-4 min-[980px]:grid-cols-[1fr_340px]">
         <div className="min-w-0">{A ? <AnalysisPanel A={A} /> : <NoResults />}</div>

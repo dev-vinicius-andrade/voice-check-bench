@@ -1,25 +1,37 @@
+import { CommunityPage } from './components/pages/CommunityPage'
+import { HomePage } from './components/pages/HomePage'
+import { HowItWorksPage } from './components/pages/HowItWorksPage'
+import { PrivacyPage } from './components/pages/PrivacyPage'
 import { ResultsScreen } from './components/results/ResultsScreen'
 import { SetupScreen } from './components/setup/SetupScreen'
 import { StepScreen } from './components/step/StepScreen'
+import { Footer } from './components/layout/Footer'
 import { StatusSnackbar } from './components/layout/StatusSnackbar'
 import { TopBar } from './components/layout/TopBar'
 import { useBootstrap } from './hooks/useBootstrap'
+import { useHashRoute } from './hooks/useHashRoute'
 import { useRecordingShortcuts } from './hooks/useRecordingShortcuts'
 import { useBench } from './store/benchStore'
 
 export default function App() {
   useBootstrap()
+  useHashRoute()
   useRecordingShortcuts()
   const screen = useBench((s) => s.screen)
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <TopBar />
-      <main className="px-4 py-8 sm:py-10">
+      <main className="flex-1 px-4 py-8 sm:py-10">
+        {screen === 'home' && <HomePage />}
+        {screen === 'how' && <HowItWorksPage />}
+        {screen === 'community' && <CommunityPage />}
+        {screen === 'privacy' && <PrivacyPage />}
         {screen === 'setup' && <SetupScreen />}
         {screen === 'step' && <StepScreen />}
         {screen === 'results' && <ResultsScreen />}
       </main>
+      <Footer />
       <StatusSnackbar />
-    </>
+    </div>
   )
 }

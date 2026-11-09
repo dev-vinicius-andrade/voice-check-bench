@@ -28,16 +28,24 @@ describe('prefs', () => {
     expect(readPref('k', null)).toEqual({ a: 1 })
   })
 
+  it('accepts every screen, site pages included; a new visitor starts on home', () => {
+    expect(loadUiPrefs().screen).toBe('home')
+    for (const screen of ['home', 'how', 'community', 'privacy', 'setup', 'step', 'results'] as const) {
+      saveUiPrefs({ screen, step: 1, session: 's1', A: null, B: null, view: 'a', fxDist: null })
+      expect(loadUiPrefs().screen).toBe(screen)
+    }
+  })
+
   it('returns defaults for corrupt JSON or bad shapes', () => {
     localStorage.setItem('vcb-ui', '{not json')
     localStorage.setItem('vcb-devs', '[1,2]')
     const ui = loadUiPrefs()
-    expect(ui).toMatchObject({ screen: 'setup', step: 0, A: null, B: null, view: 'a', fxDist: null })
+    expect(ui).toMatchObject({ screen: 'home', step: 0, A: null, B: null, view: 'a', fxDist: null })
     expect(ui.session).toMatch(/^s\d+$/)
     expect(loadDeviceChoice()).toEqual({ raw: null, fx: null })
 
     localStorage.setItem('vcb-ui', JSON.stringify({ screen: 'nope', step: -1, view: 'x', A: 'a', session: 7 }))
-    expect(loadUiPrefs()).toMatchObject({ screen: 'setup', step: 0, view: 'a', A: null })
+    expect(loadUiPrefs()).toMatchObject({ screen: 'home', step: 0, view: 'a', A: null })
   })
 
   it('returns defaults when localStorage throws', () => {
@@ -48,7 +56,7 @@ describe('prefs', () => {
       throw new Error('blocked')
     })
     expect(() => saveUiPrefs(loadUiPrefs())).not.toThrow()
-    expect(loadUiPrefs().screen).toBe('setup')
+    expect(loadUiPrefs().screen).toBe('home')
     expect(loadDeviceChoice()).toEqual({ raw: null, fx: null })
     expect(readPref('x', 42)).toBe(42)
     expect(loadMicProfile()).toEqual(DEFAULT_MIC)

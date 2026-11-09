@@ -106,7 +106,20 @@ describe('navigation', () => {
     st().next()
     st().back()
     st().goTo('results')
+    st().goTo('privacy')
     expect([st().screen, st().step]).toEqual(['step', 1])
+  })
+
+  it('opens site pages without touching the wizard state', () => {
+    expect(initialBenchState().screen).toBe('home')
+    const takes = [mkTake(1, 's1', 'c2'), mkTake(2, 's1', 'c8')]
+    reset({ screen: 'step', step: 2, takes, lastTakeId: 2, A: 1, B: 2, view: 'ab' })
+    for (const screen of ['home', 'how', 'community', 'privacy'] as const) {
+      st().goTo(screen, 0)
+      expect(st()).toMatchObject({ screen, step: 2, lastTakeId: 2, A: 1, B: 2, view: 'ab' })
+    }
+    st().goTo('step', 2)
+    expect([st().screen, st().step]).toEqual(['step', 2])
   })
 })
 
@@ -243,6 +256,23 @@ describe('bootstrap', () => {
     expect(st().micProfile).toEqual({ model: 'Blue Yeti', kind: 'condenser', pattern: 'omni', address: 'side' })
     st().setView('ab')
     expect(JSON.parse(localStorage.getItem('vcb-ui') ?? '{}')).toMatchObject({ view: 'ab', session: 's42' })
+  })
+
+  it('restores a saved site page and becomes ready only after the saved screen is set', async () => {
+    vi.resetModules()
+    const mod = await import('./benchStore')
+    localStorage.setItem('vcb-ui', JSON.stringify({ screen: 'privacy', step: 1, session: 's7', A: null, B: null, view: 'a', fxDist: null }))
+    const seen: string[] = []
+    const unsub = mod.useBench.subscribe((s, prev) => {
+      if (s.ready && !prev.ready) seen.push(s.screen)
+    })
+    const p = mod.useBench.getState().bootstrap()
+    expect(mod.useBench.getState().screen).toBe('privacy')
+    await p
+    unsub()
+    expect(seen).toEqual(['privacy'])
+    expect(mod.useBench.getState()).toMatchObject({ ready: true, screen: 'privacy', step: 1 })
+    localStorage.clear()
   })
 })
 

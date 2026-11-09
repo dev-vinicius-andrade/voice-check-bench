@@ -25,10 +25,13 @@ import {
   type Take,
 } from '../types'
 import type { BenchState, BenchStore } from './api'
+import { DEMO_SESSION } from '../demo/demoTakes'
 import { getEngine } from './engine'
 import { selectFxDist } from './selectors'
 
 const KINDS: readonly DeviceKind[] = ['raw', 'fx']
+/** Site pages: navigating to them leaves the wizard state (step, takes, A/B) untouched. */
+const CONTENT_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['home', 'how', 'community', 'privacy'])
 const MIN_SEC = QUIET_SEC + 2
 const TICK_MS = 100
 
@@ -37,7 +40,7 @@ export function initialBenchState(): BenchState {
     ready: false,
     storageAvailable: true,
     takes: [],
-    screen: 'setup',
+    screen: 'home',
     step: 0,
     session: 's' + Date.now(),
     A: null,
@@ -98,7 +101,7 @@ export function patchMicProfile(cur: MicProfile, patch: Partial<MicProfile>): Mi
 }
 
 /** Prototype prepareResults(): processed + best control → A/B diff; else keep A if valid, else latest. */
-function prepareResults(s: BenchState): Partial<BenchState> {
+export function prepareResults(s: BenchState): Partial<BenchState> {
   const slots = sessionSlots(s.takes, s.session)
   const best = bestControl(slots)
   const fx = slots[3]
@@ -172,7 +175,8 @@ export const useBench = create<BenchStore>()((set, get) => {
         lastTakeId: take.id,
         ...(st ? {} : { freeTakeName: '' }),
       })
-      dbDo((db) => db.put(take))
+      // demo takes live in memory only
+      if (take.session !== DEMO_SESSION) dbDo((db) => db.put(take))
     } finally {
       set({ recorder: { phase: 'idle', elapsed: 0 } })
     }
@@ -184,7 +188,10 @@ export const useBench = create<BenchStore>()((set, get) => {
     bootstrap() {
       booting ??= (async () => {
         const ui = loadUiPrefs()
+        const step: StepRef = ui.step === 'free' || ui.step < STEPS.length ? ui.step : 0
         set({
+          // results needs the takes first; every other screen can show while they load
+          ...(ui.screen !== 'results' ? { screen: ui.screen, step } : {}),
           session: ui.session,
           A: ui.A,
           B: ui.B,
@@ -199,9 +206,10 @@ export const useBench = create<BenchStore>()((set, get) => {
           takes.push({ ...t, analysis: analyze(t.samples, t.sampleRate) })
           await yieldToLoop()
         }
-        set({ takes, storageAvailable: db.available, ready: true })
-        const step: StepRef = ui.step === 'free' || ui.step < STEPS.length ? ui.step : 0
+        set({ takes, storageAvailable: db.available })
         get().goTo(ui.screen, step)
+        // ready last: listeners (hash routing, demo loader) see the restored screen
+        set({ ready: true })
         if (!getEngine().isSupported()) {
           get().setStatus("This browser can't record here. Open the page via http://localhost in Chrome or Edge.", true)
           return
@@ -248,6 +256,10 @@ export const useBench = create<BenchStore>()((set, get) => {
     goTo(screen: Screen, step?: StepRef) {
       const s = get()
       if (s.recorder.phase !== 'idle') return
+      if (CONTENT_SCREENS.has(screen)) {
+        set({ screen })
+        return
+      }
       set({ screen, lastTakeId: null, ...(step !== undefined ? { step } : {}) })
       if (screen === 'results') set(prepareResults(get()))
       if (screen === 'step') void switchToKind(guidedKind(get()))
@@ -362,7 +374,7 @@ export const useBench = create<BenchStore>()((set, get) => {
       // the results screen shows the latest analyzed take when A is gone (prototype renderResults)
       const fallbackA = A === null && s.screen === 'results' ? (latestValid(takes)?.id ?? null) : A
       set({ takes, A: fallbackA, B: B === fallbackA ? null : B, lastTakeId: s.lastTakeId === id ? null : s.lastTakeId })
-      dbDo((db) => db.remove(id))
+      if (s.takes.find((t) => t.id === id)?.session !== DEMO_SESSION) dbDo((db) => db.remove(id))
     },
 
     deleteAll() {
@@ -390,15 +402,21 @@ export const useBench = create<BenchStore>()((set, get) => {
 })
 
 // ---------- persist UI prefs ----------
-const uiPrefsOf = (s: BenchState): UiPrefs => ({
-  screen: s.screen,
-  step: s.step,
-  session: s.session,
-  A: s.A,
-  B: s.B,
-  view: s.view,
-  fxDist: s.fxDist,
-})
+const isDemoId = (s: BenchState, id: number | null): boolean =>
+  id !== null && s.takes.some((t) => t.id === id && t.session === DEMO_SESSION)
+/** A demo A/B selection is saved as none (the demo is gone after a reload). */
+function uiPrefsOf(s: BenchState): UiPrefs {
+  const demo = isDemoId(s, s.A) || isDemoId(s, s.B)
+  return {
+    screen: s.screen,
+    step: s.step,
+    session: s.session,
+    A: demo ? null : s.A,
+    B: demo ? null : s.B,
+    view: demo ? 'a' : s.view,
+    fxDist: s.fxDist,
+  }
+}
 const PREF_KEYS = ['screen', 'step', 'session', 'A', 'B', 'view', 'fxDist'] as const
 
 useBench.subscribe((s, prev) => {

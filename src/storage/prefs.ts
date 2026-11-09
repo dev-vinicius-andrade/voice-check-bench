@@ -15,7 +15,7 @@ export interface UiPrefs {
 const UI_KEY = 'vcb-ui'
 const DEVS_KEY = 'vcb-devs'
 const MIC_KEY = 'vcb-mic'
-const SCREENS: readonly Screen[] = ['setup', 'step', 'results']
+const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'setup', 'step', 'results']
 const VIEWS: readonly ChartView[] = ['a', 'ab', 'diff']
 const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
 const MIC_PATTERNS: readonly MicProfile['pattern'][] = ['cardioid', 'supercardioid', 'omni', 'figure8', 'unknown']
@@ -43,7 +43,8 @@ const idOrNull = (v: unknown): number | null => (typeof v === 'number' && Number
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
 
 export function defaultUiPrefs(): UiPrefs {
-  return { screen: 'setup', step: 0, session: 's' + Date.now(), A: null, B: null, view: 'a', fxDist: null }
+  // a brand new visitor (no saved prefs) lands on the home page
+  return { screen: 'home', step: 0, session: 's' + Date.now(), A: null, B: null, view: 'a', fxDist: null }
 }
 
 export function loadUiPrefs(): UiPrefs {
