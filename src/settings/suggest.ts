@@ -12,6 +12,7 @@ export interface SuggestionJson {
   speechDbfs: number
   noiseDbfs: number
   gainHint: string
+  noiseHint: string
   dist: string
   lowcut: Suggestion['lowcut']
   gate: Suggestion['gate']
@@ -54,9 +55,12 @@ export function suggest(base: Take, dist: string): Suggestion | null {
   add('Band', 450, clamp(-d[3] * k, -5, 3), 1.2, `Mud/box ${f1(d[3])} dB`)
   add('Band', 1000, clamp(-d[4] * k, -4, 4), 1.5, `Body ${f1(d[4])} dB`)
   add('Band', 3500, clamp(-d[6] * k, -4, 5), 1.4, `Presence ${f1(d[6])} dB`)
-  add('High Shelf', 10000, clamp(-((d[7] + d[8]) / 2) * k, -4, 5), 2.0, `Sibilance ${f1(d[7])} / air ${f1(d[8])} dB`)
+  const noisy = a.snr < 25
+  // On a noisy input a big high shelf mostly lifts the hiss: cap it at +2 dB.
+  add('High Shelf', 10000, clamp(-((d[7] + d[8]) / 2) * k, -4, noisy ? 2 : 5), 2.0, `Sibilance ${f1(d[7])} / air ${f1(d[8])} dB`)
   const lowcut: 80 | 120 = d[0] > 3 ? 120 : 80
-  const gThr = Math.round(clamp(Math.min(a.noise + 12, a.speechMed - 25), -72, -40))
+  // The gate must open above the noise floor or it never closes.
+  const gThr = Math.round(clamp(Math.max(Math.min(a.noise + 12, a.speechMed - 25), a.noise + 6), -72, -30))
   const cThr = Math.round(clamp(a.speechMed - 6, -45, -12))
   const ratio = 3
   const outLvl = cThr + (a.speechMed - cThr) / ratio
@@ -68,9 +72,13 @@ export function suggest(base: Take, dist: string): Suggestion | null {
       : a.speechMed > -14
         ? `The raw take is hot (${a.speechMed.toFixed(0)} dBFS). Lower the Wave XLR gain about ${Math.round(a.speechMed + 20)} dB and record the control takes again.`
         : ''
+  const noiseHint = noisy
+    ? `The input is noisy: the room/input noise (${a.noise.toFixed(0)} dBFS) is only ${a.snr.toFixed(0)} dB under your voice. No gate or EQ setting can separate them, and the gate would cut quiet words. Find the noise source first (ground-loop hum, a fan, speakers playing into the mic, too much gain), then record the control takes again. Aim for at least 30 dB.`
+    : ''
   return {
     base,
     gainHint,
+    noiseHint,
     dist: STEPS.find((s) => s.key === base.step)?.dist || dist || 'your distance',
     lowcut,
     gate: { threshold: gThr, attack: 1, hold: 150, release: 200, hysteresis: -6, wet: 0, dry: -20 },
@@ -91,6 +99,7 @@ export function suggestionToText(s: Suggestion): string {
   const a = baseAnalysis(s)
   const L: string[] = []
   L.push('Voice Check Bench · suggested settings', `Based on: ${s.base.name} (speech ${a.speechMed.toFixed(1)} dBFS, noise ${a.noise.toFixed(0)} dBFS)`, `Keep the mic at ${s.dist}, speak into the top, and leave the Wave XLR gain where it was for this take.`, '')
+  if (s.noiseHint) L.push('FIRST: ' + s.noiseHint, '')
   if (s.gainHint) L.push('FIRST: ' + s.gainHint, '')
   L.push('Wave XLR (hardware)', `  Lowcut Filter: on, ${s.lowcut} Hz`, '', 'Effects order: ReaGate → ReaEQ → ReaComp', '')
   const g = s.gate

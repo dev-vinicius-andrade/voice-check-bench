@@ -27,12 +27,12 @@ describe('suggest', () => {
     expect(s).not.toBeNull()
     expect(s?.dist).toBe('8 cm')
     expect(s?.gate.threshold).toBeGreaterThanOrEqual(-72)
-    expect(s?.gate.threshold).toBeLessThanOrEqual(-40)
+    expect(s?.gate.threshold).toBeLessThanOrEqual(-30)
   })
 
-  it('clamps the gate threshold to [-72, -40] and comp makeup to [0, 18]', () => {
+  it('clamps the gate threshold to [-72, -30] and comp makeup to [0, 18]', () => {
     const loud = suggest(mkTake(fakeAnalysis({ noise: -20, speechMed: -5 })), '8 cm')
-    expect(loud?.gate.threshold).toBe(-40)
+    expect(loud?.gate.threshold).toBe(-30)
     expect(loud?.comp.threshold).toBe(-12)
     expect(loud?.comp.wet).toBe(0)
     const quiet = suggest(mkTake(fakeAnalysis({ noise: -120, speechMed: -60 })), '8 cm')
@@ -43,7 +43,7 @@ describe('suggest', () => {
     for (let n = 0; n < 200; n++) {
       const s = suggest(mkTake(fakeAnalysis({ noise: -130 + rnd() * 120, speechMed: -70 + rnd() * 68 })), '8 cm')
       expect(s?.gate.threshold).toBeGreaterThanOrEqual(-72)
-      expect(s?.gate.threshold).toBeLessThanOrEqual(-40)
+      expect(s?.gate.threshold).toBeLessThanOrEqual(-30)
       expect(s?.comp.wet).toBeGreaterThanOrEqual(0)
       expect(s?.comp.wet).toBeLessThanOrEqual(18)
     }
@@ -88,12 +88,20 @@ describe('suggest', () => {
     const hot = suggest(mkTake(fakeAnalysis({ speechMed: -10 })), '8 cm')
     expect(hot?.gainHint).toBe('The raw take is hot (-10 dBFS). Lower the Wave XLR gain about 10 dB and record the control takes again.')
   })
+  it('on a noisy input keeps the gate above the noise, caps the high shelf and explains why', () => {
+    const s = suggest(mkTake(fakeAnalysis({ noise: -37, speechMed: -25, snr: 12 })), '8 cm')
+    expect(s?.gate.threshold).toBeGreaterThan(-37)
+    expect(s?.noiseHint).toMatch(/only 12 dB under your voice/)
+    const hs = s?.eq.find((e) => e.type === 'High Shelf')
+    if (hs) expect(hs.gain).toBeLessThanOrEqual(2)
+    expect(suggestionToText(s!)).toMatch(/FIRST: The input is noisy/)
+  })
 
   it('JSON has exactly the SPEC keys in order', () => {
     const s = suggest(mkTake(fakeAnalysis({ speechMed: -24.04, noise: -71.26 })), '8 cm')
     if (!s) throw new Error('no suggestion')
     const j = suggestionToJson(s)
-    expect(Object.keys(j)).toEqual(['basedOn', 'speechDbfs', 'noiseDbfs', 'gainHint', 'dist', 'lowcut', 'gate', 'eq', 'comp', 'deess'])
+    expect(Object.keys(j)).toEqual(['basedOn', 'speechDbfs', 'noiseDbfs', 'gainHint', 'noiseHint', 'dist', 'lowcut', 'gate', 'eq', 'comp', 'deess'])
     expect(Object.keys(j.gate)).toEqual(['threshold', 'attack', 'hold', 'release', 'hysteresis', 'wet', 'dry'])
     expect(Object.keys(j.comp)).toEqual(['threshold', 'ratio', 'attack', 'release', 'knee', 'wet', 'limit'])
     expect(j.basedOn).toBe('Take 1')

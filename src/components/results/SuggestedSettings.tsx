@@ -62,6 +62,7 @@ function SettingsPanel({ s }: { s: Suggestion }) {
           <Button size="small" variant="outlined" onClick={() => downloadFile('reaplugs-settings.json', JSON.stringify(suggestionToJson(s), null, 2), 'application/json')}>Download .json</Button>
         </div>
       </div>
+      {s.noiseHint && <Alert severity="error">{s.noiseHint}</Alert>}
       {s.gainHint ? (
         <Alert severity="warning">{s.gainHint}</Alert>
       ) : (

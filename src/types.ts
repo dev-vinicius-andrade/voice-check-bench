@@ -103,6 +103,8 @@ export interface EqBand {
 export interface Suggestion {
   base: Take
   gainHint: string
+  /** Non-empty when the room/input noise is too close to the voice for the gate and EQ to help. */
+  noiseHint: string
   dist: string
   lowcut: 80 | 120
   gate: { threshold: number; attack: number; hold: number; release: number; hysteresis: number; wet: number; dry: number }

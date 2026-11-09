@@ -36,7 +36,7 @@ The behaviour reference is the working single-file prototype: `docs/prototype/vo
 
 ### Data model
 `Take = { id: number (Date.now), name, session: string ('s<ts>' or 'free'), step: 'c2'|'c8'|'c15'|'fx'|null, device: string, sampleRate, samples: Float32Array, created: ISO }`; in memory also `analysis`.
-Exported settings JSON (consumed by the Python tool): `{ basedOn, speechDbfs, noiseDbfs, gainHint, dist, lowcut, gate:{threshold,attack,hold,release,hysteresis,wet,dry}, eq:[{type:'Low Shelf'|'Band'|'High Shelf',freq,gain,bw,why}], comp:{threshold,ratio,attack,release,knee,wet,limit}, deess }`.
+Exported settings JSON (consumed by the Python tool): `{ basedOn, speechDbfs, noiseDbfs, gainHint, noiseHint, dist, lowcut, gate:{threshold,attack,hold,release,hysteresis,wet,dry}, eq:[{type:'Low Shelf'|'Band'|'High Shelf',freq,gain,bw,why}], comp:{threshold,ratio,attack,release,knee,wet,limit}, deess }`.
 
 ### Wave Link storage format (for tools/)
 `%LOCALAPPDATA%\Packages\Elgato.WaveLink_g54w8ztgkx496\LocalState\Settings.json` → `MixerConfiguration.InputSettings[<input with PCM_IN>].AudioPluginConfigurations[]`. `ParameterState` = base64 FXP (`CcnK`).
