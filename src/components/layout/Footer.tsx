@@ -1,46 +1,61 @@
 import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import CodeIcon from '@mui/icons-material/Code'
 import GitHubIcon from '@mui/icons-material/GitHub'
 import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import { SITE } from '../../site'
 
 const external = { target: '_blank', rel: 'noopener noreferrer' } as const
-const mailto = `mailto:${SITE.author.email}`
 
-const ICONS = [
-  { label: 'GitHub', href: SITE.author.github, Icon: GitHubIcon },
-  { label: 'LinkedIn', href: SITE.author.linkedin, Icon: LinkedInIcon },
-  { label: 'Stack Overflow', href: SITE.author.stackoverflow, Icon: CodeIcon },
+/** Stack Overflow logo (Simple Icons, CC0). MUI has no brand icon for it. */
+function StackOverflowIcon(props: SvgIconProps) {
+  return (
+    <SvgIcon {...props} viewBox="0 0 24 24">
+      <path d="M15.725 0l-1.72 1.277 6.39 8.588 1.716-1.277L15.725 0zm-3.94 3.418l-1.369 1.644 8.225 6.85 1.369-1.644-8.225-6.85zm-3.15 4.465l-.905 1.94 9.702 4.517.904-1.94-9.701-4.517zm-1.85 4.86l-.44 2.093 10.473 2.201.44-2.092-10.473-2.203zM1.89 15.47V24h19.19v-8.53h-2.133v6.397H4.021v-6.396H1.89zm4.265 2.133v2.13h10.66v-2.13H6.154z" />
+    </SvgIcon>
+  )
+}
+
+const LINKS = [
+  { label: 'GitHub', href: SITE.author.github, Icon: GitHubIcon, ext: true },
+  { label: 'LinkedIn', href: SITE.author.linkedin, Icon: LinkedInIcon, ext: true },
+  { label: 'Stack Overflow', href: SITE.author.stackoverflow, Icon: StackOverflowIcon, ext: true },
+  { label: `Email ${SITE.author.email}`, href: `mailto:${SITE.author.email}`, Icon: MailOutlinedIcon, ext: false },
 ] as const
 
-/** Author and project links on every screen: thin top divider, muted mono text, stacked on mobile. */
+/** Footer on every screen: author + social icons on the left, project links on the right; stacks on mobile. */
 export function Footer() {
   return (
-    <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider', color: 'text.secondary' }}>
-      <div className="mx-auto flex max-w-[1240px] flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <Link href={SITE.author.site} {...external} variant="body2" color="inherit" underline="hover">
-            Made by {SITE.author.name}
-          </Link>
-          <div className="flex items-center">
-            {ICONS.map(({ label, href, Icon }) => (
-              <IconButton key={label} href={href} {...external} aria-label={label} title={label} size="small" color="inherit">
-                <Icon fontSize="small" />
-              </IconButton>
+    <Box component="footer" sx={{ borderTop: 1, borderColor: 'divider', color: 'text.secondary', mt: 6 }}>
+      <div className="mx-auto flex max-w-[1240px] flex-col items-center gap-3 px-4 py-6 sm:flex-row sm:justify-between">
+        <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-4">
+          <Typography variant="body2">
+            Made by{' '}
+            <Link href={SITE.author.site} {...external} color="primary" underline="hover" sx={{ fontWeight: 600 }}>
+              {SITE.author.name}
+            </Link>
+          </Typography>
+          <nav aria-label="Author links" className="flex items-center gap-1">
+            {LINKS.map(({ label, href, Icon, ext }) => (
+              <Tooltip key={label} title={label}>
+                <IconButton
+                  href={href}
+                  {...(ext ? external : {})}
+                  aria-label={label}
+                  size="small"
+                  sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                >
+                  <Icon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             ))}
-            <IconButton href={mailto} aria-label="Email" title="Email" size="small" color="inherit">
-              <MailOutlinedIcon fontSize="small" />
-            </IconButton>
-          </div>
-          <Link href={mailto} variant="body2" color="inherit" underline="hover">
-            {SITE.author.email}
-          </Link>
+          </nav>
         </div>
-        <Typography variant="body2" component="div" className="flex flex-wrap items-center gap-x-2">
+        <Typography variant="body2" component="div" className="flex items-center gap-2">
           <Link href={SITE.repo} {...external} color="inherit" underline="hover">
             Source on GitHub
           </Link>
