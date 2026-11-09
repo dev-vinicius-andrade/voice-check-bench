@@ -2,5 +2,5 @@
 @import "tailwindcss";
 
 body {
-  font-family: Barlow, "Segoe UI", system-ui, sans-serif;
+  font-family: "JetBrains Mono", Consolas, monospace;
 }

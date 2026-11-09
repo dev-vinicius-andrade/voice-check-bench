@@ -1,0 +1,17 @@
+{
+  "basedOn": "8 cm, raw mic",
+  "speechDbfs": -24.5,
+  "noiseDbfs": -68.2,
+  "gainHint": null,
+  "dist": "8 cm",
+  "lowcut": 80,
+  "gate": { "threshold": -60, "attack": 1, "hold": 150, "release": 200, "hysteresis": -6, "wet": 0, "dry": -20 },
+  "eq": [
+    { "type": "Low Shelf", "freq": 150, "gain": -4, "bw": 2.0, "why": "Tame proximity boom" },
+    { "type": "Band", "freq": 1000, "gain": 3, "bw": 1.5, "why": "Add body and presence" },
+    { "type": "Band", "freq": 4000, "gain": 3, "bw": 1.4, "why": "Improve clarity" },
+    { "type": "High Shelf", "freq": 10000, "gain": 1, "bw": 2.0, "why": "A little air" }
+  ],
+  "comp": { "threshold": -34, "ratio": 3, "attack": 5, "release": 100, "knee": 6, "wet": 12, "limit": true },
+  "deess": false
+}
