@@ -4,7 +4,10 @@
 - `docs/SPEC.md` — goals, architecture, data model, UI decisions, Wave Link format
 - `docs/PLAN.md` — task list with status
 - `docs/prototype/voice-check.html` — working single-file prototype; behaviour reference for the port
-- `tools/apply-reaplugs.py` — writes exported settings into Wave Link Settings.json
+- `tools/apply-reaplugs.py` — writes exported settings into Wave Link Settings.json (`--show`, preview, `--write`, `--self-test`, `--input`)
+- `tools/README.md` — tool usage, Wave Link FXP layout, safety and restore
+- `tools/example-settings.json` — sample settings export for previewing the tool
+- `README.md` — project overview, requirements, workflow, scripts
 - `package.json` — scripts and dependencies
 - `src/` — app source (filled in by the plan tasks)
 - `index.html` — Vite entry HTML, font links, root div
@@ -17,5 +20,24 @@
 - `src/App.tsx` — top-level app component (placeholder)
 - `src/index.css` — CSS layer order and Tailwind import
 - `src/theme.ts` — MUI light/dark theme and `monoFont`
-- `src/smoke.test.ts` — trivial Vitest smoke test
+- `src/audio/dsp.ts` — FFT, Hann cache, power spectrum, `db`/`adb`, `pct`/`median`
+- `src/audio/reference.ts` — `BANDS` reference curve, `deviations()`, `QUIET_SEC`/`MAX_SEC`
+- `src/audio/analyze.ts` — `analyze(samples, sampleRate)`: levels, noise, speech mask, spectra, hum, sibilance
+- `src/audio/diagnose.ts` — `diagnose()` checks with ids, `countByStatus`, `topIssues`, `f1`
+- `src/audio/testSignals.ts` — test-only seeded PRNG, synthetic take, `fakeAnalysis` fixture
+- `src/audio/dsp.test.ts` — FFT bin, Hann, percentile tests
+- `src/audio/analyze.test.ts` — analyze() on synthetic takes, silence-window and error paths
+- `src/audio/analyze.wav.test.ts` — spot check against `_test/no-filters.wav` (skips when absent)
+- `src/audio/diagnose.test.ts` — check ids/order, thresholds, texts, verdict helpers
+- `src/session/steps.ts` — `STEPS` wizard definition, `DEV_MATCH`, `DEV_NAME`, `fillDistance`
+- `src/session/bestControl.ts` — `sessionSlots()` and `bestControl()` control-take picker
+- `src/session/bestControl.test.ts` — slots, best control scoring, steps helpers
+- `src/settings/suggest.ts` — `suggest()`, `pickSuggestionBase()`, `suggestionToText`/`suggestionToJson`
+- `src/settings/suggest.test.ts` — clamps, EQ rounding, gain hints, JSON shape, text sheet
 - `public/worklets/` — AudioWorklet scripts served as static files
+- `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
+- `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
+- `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records
+- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs and `vcb-devs` device choice with shape validation
+- `src/storage/prefs.test.ts` — prefs round trip, corrupt JSON, blocked storage
+- `src/storage/takesDb.test.ts` — in-memory fallback and prototype record normalization
