@@ -50,3 +50,18 @@ describe('anonymizedSummary JSON', () => {
     expect(json.takes[0].analysis.snr).toBeNull()
   })
 })
+
+describe('anonymizedSummary goal', () => {
+  it('shares the goal style (natural by default), never the perceived issues', () => {
+    const takes = [mkTake(1, 's1', 'c8'), mkTake(2, 's1', 'fx')]
+    expect(anonymizedSummary(takes, takes[1], MIC, null).goalStyle).toBe('natural')
+    const s = suggest(takes[0], '8 cm', undefined, { style: 'warm', perceived: ['nasal', 'dull'] })
+    expect(s?.eq.some((e) => e.byEar)).toBe(true)
+    const out = anonymizedSummary(takes, takes[1], MIC, s, { style: 'warm', perceived: ['nasal', 'dull'] })
+    expect(out.goalStyle).toBe('warm')
+    expect(JSON.stringify(out)).not.toMatch(/perceived|byEar|by ear|nasal|dull/i)
+    // the shared EQ is the style-only suggestion
+    const styleOnly = suggest(takes[0], '8 cm', undefined, { style: 'warm', perceived: [] })
+    expect(out.suggestion?.eq).toEqual(styleOnly?.eq.map((e) => ({ ...e, why: expect.any(String) })))
+  })
+})

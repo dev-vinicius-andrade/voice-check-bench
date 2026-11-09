@@ -30,19 +30,20 @@ export function usePlainResults(A: Take, a: Analysis): PlainResults {
   const best = useBestControl(A.session)
   const hasSuggestion = useSuggestion() !== null
   const inputs = useBench(useShallow((s) => ({ takes: s.takes, session: s.session, fxDist: s.fxDist })))
+  const goal = useBench((s) => s.goal)
   const mic = A.mic ?? profile
   const bestDist = A.session === 'free' ? null : (best?.dist ?? null)
   return useMemo(() => {
     // the same raw reference as the before/after card: raw control at the processed distance, else the best control
     const raw = A.step === 'fx' ? (rawReference(inputs.takes, A, inputs.session, inputs.fxDist)?.analysis ?? null) : null
-    const ctx: ActionContext = { mic, bestDist, currentDist: stepDist(A), hasSuggestion, raw }
+    const ctx: ActionContext = { mic, bestDist, currentDist: stepDist(A), hasSuggestion, raw, goal }
     return {
-      score: clarityScore(a, { raw }),
-      ratings: plainRatings(a, { raw }),
+      score: clarityScore(a, { raw, goal }),
+      ratings: plainRatings(a, { raw, goal }),
       actions: nextActions(a, ctx),
       ctx,
-      before: raw ? clarityScore(raw) : null,
+      before: raw ? clarityScore(raw, { goal }) : null,
       raw,
     }
-  }, [A, a, mic, bestDist, hasSuggestion, inputs])
+  }, [A, a, mic, bestDist, hasSuggestion, inputs, goal])
 }

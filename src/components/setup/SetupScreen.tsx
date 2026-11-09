@@ -5,6 +5,7 @@ import { TwoToneHeading } from '../common/TwoToneHeading'
 import { useBench } from '../../store/benchStore'
 import { useSlots } from '../../store/hooks'
 import { isAnalysisError } from '../../types'
+import { GoalCard } from './GoalCard'
 import { MicCard } from './MicCard'
 import { MicProfileCard } from './MicProfileCard'
 import { SetupTakeList } from './SetupTakeList'
@@ -31,6 +32,7 @@ export function SetupScreen() {
       </div>
       <SetupTakeList />
       <MicProfileCard />
+      <GoalCard />
       <MicCard />
       <div className="flex flex-wrap items-center justify-between gap-3">
         {hasResults ? (

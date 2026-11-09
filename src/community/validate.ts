@@ -1,7 +1,10 @@
 // Strict parsing of shared community summaries (issue bodies are public, untrusted input). Framework-free.
 // parseSummary rebuilds the object from known keys only, so extra keys never reach the index.
-import type { EqBand, MicAddress, MicKind, MicPattern, NoiseKind, NoiseTone, StepKey } from '../types'
+import type { EqBand, MicAddress, MicKind, MicPattern, NoiseKind, NoiseTone, StepKey, VoiceStyle } from '../types'
+
 import type { CommunitySummary } from './types'
+
+const GOAL_STYLES: readonly VoiceStyle[] = ['natural', 'warm', 'clear', 'bright']
 
 type Obj = Record<string, unknown>
 type Suggestion = NonNullable<CommunitySummary['suggestion']>
@@ -177,6 +180,7 @@ export function parseSummary(v: unknown): CommunitySummary | null {
       mic: parseMic(o.mic),
       takes: takes.map(parseTake),
       suggestion: parseSuggestion(o.suggestion),
+      ...(GOAL_STYLES.includes(o.goalStyle as VoiceStyle) ? { goalStyle: o.goalStyle as VoiceStyle } : {}),
     }
   } catch (e) {
     if (e instanceof Invalid) return null

@@ -142,6 +142,8 @@ export interface EqBand {
   gain: number
   bw: number
   why: string
+  /** A gentle tweak for something the person hears but the measurement doesn't confirm (v0.9); absent otherwise. */
+  byEar?: boolean
 }
 
 /** EqBand as the app holds it: the reason is a message key (exports turn it back into English text). */

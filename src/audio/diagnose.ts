@@ -2,9 +2,9 @@
 // Text is message keys under `engine.check.<id>.*` (src/i18n/locales/<lang>/engine.json); numbers travel as
 // params and the strings format them (`{{v, number(…)}}`), so the UI shows them in the active locale.
 import type { Msg } from '../plain/types'
-import type { Analysis, Check, CheckId, Status } from '../types'
+import { DEFAULT_GOAL, type Analysis, type Check, type CheckId, type Status, type VoiceGoal } from '../types'
 import { STRONG_TONE_DB } from './analyze'
-import { deviations } from './reference'
+import { targetDeviations } from './reference'
 
 /** Signed number with one decimal: "+1.5", "-2.0", "0.0". */
 export const f1 = (v: number): string => (v > 0 ? '+' : '') + v.toFixed(1)
@@ -29,7 +29,8 @@ export function overprocessedStatus(a: Pick<Analysis, 'zeroRatio' | 'gateSwitche
 /** Band checks in BANDS order (index 1..8); rumble (index 0) has its own rule. */
 const BAND_CHECKS: readonly CheckId[] = ['boom', 'warmth', 'mud', 'body', 'definition', 'presence', 'sibilance', 'air']
 
-export function diagnose(a: Analysis): Check[] {
+/** Band checks compare against the goal's target curve (natural = the reference); wording is the same for every goal. */
+export function diagnose(a: Analysis, goal: VoiceGoal = DEFAULT_GOAL): Check[] {
   const C: Check[] = []
   const r = a.rel
   /** `detail`/`fix` are suffixes under engine.check.<id>; fix is dropped when the check is good. */
@@ -90,7 +91,7 @@ export function diagnose(a: Analysis): Check[] {
     }
   }
 
-  const dv = deviations(r)
+  const dv = targetDeviations(r, goal)
   const vsRef = (v: number): Msg => msg('engine.check.vsReference', { dev: v })
   const grade = (v: number): Status => (Math.abs(v) <= 3 ? 'good' : Math.abs(v) <= 6 ? 'warn' : 'bad')
   {

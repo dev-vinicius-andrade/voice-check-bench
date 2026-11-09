@@ -1,6 +1,6 @@
 // Community data contract. Owned by the orchestrator: the issue form / aggregation task and the UI task
 // both build against this file. Framework-free.
-import type { MicProfile, NoiseKind, NoiseTone, StepKey } from '../types'
+import type { MicProfile, NoiseKind, NoiseTone, StepKey, VoiceStyle } from '../types'
 import type { SuggestionJson } from '../settings/suggest'
 
 export const COMMUNITY_REPO = 'dev-vinicius-andrade/voice-check-bench'
@@ -34,6 +34,8 @@ export interface CommunitySummary {
     }
   }[]
   suggestion: Omit<SuggestionJson, 'basedOn'> | null
+  /** The voice goal's style (v0.9), so stats can be split by style; perceived issues are never shared. Absent in older reports. */
+  goalStyle?: VoiceStyle
 }
 
 export interface Spread {

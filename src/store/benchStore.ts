@@ -2,17 +2,20 @@
 import { create } from 'zustand'
 import { analyze } from '../audio/analyze'
 import { resolveMains, type MainsSetting } from '../audio/mains'
-import { MAX_SEC, QUIET_SEC } from '../audio/reference'
+import { MAX_SEC, QUIET_SEC, STYLE_OFFSETS } from '../audio/reference'
 import { DEV_MATCH, STEPS, fillDistance } from '../session/steps'
 import { bestControl, sessionSlots } from '../session/bestControl'
 import { DEFAULT_MIC, findMic } from '../mics/catalog'
 import type { Msg } from '../plain/types'
 import {
   loadDeviceChoice,
+  loadGoal,
   loadMains,
   loadMicProfile,
   loadUiPrefs,
+  perceivedList,
   saveDeviceChoice,
+  saveGoal,
   saveMains,
   saveMicProfile,
   saveUiPrefs,
@@ -20,6 +23,7 @@ import {
 } from '../storage/prefs'
 import { openTakesDb, type TakesDb } from '../storage/takesDb'
 import {
+  DEFAULT_GOAL,
   isAnalysisError,
   type DeviceChoice,
   type DeviceKind,
@@ -27,6 +31,7 @@ import {
   type Screen,
   type StepRef,
   type Take,
+  type VoiceGoal,
 } from '../types'
 import type { BenchState, BenchStore } from './api'
 import { DEMO_SESSION } from '../demo/demoTakes'
@@ -59,6 +64,7 @@ export function initialBenchState(): BenchState {
     freeTakeName: '',
     micProfile: { ...DEFAULT_MIC },
     mains: 'auto',
+    goal: { ...DEFAULT_GOAL, perceived: [] },
     status: null,
   }
 }
@@ -112,6 +118,13 @@ export function patchMicProfile(cur: MicProfile, patch: Partial<MicProfile>): Mi
   return { ...cur, ...traits, ...set }
 }
 
+/** Applies a goal patch: an unknown style keeps the current one; perceived issues are filtered to known ones, each once. */
+export function patchGoal(cur: VoiceGoal, patch: Partial<VoiceGoal>): VoiceGoal {
+  const style = patch.style !== undefined && Object.hasOwn(STYLE_OFFSETS, patch.style) ? patch.style : cur.style
+  const perceived = patch.perceived !== undefined ? perceivedList(patch.perceived) : [...cur.perceived]
+  return { style, perceived }
+}
+
 /** True after setFxDist (an explicit choice of the processed distance); cleared by a new session. In memory only. */
 let fxDistChosen = false
 
@@ -119,16 +132,19 @@ let fxDistChosen = false
  * The processed take is recorded at the best control distance: an fxDist that no longer matches it (restored from a
  * previous visit, or the best changed after re-recording a control take) is dropped, unless the person chose it.
  */
-export function reconcileFxDist(s: Pick<BenchState, 'takes' | 'session' | 'fxDist'>, chosen: boolean): Partial<BenchState> {
+export function reconcileFxDist(
+  s: Pick<BenchState, 'takes' | 'session' | 'fxDist'> & { goal?: VoiceGoal },
+  chosen: boolean,
+): Partial<BenchState> {
   if (chosen || s.fxDist === null) return {}
-  const best = bestControl(sessionSlots(s.takes, s.session))
+  const best = bestControl(sessionSlots(s.takes, s.session), s.goal)
   return best && best.dist !== s.fxDist ? { fxDist: null } : {}
 }
 
 /** Prototype prepareResults(): processed + best control → A/B diff; else keep A if valid, else latest. */
 export function prepareResults(s: BenchState): Partial<BenchState> {
   const slots = sessionSlots(s.takes, s.session)
-  const best = bestControl(slots)
+  const best = bestControl(slots, s.goal)
   const fx = slots[3]
   if (fx && !isAnalysisError(fx.analysis) && best) return { A: fx.id, B: best.take.id, view: 'diff' }
   if (s.takes.some((t) => t.id === s.A)) return {}
@@ -227,6 +243,7 @@ export const useBench = create<BenchStore>()((set, get) => {
           deviceChoice: loadDeviceChoice(),
           micProfile: loadMicProfile(),
           mains: loadMains(),
+          goal: loadGoal(),
         })
         const db = await getDb()
         const takes: Take[] = []
@@ -427,6 +444,12 @@ export const useBench = create<BenchStore>()((set, get) => {
       const micProfile = patchMicProfile(get().micProfile, patch)
       saveMicProfile(micProfile)
       set({ micProfile })
+    },
+    setGoal(patch) {
+      // derived views only: takes, analyses and the processed distance stay as they are (no re-recording, no re-analysis)
+      const goal = patchGoal(get().goal, patch)
+      saveGoal(goal)
+      set({ goal })
     },
     setMains(mains) {
       if (mains === get().mains) return

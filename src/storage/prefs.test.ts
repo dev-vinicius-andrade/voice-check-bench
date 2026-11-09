@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   loadDeviceChoice,
+  loadGoal,
   loadMains,
   loadMicProfile,
   loadUiPrefs,
   readPref,
   saveDeviceChoice,
+  saveGoal,
   saveMains,
   saveMicProfile,
   saveUiPrefs,
@@ -91,5 +93,32 @@ describe('prefs', () => {
     expect(loadMains()).toBe('auto')
     localStorage.setItem('vcb-mains', '"55"')
     expect(loadMains()).toBe('auto')
+  })
+})
+
+describe('voice goal pref', () => {
+  it('round-trips, defaults to natural and validates its shape', () => {
+    expect(loadGoal()).toEqual({ style: 'natural', perceived: [] })
+    saveGoal({ style: 'warm', perceived: ['nasal', 'sharpS'] })
+    expect(loadGoal()).toEqual({ style: 'warm', perceived: ['nasal', 'sharpS'] })
+    localStorage.setItem('vcb-goal', JSON.stringify({ style: 'loud', perceived: ['dull', 'dull', 3, 'nope'] }))
+    expect(loadGoal()).toEqual({ style: 'natural', perceived: ['dull'] })
+    localStorage.setItem('vcb-goal', JSON.stringify({ style: 'clear', perceived: 'nasal' }))
+    expect(loadGoal()).toEqual({ style: 'clear', perceived: [] })
+    for (const bad of ['{bad', '[]', '"warm"', 'null']) {
+      localStorage.setItem('vcb-goal', bad)
+      expect(loadGoal()).toEqual({ style: 'natural', perceived: [] })
+    }
+  })
+
+  it('falls back to the default when localStorage throws', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    expect(() => saveGoal({ style: 'warm', perceived: [] })).not.toThrow()
+    expect(loadGoal()).toEqual({ style: 'natural', perceived: [] })
   })
 })

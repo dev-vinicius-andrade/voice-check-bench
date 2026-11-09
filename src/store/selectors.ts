@@ -2,10 +2,13 @@
 // arrays/objects must not be passed to useBench directly: use the hooks in ./hooks.ts instead.
 import { bestControl, sessionSlots } from '../session/bestControl'
 import { pickSuggestionBase, suggest } from '../settings/suggest'
-import { isAnalysisError, type Suggestion, type Take } from '../types'
+import { DEFAULT_GOAL, isAnalysisError, type Suggestion, type Take, type VoiceGoal } from '../types'
 import type { BenchState, TakeGroup } from './api'
 
 type S<K extends keyof BenchState> = Pick<BenchState, K>
+/** The voice goal is optional in selector inputs: missing = DEFAULT_GOAL (natural, nothing perceived). */
+type G = { goal?: VoiceGoal }
+const goalOf = (s: G): VoiceGoal => s.goal ?? DEFAULT_GOAL
 
 const byId = (takes: readonly Take[], id: number | null): Take | null =>
   id === null ? null : (takes.find((t) => t.id === id) ?? null)
@@ -17,11 +20,11 @@ export const selectSlots = (s: S<'takes' | 'session'>, session: string = s.sessi
   sessionSlots(s.takes, session)
 
 export const selectBestControl = (
-  s: S<'takes' | 'session'>,
+  s: S<'takes' | 'session'> & G,
   session?: string,
-): { dist: string; cm: number; take: Take } | null => bestControl(selectSlots(s, session))
+): { dist: string; cm: number; take: Take } | null => bestControl(selectSlots(s, session), goalOf(s))
 
-export const selectFxDist = (s: S<'takes' | 'session' | 'fxDist'>): string =>
+export const selectFxDist = (s: S<'takes' | 'session' | 'fxDist'> & G): string =>
   s.fxDist || selectBestControl(s)?.dist || '8 cm'
 
 export const selectStepTake = (s: S<'takes' | 'session' | 'step' | 'lastTakeId'>): Take | null =>
@@ -32,13 +35,14 @@ export const selectTakeB = (s: S<'takes' | 'B'>): Take | null => byId(s.takes, s
 
 /**
  * Prototype suggestBase(): uses the session of take A (unless A is a free take, then the current
- * session); raw take at fxDist → best control → A itself if it is an analyzed raw control.
+ * session); raw take at fxDist → best control → A itself if it is an analyzed raw control. EQ targets the voice goal.
  */
-export const selectSuggestion = (s: S<'takes' | 'session' | 'fxDist' | 'A'>): Suggestion | null => {
+export const selectSuggestion = (s: S<'takes' | 'session' | 'fxDist' | 'A'> & G): Suggestion | null => {
   const A = selectTakeA(s)
   const sid = A && A.session !== 'free' ? A.session : s.session
-  const base = pickSuggestionBase(selectSlots(s, sid), s.fxDist) ?? (isRawControl(A) ? A : null)
-  return base ? suggest(base, selectFxDist(s)) : null
+  const goal = goalOf(s)
+  const base = pickSuggestionBase(selectSlots(s, sid), s.fxDist, goal) ?? (isRawControl(A) ? A : null)
+  return base ? suggest(base, selectFxDist(s), base.mic, goal) : null
 }
 
 /** When a session started: its first take, else the timestamp in its id ('s' + Date.now()); null for free takes. */

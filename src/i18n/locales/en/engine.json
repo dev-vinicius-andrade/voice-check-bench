@@ -213,6 +213,7 @@
       "eqNone": "No EQ needed: the raw mic is already close to the reference.",
       "eqBand": "Band {{n}}: Type {{type}}{{notch}} · Frequency {{freq}} Hz · Gain {{gain, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB · Bandwidth {{bw, number(minimumFractionDigits: 2; maximumFractionDigits: 2)}} oct   ({{why}})",
       "notch": "(notch)",
+      "byEar": "(by ear)",
       "deessOn": "Elgato De-Esser: on (light)",
       "deessOff": "Elgato De-Esser: off",
       "offNoisy": "Elgato EQ: off. Use only one noise remover: ReaFIR, or one of the alternatives above (not both).",

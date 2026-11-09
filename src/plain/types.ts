@@ -51,6 +51,7 @@ export type ActionId =
   | 'backOff' | 'speakInto' | 'angleMic' | 'eqSettings'
   | 'usbPort'
   | 'noiseRemovalDown' | 'compWet'
+  | 'eqByEar'
 
 export interface Action {
   id: ActionId

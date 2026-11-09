@@ -1,8 +1,9 @@
 // "What to do next": up to 3 concrete actions, biggest impact first (SPEC "Plain language (v0.5)"). Pure.
 import { overprocessedStatus } from '../audio/diagnose'
-import type { Analysis, MicProfile } from '../types'
+import type { Analysis, MicProfile, PerceivedIssue, VoiceGoal } from '../types'
 import { compareProcessed } from './compare'
 import { distanceCm } from './distances'
+import { fusePerceived } from './perceived'
 import { volumeState, voiceState } from './ratings'
 import { penalties, strongestHum } from './score'
 import type { Action, Msg } from './types'
@@ -17,6 +18,8 @@ export interface ActionContext {
   hasSuggestion: boolean
   /** Raw control of the same session when the analysed take is the processed one (v0.8 regressions). */
   raw?: Analysis | null
+  /** Voice goal (default natural, nothing perceived): tone is judged against its target; confirmed perceived issues go first. */
+  goal?: VoiceGoal
 }
 
 export const MAX_ACTIONS = 3
@@ -35,6 +38,15 @@ const MIN_IMPACT = 1
 const EQ_MIN_PENALTY = 8
 /** Level lost to the effects above this many dB adds "raise the compressor's Wet". */
 export const WET_DROP_DB = 6
+/** Extra impact for the action that fixes a perceived issue the measurement confirms (v0.9). */
+export const PERCEIVED_BOOST = 10
+/** Placement action for a perceived issue; the others are fixed with the EQ settings only. */
+const PERCEIVED_PLACEMENT: Partial<Record<PerceivedIssue, 'backOff' | 'speakInto' | 'angleMic'>> = {
+  boomy: 'backOff',
+  muffled: 'speakInto',
+  sharpS: 'angleMic',
+  harsh: 'angleMic',
+}
 
 const placementKey = (m: MicProfile): string =>
   m.pattern === 'cardioid' || m.pattern === 'supercardioid' ? m.pattern : 'other'
@@ -70,8 +82,13 @@ function overprocessingActions(a: Analysis, ctx: ActionContext, overPenalty: num
 }
 
 export function nextActions(a: Analysis, ctx: ActionContext): Action[] {
-  const p = penalties(a, { raw: ctx.raw })
-  const voice = voiceState(a)
+  const p = penalties(a, { raw: ctx.raw, goal: ctx.goal })
+  const voice = voiceState(a, ctx.goal)
+  const fused = ctx.goal ? fusePerceived(a, ctx.goal) : []
+  const confirmed = fused.filter((f) => f.confirmed).map((f) => f.issue)
+  const byEar = fused.some((f) => !f.confirmed)
+  /** Placement actions asked for by a confirmed perceived issue. */
+  const heard = new Set(confirmed.map((i) => PERCEIVED_PLACEMENT[i]).filter((x) => x !== undefined))
   const volume = volumeState(a)
   const lead = overprocessingActions(a, ctx, p.overprocessed)
   const out: Action[] = []
@@ -86,7 +103,7 @@ export function nextActions(a: Analysis, ctx: ActionContext): Action[] {
   if (a.snr < NOISY_SNR) {
     // never "move closer" while also telling a boomy voice to back off
     const at = distanceCm(ctx.currentDist ?? ctx.bestDist)
-    if ((at === null || at > FIST_CM) && voice.label !== 'boomy') {
+    if ((at === null || at > FIST_CM) && voice.label !== 'boomy' && !heard.has('backOff')) {
       out.push({ id: 'moveCloser', text: msg('moveCloser', { cm: FIST_CM }), cost: 'free', impact: p.noise * MOVE_CLOSER_SHARE, how: 'placement' })
     }
     out.push({ id: 'fans', text: msg('fans'), cost: 'free', impact: p.noise * FANS_SHARE })
@@ -103,13 +120,24 @@ export function nextActions(a: Analysis, ctx: ActionContext): Action[] {
     out.push({ id: up ? 'gainUp' : 'gainDown', text: msg(up ? 'gainUp' : 'gainDown'), cost: 'free', impact: Math.max(p.level, MIN_IMPACT), how: 'gain' })
   }
 
-  // sound of the voice
+  // sound of the voice (a perceived issue the measurement confirms raises its action's priority)
   const toneImpact = Math.max(p.tone, MIN_IMPACT)
-  if (voice.label === 'boomy') out.push({ id: 'backOff', text: msg('backOff'), cost: 'free', impact: toneImpact, how: 'placement' })
-  if (voice.label === 'muffled') out.push({ id: 'speakInto', text: msg(`speakInto.${speakIntoKey(ctx.mic)}`), cost: 'free', impact: toneImpact, how: 'placement' })
-  if (voice.label === 'sharpS') out.push({ id: 'angleMic', text: msg('angleMic'), cost: 'free', impact: toneImpact, how: 'placement' })
-  if (p.tone >= EQ_MIN_PENALTY && ctx.hasSuggestion) {
+  const boosted = toneImpact + PERCEIVED_BOOST
+  const place = (id: 'backOff' | 'speakInto' | 'angleMic', measured: boolean, text: Msg): void => {
+    if (heard.has(id)) out.push({ id, text, cost: 'free', impact: boosted, how: 'placement' })
+    else if (measured) out.push({ id, text, cost: 'free', impact: toneImpact, how: 'placement' })
+  }
+  place('backOff', voice.label === 'boomy', msg('backOff'))
+  place('speakInto', voice.label === 'muffled', msg(`speakInto.${speakIntoKey(ctx.mic)}`))
+  place('angleMic', voice.label === 'sharpS', msg('angleMic'))
+  if (ctx.hasSuggestion && confirmed.length) {
+    out.push({ id: 'eqSettings', text: msg('eqSettings'), cost: 'minutes', impact: boosted, how: 'settings' })
+  } else if (p.tone >= EQ_MIN_PENALTY && ctx.hasSuggestion) {
     out.push({ id: 'eqSettings', text: msg('eqSettings'), cost: 'minutes', impact: p.tone, how: 'settings' })
+  }
+  // heard but not measured: the gentle by-ear EQ tweak, last
+  if (ctx.hasSuggestion && byEar) {
+    out.push({ id: 'eqByEar', text: msg('eqByEar'), cost: 'minutes', impact: MIN_IMPACT, how: 'settings' })
   }
 
   return [...lead, ...rankActions(out.filter((x) => x.impact > 0), MAX_ACTIONS - lead.length)]

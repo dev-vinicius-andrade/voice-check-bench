@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
 import type { AnalysisResult, StepKey, Take } from '../types'
 import type { BenchState } from './api'
-import { initialBenchState, patchMicProfile, reconcileFxDist, useBench } from './benchStore'
+import { initialBenchState, patchGoal, patchMicProfile, reconcileFxDist, useBench } from './benchStore'
+import { selectBestControl, selectSuggestion } from './selectors'
 import { DEFAULT_MIC } from '../mics/catalog'
 import { analyze } from '../audio/analyze'
 import { englishText } from '../settings/english'
@@ -373,5 +374,56 @@ describe('mains setting', () => {
     localStorage.setItem('vcb-mains', '50')
     await mod.useBench.getState().bootstrap()
     expect(mod.useBench.getState().mains).toBe(50)
+  })
+})
+
+describe('voice goal', () => {
+  afterEach(() => localStorage.clear())
+
+  it('starts natural with nothing perceived', () => {
+    expect(initialBenchState().goal).toEqual({ style: 'natural', perceived: [] })
+  })
+
+  it('patchGoal merges and filters', () => {
+    expect(patchGoal({ style: 'warm', perceived: ['nasal'] }, { style: 'clear' })).toEqual({ style: 'clear', perceived: ['nasal'] })
+    expect(patchGoal({ style: 'warm', perceived: [] }, { perceived: ['dull', 'dull', 'loud' as never] })).toEqual({ style: 'warm', perceived: ['dull'] })
+    expect(patchGoal({ style: 'warm', perceived: [] }, { style: 'toString' as never })).toEqual({ style: 'warm', perceived: [] })
+  })
+
+  it('setGoal saves it and changes derived views only: no re-recording, no re-analysis', () => {
+    const takes = [mkTake(1, 's1', 'c2', fakeAnalysis({ rel: BOOMY_REL })), mkTake(2, 's1', 'c8'), mkTake(3, 's1', 'fx')]
+    reset({ takes, A: 3, B: 2, fxDist: '8 cm', screen: 'results' })
+    const before = st()
+    const suggestion = selectSuggestion(before)
+    st().setGoal({ style: 'warm', perceived: ['nasal'] })
+    const after = st()
+    expect(after.goal).toEqual({ style: 'warm', perceived: ['nasal'] })
+    expect(JSON.parse(localStorage.getItem('vcb-goal') ?? 'null')).toEqual({ style: 'warm', perceived: ['nasal'] })
+    expect(after.takes).toBe(before.takes)
+    after.takes.forEach((t, i) => expect(t.analysis).toBe(before.takes[i].analysis))
+    expect([after.A, after.B, after.fxDist, after.screen, after.session]).toEqual([3, 2, '8 cm', 'results', 's1'])
+    expect(vi.mocked(analyze)).not.toHaveBeenCalled()
+    expect(fake.startRecording).not.toHaveBeenCalled()
+    // derived views recompute: the by-ear nasal tweak shows up in the suggestion
+    expect(suggestion?.eq.some((e) => e.byEar)).toBe(false)
+    expect(selectSuggestion(after)?.eq.some((e) => e.byEar)).toBe(true)
+    st().setGoal({ perceived: [] })
+    expect(st().goal).toEqual({ style: 'warm', perceived: [] })
+  })
+
+  it('best control follows the goal', () => {
+    const takes = [mkTake(1, 's1', 'c2', fakeAnalysis({ rel: [-18, -1, -1, 2, 0, -6, -7, -11, -17] })), mkTake(2, 's1', 'c8')]
+    reset({ takes })
+    expect(selectBestControl(st())?.dist).toBe('8 cm')
+    st().setGoal({ style: 'warm' })
+    expect(selectBestControl(st())?.dist).toBe('2 cm')
+  })
+
+  it('is restored on bootstrap', async () => {
+    vi.resetModules()
+    const mod = await import('./benchStore')
+    localStorage.setItem('vcb-goal', JSON.stringify({ style: 'bright', perceived: ['harsh', 'x'] }))
+    await mod.useBench.getState().bootstrap()
+    expect(mod.useBench.getState().goal).toEqual({ style: 'bright', perceived: ['harsh'] })
   })
 })

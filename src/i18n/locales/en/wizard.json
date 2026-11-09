@@ -183,6 +183,39 @@
         "noisyPause": "The quiet part was almost as loud as your reading. Stay silent until the countdown ends, and pause anything else that plays sound into this input, like music or a call.",
         "tooShort": "Your volume looks fine, but there wasn't enough talking. Read the whole text after the countdown and keep going until the end."
       }
+    },
+    "goal": {
+      "title": "What do you want your voice to sound like?",
+      "style": {
+        "natural": {
+          "name": "Natural",
+          "desc": "Like you, just cleaner"
+        },
+        "warm": {
+          "name": "Warm and deep",
+          "desc": "Radio and podcast feel: fuller, more bass"
+        },
+        "clear": {
+          "name": "Clear and present",
+          "desc": "Cuts through games and calls"
+        },
+        "bright": {
+          "name": "Bright",
+          "desc": "More sparkle on top, if your voice sounds dull"
+        }
+      },
+      "hearTitle": "How does your voice sound to you? (optional)",
+      "perceived": {
+        "nasal": "nasal",
+        "muffled": "muffled",
+        "boomy": "boomy",
+        "thin": "thin",
+        "harsh": "harsh",
+        "sharpS": "sharp S sounds",
+        "dull": "dull"
+      },
+      "notSure": "I'm not sure",
+      "helper": "We'll aim the results and settings at this. You can change it anytime."
     }
   }
 }

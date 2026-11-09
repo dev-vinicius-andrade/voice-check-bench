@@ -1,4 +1,4 @@
-import type { Band } from '../types'
+import { DEFAULT_GOAL, type Band, type VoiceGoal, type VoiceStyle } from '../types'
 
 // Reference voice: octave sums of the long-term average speech spectrum,
 // nudged toward a "clear broadcast voice" (a bit less low-mid, a bit more presence/air).
@@ -22,6 +22,27 @@ export function deviations(rel: readonly number[]): number[] {
   for (let i = 1; i <= 7; i++) s += rel[i] - BANDS[i].ref
   const off = s / 7
   return rel.map((v, i) => v - BANDS[i].ref - off)
+}
+
+/**
+ * Style offsets per BANDS entry, dB (SPEC "Voice goals (v0.9)"): how far each style's target sits above the
+ * reference (rumble, boom, warmth, mud, body, definition, presence, sibilance, air). natural = the reference itself.
+ */
+export const STYLE_OFFSETS: Readonly<Record<VoiceStyle, readonly number[]>> = {
+  natural: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  warm: [0, 3, 2, 0, 1, 0, -1, -1, -1],
+  clear: [0, -1, -1, -1, 0, 2, 3, 1, 1],
+  bright: [0, 0, -1, 0, 0, 0, 1, 2, 3],
+}
+
+/**
+ * Per-band deviation from the person's target: deviations(rel) minus the goal style's offset. Same ±3 / ±6 dB
+ * tolerances apply around it. The natural goal returns deviations(rel) unchanged (same array values).
+ */
+export function targetDeviations(rel: readonly number[], goal: VoiceGoal = DEFAULT_GOAL): number[] {
+  const d = deviations(rel)
+  const off = Object.hasOwn(STYLE_OFFSETS, goal.style) ? STYLE_OFFSETS[goal.style] : STYLE_OFFSETS.natural
+  return d.map((v, i) => v - (off[i] ?? 0))
 }
 
 /** Seconds of silence at the start of every take (room noise measurement). */

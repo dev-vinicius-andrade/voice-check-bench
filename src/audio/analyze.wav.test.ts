@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { nextActions } from '../plain/actions'
 import { compareProcessed } from '../plain/compare'
 import { plainRatings } from '../plain/ratings'
-import { clarityScore } from '../plain/score'
+import { clarityScore, penalties } from '../plain/score'
 import plainEn from '../i18n/locales/en/plain.json'
 import type { Msg } from '../plain/types'
-import { isAnalysisError, type Analysis } from '../types'
+import { DEFAULT_GOAL, isAnalysisError, type Analysis } from '../types'
 import { analyze } from './analyze'
 import { diagnose } from './diagnose'
 
@@ -105,6 +105,18 @@ describe.skipIf(!noisyPresent)('analyze on _test/control-2-cm-raw.wav (server + 
     expect(['tonal', 'broadband']).toContain(a.noiseKind)
     expect(a.bandSnr).toHaveLength(9)
     expect(a.tones.some((t) => Math.abs(t.hz - 780) <= 780 * 0.05 || Math.abs(t.hz - 1560) <= 1560 * 0.05)).toBe(true)
+  })
+
+  it('scores against each voice goal (natural = no goal)', () => {
+    const { samples, sampleRate } = decodeWav(fs.readFileSync(noisyUrl))
+    const a = analyze(samples, sampleRate) as Analysis
+    expect(clarityScore(a, { goal: DEFAULT_GOAL })).toEqual(clarityScore(a))
+    const rows = (['natural', 'warm', 'clear', 'bright'] as const).map((style) => {
+      const goal = { style, perceived: [] }
+      const voice = plainRatings(a, { goal })[2]
+      return { style, score: clarityScore(a, { goal }).score, voice: plainText(voice.label), tone: +penalties(a, { goal }).tone.toFixed(1) }
+    })
+    console.log('control-2-cm-raw by goal', JSON.stringify(rows))
   })
 })
 

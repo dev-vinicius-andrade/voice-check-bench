@@ -89,7 +89,8 @@
             "sharpS": "S muito chiado",
             "dull": "Muito sem brilho",
             "thin": "Muito fina"
-          }
+          },
+          "onTarget": "No alvo"
         },
         "explain": {
           "natural": "Sua voz soa como você.",
@@ -125,7 +126,8 @@
       "eqSettings": "Use as nossas configurações de EQ prontas",
       "usbPort": "Ligue sua interface de áudio em outra porta USB (na parte de trás do computador)",
       "noiseRemovalDown": "Diminua a remoção de ruído",
-      "compWet": "Aumente o Wet do compressor em cerca de {{db}} dB"
+      "compWet": "Aumente o Wet do compressor em cerca de {{db}} dB",
+      "eqByEar": "Experimente o ajuste suave de ouvido nas nossas configurações de EQ prontas"
     },
     "distance": {
       "finger": "mais ou menos a largura de um dedo",
@@ -188,6 +190,26 @@
         "term": "Cardioide",
         "meaning": "Um microfone que ouve principalmente pela frente e quase nada por trás.",
         "analogy": "Como uma lanterna que ilumina o que está na frente dela, não atrás."
+      }
+    },
+    "perceived": {
+      "confirmed": {
+        "nasal": "Você ouve sua voz anasalada, e a medição confirma: os médios estão acima do seu alvo. As configurações de EQ incluem um corte para isso.",
+        "muffled": "Você ouve sua voz abafada, e a medição confirma: os médio-graves estão carregados ou os agudos que dão clareza estão fracos.",
+        "boomy": "Você ouve sua voz com grave demais, e a medição confirma: há mais grave do que o seu alvo.",
+        "thin": "Você ouve sua voz fina, e a medição confirma: há menos grave do que o seu alvo.",
+        "harsh": "Você ouve sua voz estridente, e a medição confirma: os agudos estão acima do seu alvo.",
+        "sharpS": "Você ouve os sons de S chiados, e a medição confirma.",
+        "dull": "Você ouve sua voz sem brilho, e a medição confirma: há menos brilho nos agudos do que o seu alvo."
+      },
+      "byEar": {
+        "nasal": "Você ouve sua voz anasalada. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ.",
+        "muffled": "Você ouve sua voz abafada. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ.",
+        "boomy": "Você ouve sua voz com grave demais. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ.",
+        "thin": "Você ouve sua voz fina. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ.",
+        "harsh": "Você ouve sua voz estridente. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ.",
+        "sharpS": "Você ouve os sons de S chiados. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ.",
+        "dull": "Você ouve sua voz sem brilho. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ."
       }
     }
   }

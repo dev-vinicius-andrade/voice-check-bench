@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { Analysis, Take } from '../../types'
+import { GoalLine } from './GoalLine'
 import { NextActions } from './NextActions'
 import { PlainSummaries } from './PlainSummaries'
 import { RatingCards } from './RatingCards'
@@ -36,6 +37,7 @@ export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
 
   return (
     <div className="grid min-w-0 gap-4">
+      <GoalLine analysis={a} />
       <ScoreHero score={score} before={before} />
       <RatingCards ratings={ratings} />
       <NextActions actions={actions} ctx={ctx} onShowSettings={showSettings} />

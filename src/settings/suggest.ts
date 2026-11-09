@@ -2,13 +2,15 @@
 // Built from a RAW take (the mic before any effects), at the distance you'll actually use.
 // Noisy room (SNR < 25 dB, SPEC "Noisy-room mode"): ReaFIR noise reduction first, EQ without boosts in
 // noisy bands plus tone notches, a gentler compressor and the gate as a soft expander at the end.
-import { deviations } from '../audio/reference'
+import { targetDeviations } from '../audio/reference'
 import { bestControl } from '../session/bestControl'
 import { STEPS } from '../session/steps'
 import { DEFAULT_MIC, addressTip, placementTip } from '../mics/catalog'
+import { fusePerceived, type FusedIssue } from '../plain/perceived'
 import type { Msg } from '../plain/types'
 import { englishText, type MsgTranslator } from './english'
 import {
+  DEFAULT_GOAL,
   isAnalysisError,
   type Analysis,
   type EqBand,
@@ -19,11 +21,14 @@ import {
   type SuggestedEqBand,
   type Suggestion,
   type Take,
+  type VoiceGoal,
 } from '../types'
 
 const msg = (key: string, params?: Msg['params']): Msg => (params ? { key, params } : { key })
 /** Message under engine.suggest. */
 const sm = (key: string, params?: Msg['params']): Msg => msg(`engine.suggest.${key}`, params)
+/** Message under suggestx (suggest.json). */
+const sx = (key: string, params?: Msg['params']): Msg => msg(`suggestx.${key}`, params)
 
 /** Exported settings JSON consumed by tools/apply-reaplugs.py (SPEC "Exported settings JSON"). Text fields are English. */
 export interface SuggestionJson {
@@ -50,8 +55,8 @@ const isRawControl = (t: Take | null): t is Take =>
  * Base take for suggestions: the raw control take at the processed distance if present,
  * else the best control take, else null. `slots` = sessionSlots() of the session.
  */
-export function pickSuggestionBase(slots: readonly (Take | null)[], fxDist: string | null): Take | null {
-  const best = bestControl(slots)
+export function pickSuggestionBase(slots: readonly (Take | null)[], fxDist: string | null, goal: VoiceGoal = DEFAULT_GOAL): Take | null {
+  const best = bestControl(slots, goal)
   const dist = fxDist || best?.dist
   const atDist = slots.slice(0, 3).find((t, i) => isRawControl(t) && STEPS[i].dist === dist)
   return atDist ?? best?.take ?? null
@@ -100,14 +105,81 @@ function notches(tones: readonly NoiseTone[] | undefined): SuggestedEqBand[] {
     .map((t): SuggestedEqBand => ({ type: 'Band', freq: Math.round(t.hz), gain: -r05(6 + Math.min(6, (t.db - 12) / 2)), bw: NOTCH_BW, why: sm('why.tone', { db: t.db }) }))
 }
 
+/** Gentle correction for a perceived issue the measurement doesn't confirm, dB (never more). */
+export const BY_EAR_DB = 1.5
+/** Nasal band (confirmed): -2 to -4 dB, bandwidth 1 octave, centre between body and definition. */
+const NASAL_MIN_DB = 2
+const NASAL_MAX_DB = 4
+const NASAL_BW = 1.0
+const NASAL_LO_HZ = 900
+const NASAL_HI_HZ = 1600
+const NASAL_BY_EAR_HZ = 1000
+
+/**
+ * Where a by-ear tweak goes for each perceived issue (nasal has its own band): the existing EQ slot and the direction
+ * that fixes it, plus the BANDS index whose voice-over-room SNR limits a boost in a noisy room.
+ */
+const BY_EAR_SLOTS: Record<Exclude<FusedIssue['issue'], 'nasal'>, { type: EqBand['type']; freq: number; bw: number; dir: 1 | -1; snrBand: number }> = {
+  muffled: { type: 'Band', freq: 450, bw: 1.2, dir: -1, snrBand: 3 },
+  boomy: { type: 'Low Shelf', freq: 150, bw: 2.0, dir: -1, snrBand: 1 },
+  thin: { type: 'Low Shelf', freq: 150, bw: 2.0, dir: 1, snrBand: 1 },
+  harsh: { type: 'Band', freq: 3500, bw: 1.4, dir: -1, snrBand: 6 },
+  sharpS: { type: 'High Shelf', freq: 10000, bw: 2.0, dir: -1, snrBand: 7 },
+  dull: { type: 'High Shelf', freq: 10000, bw: 2.0, dir: 1, snrBand: 7 },
+}
+
+/** Insert keeping the EQ in frequency order (the list holds no notches yet). */
+function insertByFreq(eq: SuggestedEqBand[], band: SuggestedEqBand): void {
+  const i = eq.findIndex((e) => e.freq > band.freq)
+  eq.splice(i < 0 ? eq.length : i, 0, band)
+}
+
+/**
+ * Perceived issues on top of the measured EQ (SPEC "Voice goals (v0.9)"). Confirmed ones keep the full measured
+ * correction, and nasal gets its band (-2..-4 dB, bw 1.0, centred toward the larger of the body/definition excess).
+ * Not confirmed: a gentle 1.5 dB tweak in that direction, marked byEar, unless the measured band already goes that far.
+ */
+function applyPerceived(eq: SuggestedEqBand[], fused: readonly FusedIssue[], d: readonly number[], noBoost: (band: number) => boolean): void {
+  const slotOf = (type: EqBand['type'], freq: number): number => eq.findIndex((e) => e.type === type && e.freq === freq)
+  for (const f of fused) {
+    if (f.issue === 'nasal') {
+      const body = slotOf('Band', 1000)
+      if (f.confirmed) {
+        const bodyEx = Math.max(0, d[4] || 0)
+        const defEx = Math.max(0, d[5] || 0)
+        const t = bodyEx + defEx > 0 ? defEx / (bodyEx + defEx) : 0
+        const freq = Math.round((NASAL_LO_HZ * (NASAL_HI_HZ / NASAL_LO_HZ) ** t) / 50) * 50
+        const gain = -r05(clamp(f.delta * 0.7, NASAL_MIN_DB, NASAL_MAX_DB))
+        // the nasal band takes over a body cut; a body boost (body below target) stays
+        if (body >= 0 && eq[body].gain < 0) eq.splice(body, 1)
+        insertByFreq(eq, { type: 'Band', freq, gain, bw: NASAL_BW, why: sx('why.nasal', { dev: f.delta }) })
+      } else {
+        if (body >= 0) eq.splice(body, 1)
+        insertByFreq(eq, { type: 'Band', freq: NASAL_BY_EAR_HZ, gain: -BY_EAR_DB, bw: NASAL_BW, why: sx('why.byEar.nasal'), byEar: true })
+      }
+      continue
+    }
+    if (f.confirmed) continue
+    const s = BY_EAR_SLOTS[f.issue]
+    if (s.dir > 0 && noBoost(s.snrBand)) continue
+    const i = slotOf(s.type, s.freq)
+    // the measured band already corrects at least this much in that direction
+    if (i >= 0 && eq[i].gain * s.dir >= BY_EAR_DB) continue
+    const band: SuggestedEqBand = { type: s.type, freq: s.freq, gain: BY_EAR_DB * s.dir, bw: s.bw, why: sx(`why.byEar.${f.issue}`), byEar: true }
+    if (i >= 0) eq[i] = band
+    else insertByFreq(eq, band)
+  }
+}
+
 /**
  * null when the base take could not be analyzed. `dist` is used only if the base take has no step distance.
  * `mic` defaults to the profile stored on the take; it only changes the wording of the noise hint.
+ * `goal`: the EQ corrects toward the goal's target curve; perceived issues add their corrections (natural = the reference).
  */
-export function suggest(base: Take, dist: string, mic: MicProfile | undefined = base.mic): Suggestion | null {
+export function suggest(base: Take, dist: string, mic: MicProfile | undefined = base.mic, goal: VoiceGoal = DEFAULT_GOAL): Suggestion | null {
   const a = base.analysis
   if (isAnalysisError(a)) return null
-  const d = deviations(a.rel)
+  const d = targetDeviations(a.rel, goal)
   const noisy = a.snr < NOISY_SNR
   const k = 0.7
   const eq: SuggestedEqBand[] = []
@@ -131,6 +203,8 @@ export function suggest(base: Take, dist: string, mic: MicProfile | undefined = 
     // On a noisy input a big high shelf mostly lifts the hiss: cap it at +2 dB.
     add('High Shelf', 10000, clamp(-((d[7] + d[8]) / 2) * k, -4, noisy ? 2 : 5), 2.0, sm('why.top', { sib: d[7], air: d[8] }), Math.min(snr7, snr8))
   }
+  const fused = fusePerceived(a, goal)
+  if (fused.length) applyPerceived(eq, fused, d, (i) => noisy && at(a.bandSnr, i) < NO_BOOST_SNR)
   if (noisy) eq.push(...notches(a.tones))
   const lowcut: 80 | 120 = d[0] > 3 ? 120 : 80
   const gate: Suggestion['gate'] = noisy
@@ -219,7 +293,7 @@ export function suggestionToText(s: Suggestion, t: MsgTranslator = englishText, 
       L.push(x('eq'))
       if (!s.eq.length) L.push('  ' + x('eqNone'))
       s.eq.forEach((e, i) =>
-        L.push('  ' + x('eqBand', { n: i + 1, type: e.type, notch: isNotch(e) ? ' ' + x('notch') : '', freq: e.freq, gain: e.gain, bw: e.bw, why: t(e.why) })),
+        L.push('  ' + x('eqBand', { n: i + 1, type: e.type, notch: isNotch(e) ? ' ' + x('notch') : e.byEar ? ' ' + x('byEar') : '', freq: e.freq, gain: e.gain, bw: e.bw, why: t(e.why) })),
       )
       L.push('')
     },

@@ -115,7 +115,10 @@
       "noteDiff": "Bars up: A has more of that band than B (after level-matching). With A = processed and B = a raw control, this is what your effects change.",
       "ariaTone": "Deviation from reference voice per octave",
       "ariaDiff": "Difference between takes per octave",
-      "zones": "±3 dB / ±6 dB"
+      "zones": "±3 dB / ±6 dB",
+      "zeroTarget": "your target",
+      "zeroReference": "reference voice",
+      "targetLegend": "Target: {{style}}"
     },
     "beforeAfter": {
       "title": "Before / after",
@@ -227,6 +230,13 @@
       "downloadAria": "Download {{name}} as WAV",
       "delete": "Delete take",
       "deleteAria": "Delete {{name}}"
+    },
+    "goal": {
+      "line": "Your goal: {{style}}",
+      "lineHear": "Your goal: {{style}} · you hear: {{hear}}",
+      "change": "Change goal",
+      "dialogTitle": "Change your goal",
+      "done": "Done"
     }
   }
 }

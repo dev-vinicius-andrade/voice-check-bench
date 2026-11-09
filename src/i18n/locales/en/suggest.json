@@ -12,6 +12,18 @@
       "tryFirst": "Try first (AI noise removal): {{list}}. If your voice sounds clean with one of them, skip ReaFIR.",
       "noiseReductionOptional": "{{plugin}} (noise reduction, optional: only if the AI option does not sound clean)",
       "optional": "(optional)"
+    },
+    "why": {
+      "nasal": "Nasal: the middle tones are {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB over your target",
+      "byEar": {
+        "nasal": "By ear (nasal): we didn't measure this, but you hear it — here's a gentle tweak",
+        "muffled": "By ear (muffled): we didn't measure this, but you hear it — here's a gentle tweak",
+        "boomy": "By ear (boomy): we didn't measure this, but you hear it — here's a gentle tweak",
+        "thin": "By ear (thin): we didn't measure this, but you hear it — here's a gentle tweak",
+        "harsh": "By ear (harsh): we didn't measure this, but you hear it — here's a gentle tweak",
+        "sharpS": "By ear (sharp S): we didn't measure this, but you hear it — here's a gentle tweak",
+        "dull": "By ear (dull): we didn't measure this, but you hear it — here's a gentle tweak"
+      }
     }
   }
 }

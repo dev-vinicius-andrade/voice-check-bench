@@ -1,8 +1,8 @@
 // Clarity score 0..100 from one analysis (SPEC "Plain language (v0.5)"). Pure.
 import { STRONG_TONE_DB } from '../audio/analyze'
 import { OVER_SWITCH_WARN, OVER_ZERO_WARN } from '../audio/diagnose'
-import { deviations } from '../audio/reference'
-import type { Analysis } from '../types'
+import { targetDeviations } from '../audio/reference'
+import type { Analysis, VoiceGoal } from '../types'
 import { compareProcessed } from './compare'
 import type { ClarityScore, MainIssue, Msg, ScorePenalties } from './types'
 
@@ -20,9 +20,11 @@ export const OVER_SWITCH_FULL = 18
 /** Points per regression of a processed take against its raw control (quieter, thin, harsh, chopped). */
 export const REGRESSION_POINTS = 10
 
-/** Options for scoring a processed take: the raw control of the same session, when known. */
+/** Options for scoring: the raw control of the same session (processed take), the voice goal (default natural). */
 export interface ScoreOptions {
   raw?: Analysis | null
+  /** Tone is judged against the goal's target curve; regressions vs the raw take are not (they compare raw and processed). */
+  goal?: VoiceGoal
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v))
@@ -54,7 +56,7 @@ export function penalties(a: Analysis, opts: ScoreOptions = {}): ScorePenalties 
   }
   if (a.clip > 0) level += 15
 
-  const dv = deviations(a.rel)
+  const dv = targetDeviations(a.rel, opts.goal)
   let excess = 0
   for (let i = 1; i <= 7; i++) excess += Math.max(0, Math.abs(finite(dv[i])) - 3)
   const tone = Math.min(25, 1.2 * excess)

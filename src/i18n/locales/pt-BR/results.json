@@ -115,7 +115,10 @@
       "noteDiff": "Barras para cima: A tem mais daquela faixa que B (depois de igualar o volume). Com A = processada e B = só o microfone, isto é o que seus efeitos mudam.",
       "ariaTone": "Desvio da voz de referência por oitava",
       "ariaDiff": "Diferença entre gravações por oitava",
-      "zones": "±3 dB / ±6 dB"
+      "zones": "±3 dB / ±6 dB",
+      "zeroTarget": "seu alvo",
+      "zeroReference": "voz de referência",
+      "targetLegend": "Alvo: {{style}}"
     },
     "beforeAfter": {
       "title": "Antes / depois",
@@ -226,6 +229,13 @@
       "downloadAria": "Baixar {{name}} como WAV",
       "delete": "Apagar gravação",
       "deleteAria": "Apagar {{name}}"
+    },
+    "goal": {
+      "line": "Seu objetivo: {{style}}",
+      "lineHear": "Seu objetivo: {{style}} · você ouve: {{hear}}",
+      "change": "Mudar objetivo",
+      "dialogTitle": "Mude seu objetivo",
+      "done": "Pronto"
     }
   }
 }

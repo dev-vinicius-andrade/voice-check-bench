@@ -213,6 +213,7 @@
       "eqNone": "Não precisa de EQ: o microfone sem efeitos já está perto da referência.",
       "eqBand": "Band {{n}}: Type {{type}}{{notch}} · Frequency {{freq}} Hz · Gain {{gain, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB · Bandwidth {{bw, number(minimumFractionDigits: 2; maximumFractionDigits: 2)}} oct   ({{why}})",
       "notch": "(corte estreito)",
+      "byEar": "(de ouvido)",
       "deessOn": "Elgato De-Esser: ligado (leve)",
       "deessOff": "Elgato De-Esser: desligado",
       "offNoisy": "Elgato EQ: desligado. Use só um removedor de ruído: o ReaFIR ou uma das alternativas acima (não os dois).",

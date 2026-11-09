@@ -16,6 +16,7 @@ import type { Msg } from '../plain/types'
 import { englishText } from '../settings/english'
 import { SHEET_FIXTURES } from '../settings/sheetFixtures'
 import { suggest, suggestionToText } from '../settings/suggest'
+import { PERCEIVED_ISSUES } from '../plain/perceived'
 import type { Analysis, MicAddress, MicPattern, Take } from '../types'
 import storeSource from './benchStore.ts?raw'
 
@@ -80,6 +81,9 @@ function collect(): Msg[] {
     ...Object.values(SHEET_FIXTURES).map(([t, d]) => suggest(t, d)),
     ...analyses().map((a) => suggest(take(a), '8 cm')),
     suggest(take(fakeAnalysis({ snr: 10, noise: -40, speechMed: -40 })), '8 cm', { model: '', kind: 'condenser', pattern: 'omni', address: 'side' }),
+    // voice goals (v0.9): every perceived issue heard but not measured (by-ear tweak), and a measured nasal band
+    ...PERCEIVED_ISSUES.map((issue) => suggest(take(fakeAnalysis()), '8 cm', undefined, { style: 'natural', perceived: [issue] })),
+    suggest(take(voiceAnalysis(4, 5)), '8 cm', undefined, { style: 'warm', perceived: ['nasal'] }),
   ]
   for (const s of sugg) {
     if (!s) continue

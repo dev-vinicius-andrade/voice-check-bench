@@ -4,6 +4,7 @@ import type { MicAddress, MicPattern } from '../types'
 import { nextActions } from './actions'
 import { everydayDistance } from './distances'
 import { GLOSSARY, GLOSSARY_IDS } from './glossary'
+import { PERCEIVED_ISSUES, perceivedNotes } from './perceived'
 import { plainRatings, ratingTitle } from './ratings'
 import { clarityScore } from './score'
 import { fixtureAnalyses, mic, processedPair } from './testFixtures'
@@ -45,6 +46,14 @@ function collectMsgs(): Msg[] {
   const s = clarityScore(fx, { raw })
   out.push(s.headline, s.explain, ...plainRatings(fx, { raw }).flatMap((r) => [r.label, r.explain]))
   for (const x of nextActions(fx, { mic: mic(), hasSuggestion: true, raw })) out.push(x.text)
+  // voice goals (v0.9): perceived issues heard but not measured (by-ear tweak) and confirmed by the measurement
+  for (const issue of PERCEIVED_ISSUES) {
+    for (const a of fixtureAnalyses()) {
+      const goal = { style: 'natural' as const, perceived: [issue] }
+      out.push(...perceivedNotes(a, goal))
+      for (const x of nextActions(a, { mic: mic(), hasSuggestion: true, goal })) out.push(x.text)
+    }
+  }
   for (const g of GLOSSARY) out.push(g.term, g.meaning, g.analogy)
   for (const d of ['2 cm', '8 cm', '15 cm', '30 cm']) out.push(everydayDistance(d))
   return out

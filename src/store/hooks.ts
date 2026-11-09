@@ -31,7 +31,7 @@ export const useTakeB = () => useBench(selectTakeB)
 export const useCanGoNext = () => useBench(selectCanGoNext)
 
 export function useSuggestion() {
-  const inputs = useBench(useShallow((s) => ({ takes: s.takes, session: s.session, fxDist: s.fxDist, A: s.A })))
+  const inputs = useBench(useShallow((s) => ({ takes: s.takes, session: s.session, fxDist: s.fxDist, A: s.A, goal: s.goal })))
   return useMemo(() => selectSuggestion(inputs), [inputs])
 }
 
@@ -42,3 +42,6 @@ export function useTakeGroups() {
 
 /** The person's mic profile (stable reference until it changes). */
 export const useMicProfile = () => useBench((s) => s.micProfile)
+
+/** The voice goal (stable reference until setGoal changes it); pass it to diagnose / plain / suggest helpers. */
+export const useGoal = () => useBench((s) => s.goal)

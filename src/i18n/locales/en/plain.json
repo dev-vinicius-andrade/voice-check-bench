@@ -89,7 +89,8 @@
             "sharpS": "Very sharp S sounds",
             "dull": "Very dull",
             "thin": "Very thin"
-          }
+          },
+          "onTarget": "On target"
         },
         "explain": {
           "natural": "Your voice sounds like you.",
@@ -125,7 +126,8 @@
       "eqSettings": "Use our ready-made EQ settings",
       "usbPort": "Plug your audio interface into a different USB port (back of the computer)",
       "noiseRemovalDown": "Turn noise removal down",
-      "compWet": "Raise the compressor's Wet by about {{db}} dB"
+      "compWet": "Raise the compressor's Wet by about {{db}} dB",
+      "eqByEar": "Try the gentle by-ear tweak in our ready-made EQ settings"
     },
     "distance": {
       "finger": "about a finger's width",
@@ -188,6 +190,26 @@
         "term": "Cardioid",
         "meaning": "A mic that hears mostly from the front and very little from the back.",
         "analogy": "Like a flashlight that lights up what's in front of it, not behind."
+      }
+    },
+    "perceived": {
+      "confirmed": {
+        "nasal": "You hear your voice as nasal, and we measured it too: the middle tones sit above your target. The EQ settings include a cut for it.",
+        "muffled": "You hear your voice as muffled, and we measured it too: the low-middle tones are thick or the clear upper tones are weak.",
+        "boomy": "You hear your voice as boomy, and we measured it too: there is more bass than your target.",
+        "thin": "You hear your voice as thin, and we measured it too: there is less bass than your target.",
+        "harsh": "You hear your voice as harsh, and we measured it too: the upper tones sit above your target.",
+        "sharpS": "You hear sharp S sounds, and we measured them too.",
+        "dull": "You hear your voice as dull, and we measured it too: there is less sparkle on top than your target."
+      },
+      "byEar": {
+        "nasal": "You hear your voice as nasal. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings.",
+        "muffled": "You hear your voice as muffled. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings.",
+        "boomy": "You hear your voice as boomy. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings.",
+        "thin": "You hear your voice as thin. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings.",
+        "harsh": "You hear your voice as harsh. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings.",
+        "sharpS": "You hear sharp S sounds. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings.",
+        "dull": "You hear your voice as dull. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings."
       }
     }
   }

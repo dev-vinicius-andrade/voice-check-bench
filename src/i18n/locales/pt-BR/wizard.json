@@ -184,6 +184,39 @@
         "noisyPause": "A parte silenciosa estava quase tão alta quanto sua leitura. Fique em silêncio até a contagem acabar e pause qualquer outra coisa que toque som nesta entrada, como música ou uma chamada.",
         "tooShort": "Seu volume parece bom, mas faltou fala. Leia o texto inteiro depois da contagem e continue até o fim."
       }
+    },
+    "goal": {
+      "title": "Como você quer que sua voz soe?",
+      "style": {
+        "natural": {
+          "name": "Natural",
+          "desc": "Igual a você, só que mais limpa"
+        },
+        "warm": {
+          "name": "Quente e grave",
+          "desc": "Jeito de rádio e podcast: mais cheia, com mais grave"
+        },
+        "clear": {
+          "name": "Clara e presente",
+          "desc": "Se destaca em jogos e chamadas"
+        },
+        "bright": {
+          "name": "Brilhante",
+          "desc": "Mais brilho nos agudos, se sua voz soa abafada"
+        }
+      },
+      "hearTitle": "Como sua voz soa para você? (opcional)",
+      "perceived": {
+        "nasal": "anasalada",
+        "muffled": "abafada",
+        "boomy": "graves demais",
+        "thin": "fina",
+        "harsh": "áspera",
+        "sharpS": "S chiado",
+        "dull": "sem brilho"
+      },
+      "notSure": "Não tenho certeza",
+      "helper": "Vamos direcionar os resultados e os ajustes para isso. Você pode mudar quando quiser."
     }
   }
 }

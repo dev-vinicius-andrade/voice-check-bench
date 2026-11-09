@@ -12,6 +12,18 @@
       "tryFirst": "Tente primeiro (remoção de ruído com IA): {{list}}. Se sua voz ficar limpa com uma delas, pule o ReaFIR.",
       "noiseReductionOptional": "{{plugin}} (redução de ruído, opcional: só se a opção com IA não ficar limpa)",
       "optional": "(opcional)"
+    },
+    "why": {
+      "nasal": "Anasalada: os médios estão {{dev, number(minimumFractionDigits: 1; maximumFractionDigits: 1; signDisplay: exceptZero)}} dB acima do seu alvo",
+      "byEar": {
+        "nasal": "De ouvido (anasalada): não medimos isso, mas você ouve — aqui vai um ajuste suave",
+        "muffled": "De ouvido (abafada): não medimos isso, mas você ouve — aqui vai um ajuste suave",
+        "boomy": "De ouvido (grave demais): não medimos isso, mas você ouve — aqui vai um ajuste suave",
+        "thin": "De ouvido (fina): não medimos isso, mas você ouve — aqui vai um ajuste suave",
+        "harsh": "De ouvido (estridente): não medimos isso, mas você ouve — aqui vai um ajuste suave",
+        "sharpS": "De ouvido (S chiado): não medimos isso, mas você ouve — aqui vai um ajuste suave",
+        "dull": "De ouvido (sem brilho): não medimos isso, mas você ouve — aqui vai um ajuste suave"
+      }
     }
   }
 }

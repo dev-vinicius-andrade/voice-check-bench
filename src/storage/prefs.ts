@@ -1,7 +1,17 @@
 // localStorage JSON helpers. Every access is wrapped; bad or missing data yields defaults.
 import { isMainsSetting, type MainsSetting } from '../audio/mains'
 import { DEFAULT_MIC } from '../mics/catalog'
-import type { ChartView, DeviceChoice, MicProfile, Screen, StepRef } from '../types'
+import {
+  DEFAULT_GOAL,
+  type ChartView,
+  type DeviceChoice,
+  type MicProfile,
+  type PerceivedIssue,
+  type Screen,
+  type StepRef,
+  type VoiceGoal,
+  type VoiceStyle,
+} from '../types'
 
 export interface UiPrefs {
   screen: Screen
@@ -17,11 +27,14 @@ const UI_KEY = 'vcb-ui'
 const DEVS_KEY = 'vcb-devs'
 const MIC_KEY = 'vcb-mic'
 const MAINS_KEY = 'vcb-mains'
+const GOAL_KEY = 'vcb-goal'
 const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'setup', 'step', 'results', 'guide']
 const VIEWS: readonly ChartView[] = ['a', 'ab', 'diff']
 const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
 const MIC_PATTERNS: readonly MicProfile['pattern'][] = ['cardioid', 'supercardioid', 'omni', 'figure8', 'unknown']
 const MIC_ADDRESSES: readonly MicProfile['address'][] = ['end', 'side', 'unknown']
+const STYLES: readonly VoiceStyle[] = ['natural', 'warm', 'clear', 'bright']
+const PERCEIVED: readonly PerceivedIssue[] = ['nasal', 'muffled', 'boomy', 'thin', 'harsh', 'sharpS', 'dull']
 
 export function readPref<T>(key: string, fallback: T): T {
   try {
@@ -109,4 +122,26 @@ export function loadMains(): MainsSetting {
 
 export function saveMains(m: MainsSetting): void {
   writePref(MAINS_KEY, m)
+}
+
+/** Voice goal ('vcb-goal'): unknown style → natural, unknown or repeated perceived issues dropped, bad data → DEFAULT_GOAL. */
+export function loadGoal(): VoiceGoal {
+  const raw = readPref<unknown>(GOAL_KEY, null)
+  if (!isObject(raw)) return { ...DEFAULT_GOAL, perceived: [] }
+  return { style: STYLES.find((s) => s === raw.style) ?? DEFAULT_GOAL.style, perceived: perceivedList(raw.perceived) }
+}
+
+/** Known perceived issues in the given order, each once. */
+export function perceivedList(v: unknown): PerceivedIssue[] {
+  if (!Array.isArray(v)) return []
+  const out: PerceivedIssue[] = []
+  for (const x of v) {
+    const p = PERCEIVED.find((k) => k === x)
+    if (p && !out.includes(p)) out.push(p)
+  }
+  return out
+}
+
+export function saveGoal(g: VoiceGoal): void {
+  writePref(GOAL_KEY, g)
 }

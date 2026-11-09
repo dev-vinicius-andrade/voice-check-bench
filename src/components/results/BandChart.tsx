@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { BANDS, deviations } from '../../audio/reference'
 import { fmtSigned } from '../../i18n/format'
 import type { Analysis, ChartView } from '../../types'
+import { useGoalTarget } from '../common/useGoalTarget'
 
 const C = {
   zone: 'var(--mui-palette-success-main)',
@@ -12,6 +13,7 @@ const C = {
   line: 'var(--mui-palette-divider)',
   ink: 'var(--mui-palette-text-primary)',
   muted: 'var(--mui-palette-text-secondary)',
+  paper: 'var(--mui-palette-background-paper)',
 }
 const ZONE_ALPHA = 0.16
 const W = 880, H = 290, L = 46, R = 10, T = 14, BM = 46, LO = -15, HI = 15
@@ -32,7 +34,7 @@ function Bar({ v, x, color, width, diff }: { v: number; x: number; color: string
   )
 }
 
-function Chart({ rA, rB, diff }: { rA: number[]; rB: number[] | null; diff: boolean }) {
+function Chart({ rA, rB, diff, zeroLabel }: { rA: number[]; rB: number[] | null; diff: boolean; zeroLabel: string | null }) {
   const { t } = useTranslation()
   const label = diff ? t('results.chart.ariaDiff') : t('results.chart.ariaTone')
   return (
@@ -60,6 +62,11 @@ function Chart({ rA, rB, diff }: { rA: number[]; rB: number[] | null; diff: bool
           </g>
         )
       })}
+      {zeroLabel && (
+        <text x={W - R - 4} y={y(0) + 14} textAnchor="end" fontSize={10} fill={C.muted} stroke={C.paper} strokeWidth={3} paintOrder="stroke">
+          {zeroLabel}
+        </text>
+      )}
     </svg>
   )
 }
@@ -80,8 +87,9 @@ function Legend({ items }: { items: { label: string; color: string; alpha?: numb
 /** Per-octave deviation chart (prototype drawChart). 'diff' plots A − B without the reference zones. */
 export function BandChart({ a, b, view }: { a: Analysis; b: Analysis | null; view: ChartView }) {
   const { t } = useTranslation()
-  const dA = deviations(a.rel)
-  const dB = b ? deviations(b.rel) : null
+  const target = useGoalTarget()
+  const dA = target.shift(deviations(a.rel))
+  const dB = b ? target.shift(deviations(b.rel)) : null
   const diff = view === 'diff' && !!dB
   const title = diff ? t('results.chart.titleDiff') : t('results.chart.titleTone')
   const note = diff ? t('results.chart.noteDiff') : t('results.chart.noteTone')
@@ -91,6 +99,7 @@ export function BandChart({ a, b, view }: { a: Analysis; b: Analysis | null; vie
         { label: t('results.chart.zones'), color: C.zone, alpha: ZONE_ALPHA * 2 },
         { label: 'A', color: C.a },
         ...(view === 'ab' && dB ? [{ label: 'B', color: C.b }] : []),
+        { label: target.legend, color: C.line },
       ]
   return (
     <div className="grid gap-2">
@@ -99,7 +108,7 @@ export function BandChart({ a, b, view }: { a: Analysis; b: Analysis | null; vie
         <Typography variant="body2" color="text.secondary">{note}</Typography>
       </div>
       <div className="overflow-x-auto">
-        <Chart rA={diff && dB ? dA.map((v, i) => v - dB[i]) : dA} rB={view === 'ab' ? dB : null} diff={diff} />
+        <Chart rA={diff && dB ? dA.map((v, i) => v - dB[i]) : dA} rB={view === 'ab' ? dB : null} diff={diff} zeroLabel={diff ? null : target.zeroLabel} />
       </div>
       <Legend items={legend} />
     </div>

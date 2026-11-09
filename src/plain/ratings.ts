@@ -1,7 +1,7 @@
 // The three everyday ratings: background noise, your volume, sound of your voice (SPEC "Plain language (v0.5)"). Pure.
 import { overprocessedStatus } from '../audio/diagnose'
-import { deviations } from '../audio/reference'
-import type { Analysis, NoiseKind, Status } from '../types'
+import { targetDeviations } from '../audio/reference'
+import { DEFAULT_GOAL, type Analysis, type NoiseKind, type Status, type VoiceGoal } from '../types'
 import { compareProcessed, type Regression } from './compare'
 import { LEVEL_HI, LEVEL_LO, type ScoreOptions } from './score'
 import type { Msg, Rating, RatingId } from './types'
@@ -75,9 +75,12 @@ function bandLabel(i: number, high: boolean): VoiceLabel {
   return high ? 'harsh' : 'dull'
 }
 
-/** Largest |deviation| over bands 1..8 decides; ≤ 3 dB is natural unless S peaks are harsh. */
-export function voiceState(a: Analysis): { status: Status; label: VoiceLabel; strength: 'mild' | 'strong' | null; dev: number } {
-  const dv = deviations(a.rel)
+/** Largest |deviation from the goal's target| over bands 1..8 decides; ≤ 3 dB is natural (on target) unless S peaks are harsh. */
+export function voiceState(
+  a: Analysis,
+  goal: VoiceGoal = DEFAULT_GOAL,
+): { status: Status; label: VoiceLabel; strength: 'mild' | 'strong' | null; dev: number } {
+  const dv = targetDeviations(a.rel, goal)
   let wi = -1
   for (let i = 1; i <= 8; i++) {
     if (!Number.isFinite(dv[i])) continue
@@ -97,19 +100,23 @@ export function voiceState(a: Analysis): { status: Status; label: VoiceLabel; st
  * Voice state of a processed take with its regressions against the raw take: losing the bass (thin) or
  * pushing the upper tones (harsh) by that much is a strong change, so it overrides a milder or different label.
  */
-export function voiceStateWithRegressions(a: Analysis, regressions: readonly Regression[]): ReturnType<typeof voiceState> {
-  const v = voiceState(a)
+export function voiceStateWithRegressions(
+  a: Analysis,
+  regressions: readonly Regression[],
+  goal: VoiceGoal = DEFAULT_GOAL,
+): ReturnType<typeof voiceState> {
+  const v = voiceState(a, goal)
   const label: VoiceLabel | null = regressions.includes('thin') ? 'thin' : regressions.includes('harsh') ? 'harsh' : null
   if (!label || (v.label === label && v.strength === 'strong')) return v
   return { ...v, status: 'bad', label, strength: 'strong' }
 }
 
-export function voiceRating(a: Analysis, regressions: readonly Regression[] = []): Rating {
-  const { status, label, strength } = voiceStateWithRegressions(a, regressions)
+export function voiceRating(a: Analysis, regressions: readonly Regression[] = [], goal: VoiceGoal = DEFAULT_GOAL): Rating {
+  const { status, label, strength } = voiceStateWithRegressions(a, regressions, goal)
   return {
     id: 'voice',
     status,
-    label: { key: strength ? `plain.rating.voice.label.${strength}.${label}` : 'plain.rating.voice.label.natural' },
+    label: { key: strength ? `plain.rating.voice.label.${strength}.${label}` : goal.style === 'natural' ? 'plain.rating.voice.label.natural' : 'plain.rating.voice.label.onTarget' },
     explain: { key: `plain.rating.voice.explain.${label}` },
   }
 }
@@ -117,8 +124,8 @@ export function voiceRating(a: Analysis, regressions: readonly Regression[] = []
 /** Card title for a rating ("Background noise", "Your volume", "Sound of your voice"). */
 export const ratingTitle = (id: RatingId): Msg => ({ key: `plain.rating.${id}.title` })
 
-/** The three ratings; pass `raw` when `a` is the processed take so the voice rating sees what the effects broke. */
+/** The three ratings; pass `raw` when `a` is the processed take so the voice rating sees what the effects broke, `goal` for the voice target. */
 export function plainRatings(a: Analysis, opts: ScoreOptions = {}): Rating[] {
   const regressions = opts.raw ? compareProcessed(opts.raw, a).regressions : []
-  return [noiseRating(a), volumeRating(a), voiceRating(a, regressions)]
+  return [noiseRating(a), volumeRating(a), voiceRating(a, regressions, opts.goal)]
 }
