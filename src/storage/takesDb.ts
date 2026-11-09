@@ -2,8 +2,10 @@
 import type { MicProfile, StepKey, StoredTake } from '../types'
 
 const DB_NAME = 'voice-check-bench'
-const DB_VERSION = 1
+/** v1: 'takes' (prototype); v2: + 'profiles' (SPEC "Profiles (v1.0)"). */
+export const DB_VERSION = 2
 const STORE = 'takes'
+export const PROFILES_STORE = 'profiles'
 const STEP_KEYS: readonly StepKey[] = ['c2', 'c8', 'c15', 'fx']
 
 export interface TakesDb {
@@ -105,14 +107,25 @@ function idbDb(db: IDBDatabase): TakesDb {
   }
 }
 
+/**
+ * Opens the app database at DB_VERSION. The upgrade only creates the stores that are missing, so the takes of a
+ * v1 database are kept. Closes itself when another tab upgrades. Throws when IndexedDB is unavailable or blocked.
+ */
+export async function openAppDb(): Promise<IDBDatabase> {
+  if (typeof indexedDB === 'undefined' || !indexedDB) throw new Error('IndexedDB unavailable')
+  const open = indexedDB.open(DB_NAME, DB_VERSION)
+  open.onupgradeneeded = () => {
+    const db = open.result
+    for (const name of [STORE, PROFILES_STORE]) if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' })
+  }
+  const db = await request(open)
+  db.onversionchange = () => db.close()
+  return db
+}
+
 export async function openTakesDb(): Promise<TakesDb> {
   try {
-    if (typeof indexedDB === 'undefined' || !indexedDB) return memoryDb()
-    const open = indexedDB.open(DB_NAME, DB_VERSION)
-    open.onupgradeneeded = () => {
-      if (!open.result.objectStoreNames.contains(STORE)) open.result.createObjectStore(STORE, { keyPath: 'id' })
-    }
-    return idbDb(await request(open))
+    return idbDb(await openAppDb())
   } catch {
     return memoryDb()
   }

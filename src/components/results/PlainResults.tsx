@@ -3,6 +3,7 @@ import type { Analysis, Take } from '../../types'
 import { GoalLine } from './GoalLine'
 import { NextActions } from './NextActions'
 import { PlainSummaries } from './PlainSummaries'
+import { SaveProfile } from '../profiles/SaveProfile'
 import { RatingCards } from './RatingCards'
 import { ScoreHero } from './ScoreHero'
 import { TechnicalDetails } from './TechnicalDetails'
@@ -42,6 +43,7 @@ export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
       <RatingCards ratings={ratings} />
       <NextActions actions={actions} ctx={ctx} onShowSettings={showSettings} />
       <PlainSummaries A={A} />
+      <SaveProfile A={A} />
       <TechnicalDetails A={A} open={open} onOpenChange={setOpen} onEntered={onEntered} />
     </div>
   )

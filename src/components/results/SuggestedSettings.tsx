@@ -12,6 +12,7 @@ import { useBench } from '../../store/benchStore'
 import { useSuggestion } from '../../store/hooks'
 import { isAnalysisError, type Suggestion } from '../../types'
 import { useMsg } from '../common/MsgText'
+import { ApplyToWaveLinkButton } from '../wavelink/ApplyToWaveLinkButton'
 import { downloadFile } from './download'
 import { NoiseReductionCard } from './NoiseReductionCard'
 import { PluginCard } from './PluginCard'
@@ -82,6 +83,7 @@ function SettingsPanel({ s }: { s: Suggestion }) {
         <Typography variant="h6" component="h2">{t('results.settings.title')}</Typography>
         <div className="flex flex-wrap gap-2">
           <Button size="small" variant="contained" onClick={() => goTo('guide')}>{t('guide.entry.stepByStep')}</Button>
+          <ApplyToWaveLinkButton s={s} variant="outlined" />
           <Button size="small" variant="outlined" onClick={copy}>{copyLabel}</Button>
           <Button size="small" variant="outlined" onClick={() => downloadFile('reaplugs-settings.txt', suggestionToText(s), 'text/plain')}>
             {t('results.settings.downloadTxt')}

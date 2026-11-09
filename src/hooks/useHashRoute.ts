@@ -1,11 +1,11 @@
 // Hash routing without a router library (SPEC "Site pages"): the URL hash and the store's screen follow each other.
-// #/ home · #/how-it-works · #/community · #/privacy · #/check (setup or step) · #/results · #/guide.
+// #/ home · #/how-it-works · #/community · #/privacy · #/check (setup or step) · #/results · #/guide · #/profiles.
 import { useEffect } from 'react'
 import type { BenchState } from '../store/api'
 import { useBench } from '../store/benchStore'
 import type { Screen, StepRef } from '../types'
 
-export type Route = 'home' | 'how' | 'community' | 'privacy' | 'check' | 'results' | 'guide'
+export type Route = 'home' | 'how' | 'community' | 'privacy' | 'check' | 'results' | 'guide' | 'profiles'
 
 const ROUTE_HASH: Record<Route, string> = {
   home: '#/',
@@ -15,6 +15,7 @@ const ROUTE_HASH: Record<Route, string> = {
   check: '#/check',
   results: '#/results',
   guide: '#/guide',
+  profiles: '#/profiles',
 }
 
 export interface RouteContext {

@@ -5,7 +5,7 @@ import type { Take } from '../../types'
 import { CopySummaryButton } from './CopySummaryButton'
 import { ShareCommunityButton } from './ShareCommunityButton'
 
-/** Copy / share buttons for A's anonymized summary, with what sharing does. */
+/** Save as profile, then copy / share buttons for A's anonymized summary, with what sharing does. */
 export function SummaryActions({ A }: { A: Take }) {
   const { t } = useTranslation()
   const [truncated, setTruncated] = useState(false)

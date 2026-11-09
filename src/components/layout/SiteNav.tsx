@@ -20,6 +20,7 @@ import { LanguageMenu } from './LanguageMenu'
 const LINKS: readonly { screen: Screen; key: string }[] = [
   { screen: 'how', key: 'common.nav.how' },
   { screen: 'community', key: 'common.nav.community' },
+  { screen: 'profiles', key: 'profiles.nav' },
   { screen: 'privacy', key: 'common.nav.privacy' },
 ]
 
@@ -74,7 +75,7 @@ function NavMenu({ screen }: { screen: Screen }) {
   )
 }
 
-/** How it works · Community · Privacy (active page in the accent color), language and the Start / Continue pill. */
+/** How it works · Community · Profiles · Privacy (active page in the accent color), language and the Start / Continue pill. */
 export function SiteNav() {
   const { t } = useTranslation()
   const compact = useMediaQuery((th: Theme) => th.breakpoints.down('sm'))

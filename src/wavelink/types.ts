@@ -1,7 +1,7 @@
 // Contract for the Wave Link Settings.json codec (task 30) used by the UI (task 31). Owned by the orchestrator.
 import type { SuggestionJson } from '../settings/suggest'
 
-export const WAVELINK_SETTINGS_PATH = '%LOCALAPPDATA%\Packages\Elgato.WaveLink_g54w8ztgkx496\LocalState\Settings.json'
+export const WAVELINK_SETTINGS_PATH = String.raw`%LOCALAPPDATA%\Packages\Elgato.WaveLink_g54w8ztgkx496\LocalState\Settings.json`
 
 /** One input (mic) found in the file. */
 export interface WlInput {

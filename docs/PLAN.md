@@ -45,5 +45,5 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 ## v0.9 — Voice goals (SPEC "Voice goals") / v1.0 — Profiles (SPEC "Profiles")
 28. `[x]` **Goal engine** — Careful. VoiceGoal types, targetDeviations, goal threaded through diagnose/plain/suggest/bestControl, perceived-issue fusion, nasal EQ band, tests.
 29. `[x]` **Goal UI** — Medium. Setup goal card, results "Change goal", charts "your target", en+pt-BR.
-30. `[ ]` **Wave Link file round trip + profiles logic** — Careful. TS port of the Settings.json codec (byte-identical round trip on the real file), diff, apply, backup naming; profiles IndexedDB store + migration, validation rule, import/export schema.
-31. `[ ]` **Wave Link + profiles UI** — Medium. Upload/preview/download flow (+ Chrome/Edge direct save), #/profiles page, Save as profile, Apply/Re-test/Export/Import/Duplicate/Rename/Delete, en+pt-BR.
+30. `[x]` **Wave Link file round trip + profiles logic** — Careful. TS port of the Settings.json codec (byte-identical round trip on the real file), diff, apply, backup naming; profiles IndexedDB store + migration, validation rule, import/export schema.
+31. `[x]` **Wave Link + profiles UI** — Medium. Upload/preview/download flow (+ Chrome/Edge direct save), #/profiles page, Save as profile, Apply/Re-test/Export/Import/Duplicate/Rename/Delete, en+pt-BR.

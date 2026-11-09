@@ -1,0 +1,138 @@
+{
+  "profiles": {
+    "nav": "Profiles",
+    "wl": {
+      "entry": "Apply to Wave Link",
+      "title": "Apply to Wave Link",
+      "guideLead": "Upload your Wave Link settings file here. We adjust it with your values, you download it and swap it in. Your original file is saved as a backup in the same click.",
+      "reafirNote": "ReaFIR's noise profile can't be set from a browser: set it up by hand in Wave Link once. Then use \"Capture from Wave Link\" on the Profiles page to keep it.",
+      "pythonTitle": "Prefer a terminal? Use the Python tool",
+      "steps": {
+        "upload": "Upload",
+        "preview": "Check",
+        "download": "Download"
+      },
+      "next": "Next",
+      "back": "Back",
+      "cancel": "Cancel",
+      "done": "Done",
+      "upload": {
+        "lead": "Wave Link keeps all your effect settings in one file on your computer. Upload it here: nothing leaves your computer, and nothing is changed until you swap the file yourself.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "paste": "Copy this path and paste it into the file box's name field, then press Enter.",
+        "choose": "Upload your Wave Link file",
+        "pickDirect": "Pick the file directly",
+        "ok_one": "Wave Link file read: {{count}} input found.",
+        "ok_other": "Wave Link file read: {{count}} inputs found.",
+        "input": "Which input is your mic?",
+        "error": {
+          "invalid": "This doesn't look like Wave Link's Settings.json. Use the path above to find the right file.",
+          "noInputs": "This file has no mic input with effects yet. Add an effect to your mic in Wave Link, then upload again.",
+          "read": "We couldn't read that file. Try again."
+        }
+      },
+      "preview": {
+        "lead": "This is what will change in your Wave Link file:",
+        "listLabel": "Changes",
+        "none": "Nothing to change: your Wave Link already has these values.",
+        "value": "{{plugin}} {{field}}: {{from}} → {{to}}",
+        "bands": "{{plugin}} {{field}}: {{from}} → {{to}}",
+        "turnOn": "Turn on: {{plugin}}",
+        "turnOff": "Turn off: {{plugin}}",
+        "restore": "{{plugin}}: put back your saved settings exactly",
+        "missing": "Add {{plugin}} in Wave Link first, then upload again.",
+        "missingRest": "Everything else can be applied now; those parts are skipped."
+      },
+      "download": {
+        "lead": "One click downloads two files: your new Settings.json and a backup of the one you uploaded.",
+        "button": "Download both files",
+        "done": "Downloaded Settings.json and the backup {{backup}}.",
+        "swapTitle": "Swap the file",
+        "s1": "Quit Wave Link: right-click its icon next to the clock and choose Quit.",
+        "s2": "Open the folder from step 1 and replace Settings.json with the one you just downloaded.",
+        "s3": "Start Wave Link again. Your new settings are there.",
+        "undo": "To undo: quit Wave Link, copy {{backup}} back into that folder and rename it to Settings.json.",
+        "saveDirect": "Save directly",
+        "saveDirectHint": "Download the backup first, quit Wave Link, then you can save directly.",
+        "savedDirect": "Saved straight into your Wave Link file. Start Wave Link again to use it.",
+        "directFailed": "Saving directly didn't work. Use the downloaded file and the steps below instead."
+      }
+    },
+    "page": {
+      "first": "Your",
+      "second": "profiles",
+      "lead": "A profile keeps the settings that worked for your mic, room and voice, so you can put them back in Wave Link any time."
+    },
+    "empty": {
+      "title": "No profiles yet",
+      "text": "Do a check, set up your effects and record a take with them on. When your effects make you sound better, save it as a profile from the results.",
+      "start": "Start a check"
+    },
+    "import": {
+      "button": "Import a profile",
+      "error": "That file isn't a voice check profile.",
+      "done": "Imported \"{{name}}\"."
+    },
+    "card": {
+      "mic": "Mic",
+      "style": "Style",
+      "host": "Used with",
+      "dist": "Distance",
+      "validated": "Validated · {{raw}} → {{fx}} · {{date}}",
+      "notValidated": "Not validated",
+      "active": "Active",
+      "captured": "Wave Link settings captured",
+      "otherMic": "Other mic"
+    },
+    "host": {
+      "none": "Not chosen"
+    },
+    "actions": {
+      "label": "Actions for {{name}}",
+      "apply": "Apply to Wave Link",
+      "capture": "Capture from Wave Link",
+      "retest": "Re-test",
+      "export": "Export",
+      "duplicate": "Duplicate",
+      "rename": "Rename",
+      "setActive": "Set active",
+      "delete": "Delete",
+      "confirmDelete": "Click again to delete",
+      "copyName": "{{name}} (copy)"
+    },
+    "rename": {
+      "title": "Rename profile",
+      "label": "Name",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "capture": {
+      "title": "Capture from Wave Link",
+      "lead": "Upload your current Wave Link file to keep the exact effect settings in this profile, for example after setting up ReaFIR by hand.",
+      "save": "Keep these settings",
+      "count_one": "{{count}} effect will be kept exactly.",
+      "count_other": "{{count}} effects will be kept exactly.",
+      "done": "Saved the Wave Link settings in \"{{name}}\"."
+    },
+    "retest": {
+      "status": "Re-testing \"{{name}}\": keep the mic about {{dist}} away. Your voice goal is set to the profile's."
+    },
+    "save": {
+      "button": "Save as profile",
+      "validated": "Validated · {{raw}} → {{fx}}",
+      "notYet": "Your effects didn't improve the sound yet: fix that first.",
+      "noFx": "Record a take with your effects on first (the last step of the check).",
+      "gain": "With effects you scored {{fx}}, without {{raw}}. It needs to be at least {{min}} points better.",
+      "regressions": "Your effects made something worse. Fix that first.",
+      "openGuide": "Open the guide",
+      "anyway": "Save anyway as not validated",
+      "dialogTitle": "Save as profile",
+      "nameLabel": "Profile name",
+      "confirm": "Save",
+      "cancel": "Cancel",
+      "saved": "Saved as profile \"{{name}}\".",
+      "seeProfiles": "See your profiles"
+    }
+  }
+}

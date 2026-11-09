@@ -3,6 +3,7 @@ import { CommunityPage } from './components/pages/CommunityPage'
 import { HomePage } from './components/pages/HomePage'
 import { HowItWorksPage } from './components/pages/HowItWorksPage'
 import { PrivacyPage } from './components/pages/PrivacyPage'
+import { ProfilesPage } from './components/profiles/ProfilesPage'
 import { ResultsScreen } from './components/results/ResultsScreen'
 import { SetupScreen } from './components/setup/SetupScreen'
 import { StepScreen } from './components/step/StepScreen'
@@ -31,6 +32,7 @@ export default function App() {
         {screen === 'step' && <StepScreen />}
         {screen === 'results' && <ResultsScreen />}
         {screen === 'guide' && <GuideScreen />}
+        {screen === 'profiles' && <ProfilesPage />}
       </main>
       <Footer />
       <StatusSnackbar />

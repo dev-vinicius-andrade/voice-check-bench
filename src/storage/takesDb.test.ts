@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { normalizeRecord, openTakesDb } from './takesDb'
+import { DB_VERSION, PROFILES_STORE, normalizeRecord, openAppDb, openTakesDb } from './takesDb'
 import type { StoredTake } from '../types'
 
 const take = (id: number): StoredTake => ({
@@ -57,5 +57,50 @@ describe('mic profile on takes', () => {
     expect(normalizeRecord({ ...base, mic: { model: 'Any Mic', kind: 'dynamic', pattern: 'cardioid', address: 'end' } })?.mic).toEqual({ model: 'Any Mic', kind: 'dynamic', pattern: 'cardioid', address: 'end' })
     expect(normalizeRecord({ ...base, mic: { model: 'X', kind: 'laser', pattern: 1 } })?.mic).toEqual({ model: 'X', kind: 'unknown', pattern: 'unknown', address: 'unknown' })
     expect(normalizeRecord(base)?.mic).toBeUndefined()
+  })
+})
+
+/** Minimal indexedDB.open stub: runs onupgradeneeded against a db that already has `existing` stores, then succeeds. */
+function stubOpen(existing: string[]) {
+  const created: string[] = []
+  const db = {
+    objectStoreNames: { contains: (n: string) => existing.includes(n) || created.includes(n) },
+    createObjectStore: vi.fn((n: string) => created.push(n)),
+    onversionchange: null as null | (() => void),
+    close: vi.fn(),
+  }
+  const open = vi.fn((...args: [string, number]) => {
+    void args
+    const req: Record<string, unknown> = { result: db }
+    queueMicrotask(() => {
+      ;(req.onupgradeneeded as () => void)?.()
+      ;(req.onsuccess as () => void)?.()
+    })
+    return req
+  })
+  vi.stubGlobal('indexedDB', { open })
+  return { db, open, created }
+}
+
+describe('database version 2', () => {
+  it('upgrades a v1 database by adding only the profiles store (takes are kept)', async () => {
+    const { db, open, created } = stubOpen(['takes'])
+    expect(await openAppDb()).toBe(db)
+    expect(open).toHaveBeenCalledWith('voice-check-bench', 2)
+    expect(DB_VERSION).toBe(2)
+    expect(created).toEqual([PROFILES_STORE])
+    db.onversionchange?.()
+    expect(db.close).toHaveBeenCalled()
+  })
+
+  it('creates both stores on a new database', async () => {
+    const { created } = stubOpen([])
+    await openAppDb()
+    expect(created).toEqual(['takes', 'profiles'])
+  })
+
+  it('openAppDb rejects without IndexedDB (callers fall back to memory)', async () => {
+    vi.stubGlobal('indexedDB', undefined)
+    await expect(openAppDb()).rejects.toThrow()
   })
 })

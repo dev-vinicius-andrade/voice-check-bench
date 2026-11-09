@@ -6,7 +6,7 @@ export type DeviceKind = 'raw' | 'fx'
 export type Status = 'good' | 'warn' | 'bad'
 export type ChartView = 'a' | 'ab' | 'diff'
 /** Wizard screens (setup/step/results) plus content pages. Hash routes: #/ home, #/how-it-works, #/community, #/privacy, #/check (setup/step), #/results, #/guide. */
-export type Screen = 'home' | 'how' | 'community' | 'privacy' | 'setup' | 'step' | 'results' | 'guide'
+export type Screen = 'home' | 'how' | 'community' | 'privacy' | 'setup' | 'step' | 'results' | 'guide' | 'profiles'
 /** Index into STEPS, or 'free' for a free take. */
 export type StepRef = number | 'free'
 

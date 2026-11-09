@@ -1,0 +1,140 @@
+{
+  "profiles": {
+    "nav": "Perfis",
+    "wl": {
+      "entry": "Aplicar no Wave Link",
+      "title": "Aplicar no Wave Link",
+      "guideLead": "Envie aqui o arquivo de configurações do Wave Link. Nós ajustamos com seus valores, você baixa e troca o arquivo. Seu arquivo original é salvo como cópia de segurança no mesmo clique.",
+      "reafirNote": "O perfil de ruído do ReaFIR não pode ser ajustado pelo navegador: configure-o à mão no Wave Link uma vez. Depois use \"Capturar do Wave Link\" na página Perfis para guardá-lo.",
+      "pythonTitle": "Prefere o terminal? Use a ferramenta em Python",
+      "steps": {
+        "upload": "Enviar",
+        "preview": "Conferir",
+        "download": "Baixar"
+      },
+      "next": "Próximo",
+      "back": "Voltar",
+      "cancel": "Cancelar",
+      "done": "Concluir",
+      "upload": {
+        "lead": "O Wave Link guarda todas as configurações dos seus efeitos em um arquivo no seu computador. Envie-o aqui: nada sai do seu computador, e nada muda até você mesmo trocar o arquivo.",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "paste": "Copie este caminho e cole no campo de nome da janela de arquivo, depois aperte Enter.",
+        "choose": "Envie seu arquivo do Wave Link",
+        "pickDirect": "Escolher o arquivo diretamente",
+        "ok_one": "Arquivo do Wave Link lido: {{count}} entrada encontrada.",
+        "ok_many": "Arquivo do Wave Link lido: {{count}} entradas encontradas.",
+        "ok_other": "Arquivo do Wave Link lido: {{count}} entradas encontradas.",
+        "input": "Qual entrada é seu microfone?",
+        "error": {
+          "invalid": "Este não parece ser o Settings.json do Wave Link. Use o caminho acima para achar o arquivo certo.",
+          "noInputs": "Este arquivo ainda não tem uma entrada de microfone com efeitos. Adicione um efeito ao seu microfone no Wave Link e envie de novo.",
+          "read": "Não conseguimos ler esse arquivo. Tente de novo."
+        }
+      },
+      "preview": {
+        "lead": "Isto é o que vai mudar no seu arquivo do Wave Link:",
+        "listLabel": "Mudanças",
+        "none": "Nada a mudar: seu Wave Link já tem esses valores.",
+        "value": "{{plugin}} {{field}}: {{from}} → {{to}}",
+        "bands": "{{plugin}} {{field}}: {{from}} → {{to}}",
+        "turnOn": "Ligar: {{plugin}}",
+        "turnOff": "Desligar: {{plugin}}",
+        "restore": "{{plugin}}: voltar exatamente suas configurações salvas",
+        "missing": "Adicione o {{plugin}} no Wave Link primeiro e envie de novo.",
+        "missingRest": "Todo o resto pode ser aplicado agora; essas partes ficam de fora."
+      },
+      "download": {
+        "lead": "Um clique baixa dois arquivos: seu novo Settings.json e uma cópia de segurança do que você enviou.",
+        "button": "Baixar os dois arquivos",
+        "done": "Baixados o Settings.json e a cópia de segurança {{backup}}.",
+        "swapTitle": "Troque o arquivo",
+        "s1": "Feche o Wave Link: clique com o botão direito no ícone dele perto do relógio e escolha Quit (Sair).",
+        "s2": "Abra a pasta do passo 1 e substitua o Settings.json pelo que você acabou de baixar.",
+        "s3": "Abra o Wave Link de novo. Suas novas configurações estão lá.",
+        "undo": "Para desfazer: feche o Wave Link, copie {{backup}} de volta para essa pasta e renomeie para Settings.json.",
+        "saveDirect": "Salvar diretamente",
+        "saveDirectHint": "Baixe a cópia de segurança primeiro, feche o Wave Link, e então você pode salvar diretamente.",
+        "savedDirect": "Salvo direto no seu arquivo do Wave Link. Abra o Wave Link de novo para usar.",
+        "directFailed": "Não deu para salvar diretamente. Use o arquivo baixado e os passos abaixo."
+      }
+    },
+    "page": {
+      "first": "Seus",
+      "second": "perfis",
+      "lead": "Um perfil guarda as configurações que funcionaram para seu microfone, sua sala e sua voz, para você colocá-las de volta no Wave Link quando quiser."
+    },
+    "empty": {
+      "title": "Nenhum perfil ainda",
+      "text": "Faça um teste, configure seus efeitos e grave um take com eles ligados. Quando os efeitos deixarem sua voz melhor, salve como perfil a partir dos resultados.",
+      "start": "Começar um teste"
+    },
+    "import": {
+      "button": "Importar um perfil",
+      "error": "Esse arquivo não é um perfil do voice check.",
+      "done": "\"{{name}}\" importado."
+    },
+    "card": {
+      "mic": "Microfone",
+      "style": "Estilo",
+      "host": "Usado com",
+      "dist": "Distância",
+      "validated": "Validado · {{raw}} → {{fx}} · {{date}}",
+      "notValidated": "Não validado",
+      "active": "Ativo",
+      "captured": "Configurações do Wave Link capturadas",
+      "otherMic": "Outro microfone"
+    },
+    "host": {
+      "none": "Não escolhido"
+    },
+    "actions": {
+      "label": "Ações de {{name}}",
+      "apply": "Aplicar no Wave Link",
+      "capture": "Capturar do Wave Link",
+      "retest": "Testar de novo",
+      "export": "Exportar",
+      "duplicate": "Duplicar",
+      "rename": "Renomear",
+      "setActive": "Tornar ativo",
+      "delete": "Excluir",
+      "confirmDelete": "Clique de novo para excluir",
+      "copyName": "{{name}} (cópia)"
+    },
+    "rename": {
+      "title": "Renomear perfil",
+      "label": "Nome",
+      "save": "Salvar",
+      "cancel": "Cancelar"
+    },
+    "capture": {
+      "title": "Capturar do Wave Link",
+      "lead": "Envie seu arquivo atual do Wave Link para guardar exatamente as configurações dos efeitos neste perfil, por exemplo depois de configurar o ReaFIR à mão.",
+      "save": "Guardar estas configurações",
+      "count_one": "{{count}} efeito será guardado exatamente.",
+      "count_many": "{{count}} efeitos serão guardados exatamente.",
+      "count_other": "{{count}} efeitos serão guardados exatamente.",
+      "done": "Configurações do Wave Link salvas em \"{{name}}\"."
+    },
+    "retest": {
+      "status": "Testando \"{{name}}\" de novo: mantenha o microfone a cerca de {{dist}}. Seu objetivo de voz foi ajustado para o do perfil."
+    },
+    "save": {
+      "button": "Salvar como perfil",
+      "validated": "Validado · {{raw}} → {{fx}}",
+      "notYet": "Seus efeitos ainda não melhoraram o som: resolva isso primeiro.",
+      "noFx": "Grave primeiro um take com seus efeitos ligados (o último passo do teste).",
+      "gain": "Com efeitos você fez {{fx}}, sem efeitos {{raw}}. Precisa ser pelo menos {{min}} pontos melhor.",
+      "regressions": "Seus efeitos pioraram alguma coisa. Resolva isso primeiro.",
+      "openGuide": "Abrir o guia",
+      "anyway": "Salvar mesmo assim como não validado",
+      "dialogTitle": "Salvar como perfil",
+      "nameLabel": "Nome do perfil",
+      "confirm": "Salvar",
+      "cancel": "Cancelar",
+      "saved": "Salvo como perfil \"{{name}}\".",
+      "seeProfiles": "Ver seus perfis"
+    }
+  }
+}

@@ -65,7 +65,7 @@
 - `public/worklets/` — AudioWorklet scripts served as static files
 - `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
 - `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
-- `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records
+- `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records; `openAppDb()` opens DB `voice-check-bench` v2 (`DB_VERSION`), the upgrade only creates missing stores (`takes`, `profiles` = `PROFILES_STORE`), closes on versionchange
 - `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages and guide; new visitor → home), `vcb-devs` device choice, `vcb-mic` mic profile with shape validation (legacy model 'Other' → ''), `vcb-mains` mains setting, `vcb-goal` voice goal (`loadGoal`/`saveGoal`, shape-validated, `perceivedList`)
 - `src/mics/catalog.ts` — `MIC_CATALOG` known models (kind/pattern/address), `DEFAULT_MIC`, `findMic`, `addressTip`/`placementTip` (Msg `engine.mic.*`), `MIC_OTHER_LABEL`
 - `src/mics/catalog.test.ts` — catalog lookup and tip keys/texts
@@ -88,7 +88,21 @@
 - `src/i18n/locales/pt-BR/{plain,common,results,wizard,pages}.json` — Brazilian Portuguese translations, same keys and `{{params}}` as en (pt plural forms `_one/_many/_other`, ordinal `_ordinal_other`)
 - `src/i18n/localeParity.test.ts` — every en/<area>.json key exists in pt-BR/<area>.json and vice versa, identical `{{params}}`, all plural forms each locale needs for `{{count}}` keys, no empty strings
 - `src/storage/prefs.test.ts` — prefs round trip (incl. mic profile, voice goal), corrupt JSON, blocked storage
-- `src/storage/takesDb.test.ts` — in-memory fallback and prototype record normalization
+- `src/storage/takesDb.test.ts` — in-memory fallback, prototype record normalization, v1 → v2 upgrade keeps takes and adds profiles
+- `src/wavelink/types.ts` — Wave Link codec contract: `WlFile`, `WlInput`, `WlPlugin`, `WlPluginState`, `WlApplyPlan`, `WlApplyResult`, `WlChange`, `WAVELINK_SETTINGS_PATH`
+- `src/wavelink/codec.ts` — Settings.json codec (TS port of `tools/apply-reaplugs.py`): `parseSettings(text)` (inputs with effects, mic first; ReaGate/ReaComp/ReaEQ decoded, the rest opaque; `WlParseError` codes `notJson`/`notWaveLink`), `micInputKey`, `applyPlan(file, plan)` (suggestion values, restoreStates verbatim, switchOff/On, De-Esser from `deess`; `missing`; human `changes`), `serialize(file, tree)`
+- `src/wavelink/json.ts` — lossless JSON tree (`parseTree`: key order, number literals) and the formatting-preserving writer `dumpTree` (CRLF, indent, .NET escaping via `dotnetString`, BOM, final newline; `detectFormat`), `prop`/`setProp`
+- `src/wavelink/fxp.ts` — FXP blobs: base64 (atob/btoa), FxBk `readBank`/`writeBank` (re-packs only changed floats), FBCh `readEq`/`writeEq` (tail kept, byteSize rule), `GATE_PARAMS`/`COMP_PARAMS` maps with plugin field labels, `decodeState`, `roundTrips`
+- `src/wavelink/plugins.ts` — `REAPLUGS` canonical names, `matchesName` (case/space-insensitive prefix), `canonicalName`, `cockosKind`, `validateSuggestion` (ranges of the Python tool)
+- `src/wavelink/changes.ts` — `describeChanges`/`stateChanges`: value, bands, on/off, restore and missing lines with field labels ("Threshold (dB)", "Band 2 Gain (dB)"), `fmtValue`
+- `src/wavelink/testFixtures.ts` — test-only synthetic FxBk/FBCh blobs, a Wave Link-formatted Settings.json, `suggestionFixture()`
+- `src/wavelink/json.test.ts` · `fxp.test.ts` · `codec.test.ts` — tree round trips and escaping, blob codecs and maps, parse/apply/changes/missing/restore/refusals on the synthetic file
+- `src/wavelink/codec.real.test.ts` — `_test/wavelink-settings.json` (skips when absent, read-only): stored values, byte-identical file and per-plugin round trip, example settings applied and read back
+- `src/profiles/types.ts` — profile contract: `Profile`, `ProfileHost`, `ProfileValidation`, `PROFILE_MIN_GAIN`
+- `src/profiles/build.ts` — `suggestProfileName`, `newProfileId`, `sessionValidation(raw, fx, goal)` (clarity scores, SNR gain, regressions), `canValidate`, `profileFromSession` (validation only when it passes), `duplicateProfile`, `exportProfile`/`importProfile`, `captureStates(file, inputKey)`, `profilePlan(p, file, inputKey?)`
+- `src/profiles/validate.ts` — `parseProfile(v, keepActive?)` strict rebuild from known keys (suggestion ranges, ReaPlugs states must be FXP and round-trip), `MAX_PROFILE_TEXT`
+- `src/profiles/store.ts` — `openProfilesStore()`: IndexedDB `profiles` store (rows re-validated on read, put validates) or a page-wide memory fallback; list/get/put/delete/setActive
+- `src/profiles/build.test.ts` · `store.test.ts` — validation rule, export/import round trip and rejections, plan restores states, captureStates (synthetic + real file), memory CRUD and active flag
 - `src/components/results/ResultsScreen.tsx` — results page: demo banner, heading, plain results (or the analysis error) + takes grid (two columns ≥ 980 px), empty state
 - `src/components/results/ResultsScreen.test.tsx` — render test on the demo session: score ring, three ratings, ≤ 3 actions, details collapsed, details open state remembered
 - `src/components/results/resultsKeys.test.ts` — every `t('results.…')` / `<Trans i18nKey>` key in the results components exists in en/results.json (plus dynamic key families)
@@ -114,7 +128,7 @@
 - `src/components/results/RegressionsAlert.tsx` — warning listing what the effects made worse (v0.8)
 - `src/components/results/CopySummaryButton.tsx` — "Copy anonymized summary" (clipboard, falls back to voice-check-summary.json)
 - `src/components/results/ShareCommunityButton.tsx` — "Share with the community": opens the pre-filled GitHub issue form; copies the summary when it does not fit in the link
-- `src/components/results/SummaryActions.tsx` — copy + share buttons with the public-issue note and the paste note
+- `src/components/results/SummaryActions.tsx` — Save as profile, then copy + share buttons with the public-issue note and the paste note
 - `src/components/results/CommunityMicCard.tsx` — "People with this mic": your best raw control vs community SNR, best distance, deviations and typical EQ
 - `src/components/results/CommunityDeviationChart.tsx` — SVG paired per-octave deviation bars (you vs community median), drawn against the goal's target with the same zero label and legend
 - `src/components/results/roomNoise.ts` — band SNR helpers, `rawReference` (the one raw take processed takes are compared with), `beforeAfterPair`, `fakeQuiet` (digital-silence floor), `yourRawAnalysis` (best raw control for community comparisons)
@@ -122,7 +136,7 @@
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart against the goal's target (A, A + B, A − B) with ±3/±6 zones, zero line labelled "your target" / "reference voice", legend with "Target: <style>"
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
 - `src/components/results/ChecksList.tsx` — problem checks, passing checks in a collapsed accordion
-- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel (`#suggested-settings`): effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON, "Set it up step by step" → #/guide
+- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel (`#suggested-settings`): effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON, "Set it up step by step" → #/guide, "Apply to Wave Link" dialog
 - `src/components/results/PluginCard.tsx` — one plugin's key/value settings card
 - `src/components/results/NoiseReductionCard.tsx` — ReaFIR (noise reduction) numbered setup steps and alternatives
 - `src/components/results/TakesPanel.tsx` — takes grouped by session, Delete all with second-click confirm, New session / free take
@@ -134,7 +148,7 @@
 - `src/components/common/MsgText.tsx` — `<MsgText msg>` renders a plain-language Msg through i18n; `useMsg()` translator
 - `src/components/common/Term.tsx` — `<Term id>`: glossary term with an info button whose tooltip (hover, focus, click/tap) shows the meaning and analogy
 - `src/components/layout/TopBar.tsx` — brand (→ home) + site nav; progress stepper as a second row on setup/step/results
-- `src/components/layout/SiteNav.tsx` — How it works · Community · Privacy links (active in primary; menu button < 600 px) + language choice (inside the menu on mobile) + Start/Continue pill (→ #/check)
+- `src/components/layout/SiteNav.tsx` — How it works · Community · Profiles · Privacy links (active in primary; menu button < 600 px) + language choice (inside the menu on mobile) + Start/Continue pill (→ #/check)
 - `src/components/layout/Footer.tsx` — "Made by", GitHub/LinkedIn/Stack Overflow/email icon links, email text, Source on GitHub · Report an issue
 - `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Effects · Results stepper (clickable)
 - `src/components/layout/LanguageMenu.tsx` — top-bar language button (current LOCALE_NAMES entry) + menu
@@ -201,7 +215,7 @@
 - `src/components/guide/waveLinkSteps.ts` — `waveLinkSteps(s)` ordered Wave Link steps (effects → add + panel steps per chain plugin: ReaFIR setup/profile/reduce, one ReaEQ step per band or "flat", ReaComp, ReaGate → low cut → listen check (noisy) → test; AI step before ReaFIR when preferAi), `guideChain(s, choice)`, `offEffects(s, choice)` (Elgato Noise Removal kept on when picked)
 - `src/components/guide/WaveLinkGuide.tsx` — Wave Link + ReaPlugs path: step titles/bodies with the WaveLinkEffects replica, "Apply automatically instead" aside
 - `src/components/guide/WaveLinkPanels.tsx` — ReaFIR / ReaEQ band / ReaComp / ReaGate steps: instructions with the person's values + replica panels with callouts
-- `src/components/guide/ApplyAutomatically.tsx` — aside explaining `tools/apply-reaplugs.py` (Wave Link closed, backup, ReaFIR by hand)
+- `src/components/guide/ApplyAutomatically.tsx` — "Apply automatically instead" aside: "Apply to Wave Link" (browser file round trip) first, `tools/apply-reaplugs.py` as the terminal alternative (Wave Link closed, backup, ReaFIR by hand)
 - `src/components/guide/obsValues.ts` — `obsValues(s)`: OBS filter values from the suggestion (RNNoise when noisy, Expander or Noise Gate, 3-Band EQ averages, Compressor, Limiter −1 dB)
 - `src/components/guide/ObsGuide.tsx` — OBS Studio path (Audio Mixer → ⋮ → Filters, built-in filters, VST ReaPlugs alternatives)
 - `src/components/guide/NvidiaGuide.tsx` — NVIDIA Broadcast path (install, Noise Removal, pick its mic in apps)
@@ -211,8 +225,8 @@
 - `src/components/guide/nrChoice.ts` — `NrChoice` ('ai-elgato' | 'ai-nvidia' | 'reafir'), `loadNrChoice`/`saveNrChoice` (localStorage `vcb-nr-choice`, fails soft), `useNrChoice()`
 - `src/components/guide/waveLinkSteps.test.ts` · `GuidePaths.test.tsx` · `HostPicker.test.tsx` · `guideKeys.test.ts` — step lists from fixture suggestions (noisy/quiet, EQ bands), OBS mapping, rendered paths, host persistence, guide keys exist
 - `src/i18n/locales/{en,pt-BR}/guide.json` — `guide.*` strings (guide screen, host picker, Wave Link/OBS/NVIDIA/app paths, entry buttons)
-- `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
-- `src/hooks/useHashRoute.test.ts` — hash ↔ screen mapping, #/check resolution, #/guide, hook sync with history
+- `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide · #/profiles): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
+- `src/hooks/useHashRoute.test.ts` — hash ↔ screen mapping, #/check resolution, #/guide, #/profiles, hook sync with history
 - `src/demo/demoSignals.ts` — `demoSamples()`: seeded synthetic voice (per-partial levels) + room noise + steady tones
 - `src/demo/demoTakes.ts` — `DEMO_SESSION`, `DEMO_MIC`, `buildDemoTakes()`: boomy 2 cm, balanced 8 cm, thin/noisy 15 cm, cleaner processed, fan tones 780/1560 Hz, analyzed
 - `src/demo/demoSession.ts` — `useDemo` ({active, dismissed}), `loadDemoSession()` (waits for bootstrap, adds demo takes, A/B, results), `exitDemo()`, `dismissDemoBanner()`
@@ -235,3 +249,24 @@
 - `src/components/guide/replicas/replicaStyle.ts` — theme CSS variables for replicas (`RC`), `srOnly`, `highlightRing`
 - `src/components/guide/replicas/replicas.test.tsx` — each replica renders fixture values, callout markers for known targets (unknown ignored), EQ tab count, pt-BR formatting, ReaFIR phases, Wave Link rows
 - `src/i18n/locales/{en,pt-BR}/replicas.json` — `replicas.*`: replica summaries and helper hints (field and plugin names stay English)
+- `src/components/wavelink/WaveLinkApplyDialog.tsx` — reusable "Apply to Wave Link" dialog: Upload → Check (changes + missing plugins) → Download, `buildPlan(inputKey)` prop
+- `src/components/wavelink/UploadStep.tsx` — step 1: plain explanation, Settings.json path + Copy, file input, "Pick the file directly" (File System Access), mic input select, errors
+- `src/components/wavelink/PreviewStep.tsx` — step 2: list of changes in plain words with values, "add <plugin> in Wave Link first" warnings
+- `src/components/wavelink/DownloadStep.tsx` — step 3: one click downloads Settings.json + `Settings.before-<date>.json`, swap/undo steps, optional "Save directly" after the backup
+- `src/components/wavelink/useWaveLinkFile.ts` — uploaded file state (parse via codec, chosen input, direct-save handle, error), `readSettings()`
+- `src/components/wavelink/wlFiles.ts` — `backupName()`, `downloadPair()`, File System Access helpers (`canPickDirectly`, `pickDirectly`, `saveDirectly`, fail soft)
+- `src/components/wavelink/wlPlan.ts` — `suggestionPlan()` (suggestion values + Elgato effects to switch off), `changeText()` plain-language change line
+- `src/components/wavelink/ApplyToWaveLinkButton.tsx` — "Apply to Wave Link" button + dialog for the current suggestion (results settings, guide aside)
+- `src/components/wavelink/WaveLinkApplyDialog.test.tsx` — upload → preview lists changes and missing plugins → download produces two files; invalid file error
+- `src/components/profiles/ProfilesPage.tsx` — route #/profiles: head, Import (file input), profile cards, empty state with Start a check
+- `src/components/profiles/ProfileCard.tsx` — profile card: name, Active / validation / captured chips, mic · style · host · distance
+- `src/components/profiles/ProfileActions.tsx` — Apply to Wave Link (profilePlan), Capture from Wave Link, Re-test, Export, Duplicate, Rename, Set active, Delete (second click)
+- `src/components/profiles/CaptureDialog.tsx` — upload the current Wave Link file and store `captureStates` in the profile
+- `src/components/profiles/NameDialog.tsx` — one-field name dialog (rename, save as profile)
+- `src/components/profiles/SaveProfile.tsx` — results entry (in SummaryActions): useSaveProfile + SaveProfileButton, hidden without a suggestion
+- `src/components/profiles/SaveProfileButton.tsx` — results "Save as profile": validated (raw → fx) or explains why not + "Save anyway as not validated"
+- `src/components/profiles/useSaveProfile.ts` — save gate (canValidate on A's session), suggested name, `profileFromSession` + put
+- `src/components/profiles/useProfiles.ts` — profiles list from the store, reloads after put/remove/setActive
+- `src/components/profiles/profileFormat.ts` — validation/host/style/mic labels, `exportFileName()`, `hasCapturedStates()`
+- `src/components/profiles/profiles.test.tsx` — profiles page CRUD with the memory store, save-as-profile gating
+- `src/i18n/locales/{en,pt-BR}/profiles.json` — `profiles.*` strings (nav link, Wave Link dialog, profiles page, save as profile)
