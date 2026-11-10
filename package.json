@@ -11,6 +11,8 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "desktop:dev": "tauri dev --config desktop/src-tauri/tauri.conf.json",
+    "desktop:build": "tauri build --config desktop/src-tauri/tauri.conf.json",
     "community:aggregate": "tsx tools/community/aggregate.ts",
     "community:review": "tsx tools/community/review.ts"
   },
@@ -19,6 +21,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.5.0",
+    "@tauri-apps/api": "2.12.4",
     "i18next": "^27.0.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -28,6 +31,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.5",
+    "@tauri-apps/cli": "2.12.4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",

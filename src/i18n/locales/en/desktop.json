@@ -1,0 +1,17 @@
+{
+  "desktop": {
+    "nav": "Desktop",
+    "title": "Desktop",
+    "coming": "Live plugin tuning is coming here.",
+    "loading": "Asking the engine…",
+    "error": "The engine did not answer: {{message}}",
+    "unknown": "unknown",
+    "info": {
+      "label": "Engine",
+      "appVersion": "App version",
+      "rustVersion": "Rust",
+      "os": "System",
+      "arch": "Architecture"
+    }
+  }
+}

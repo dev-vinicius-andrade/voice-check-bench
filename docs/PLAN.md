@@ -62,7 +62,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 36. `[x]` **Live tuning screen** — Medium. Route `#/live` (Screen 'live', nav "Tune live", entries in the guide and the refine / change-approach cards), `src/components/live/*` (pickers, Start/Stop, status chip, LiveError alerts, Loudness / Pauses / Tone / Try now panels, reading text), `useLiveSession` over `createLiveSession`, localStorage `vcb-live-devices`, `live.json` en + pt-BR, tests with a fake session.
 
 ## v2.0 — Desktop app (SPEC "Desktop app (v2.0)"; spikes in `spike/`)
-37. `[ ]` **Desktop scaffold** — Medium.
+37. `[x]` **Desktop scaffold** — Medium.
     - Tauri v2 in `desktop/`, frontend = this Vite app, `isDesktop()` bridge in `src/desktop/bridge.ts`.
     - Scripts `desktop:dev` and `desktop:build`, CLAUDE.md commands, CI build check.
     - Verify: `npm run desktop:build` produces an installer, and the web build is unchanged.

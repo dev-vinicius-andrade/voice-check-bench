@@ -10,6 +10,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import type { Theme } from '@mui/material/styles'
 import MenuIcon from '@mui/icons-material/Menu'
 import { useTranslation } from 'react-i18next'
+import { isDesktop } from '../../desktop/bridge'
 import { screenToHash } from '../../hooks/useHashRoute'
 import { LOCALES, LOCALE_NAMES, currentLocale } from '../../i18n'
 import { useBench } from '../../store/benchStore'
@@ -17,13 +18,15 @@ import type { Screen } from '../../types'
 import { chooseLocale } from './chooseLocale'
 import { LanguageMenu } from './LanguageMenu'
 
-const LINKS: readonly { screen: Screen; key: string }[] = [
+const SITE_LINKS: readonly { screen: Screen; key: string }[] = [
   { screen: 'how', key: 'common.nav.how' },
   { screen: 'community', key: 'common.nav.community' },
   { screen: 'profiles', key: 'profiles.nav' },
   { screen: 'live', key: 'live.nav' },
   { screen: 'privacy', key: 'common.nav.privacy' },
 ]
+/** The Desktop link exists only inside the desktop app. */
+const LINKS = isDesktop() ? [{ screen: 'desktop' as const, key: 'desktop.nav' }, ...SITE_LINKS] : SITE_LINKS
 
 /** Below 600 px the page links and the language choice collapse into a menu button. */
 function NavMenu({ screen }: { screen: Screen }) {
@@ -76,7 +79,7 @@ function NavMenu({ screen }: { screen: Screen }) {
   )
 }
 
-/** How it works · Community · Profiles · Tune live · Privacy (active page in the accent color), language and the Start / Continue pill. */
+/** (Desktop, in the app only) · How it works · Community · Profiles · Tune live · Privacy (active page in the accent color), language and the Start / Continue pill. */
 export function SiteNav() {
   const { t } = useTranslation()
   const compact = useMediaQuery((th: Theme) => th.breakpoints.down('sm'))

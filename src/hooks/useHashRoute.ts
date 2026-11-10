@@ -1,11 +1,12 @@
 // Hash routing without a router library (SPEC "Site pages"): the URL hash and the store's screen follow each other.
-// #/ home · #/how-it-works · #/community · #/privacy · #/check (setup or step) · #/results · #/guide · #/profiles · #/live.
+// #/ home · #/how-it-works · #/community · #/privacy · #/check (setup or step) · #/results · #/guide · #/profiles · #/live · #/desktop (desktop app only).
 import { useEffect } from 'react'
+import { isDesktop } from '../desktop/bridge'
 import type { BenchState } from '../store/api'
 import { useBench } from '../store/benchStore'
 import type { Screen, StepRef } from '../types'
 
-export type Route = 'home' | 'how' | 'community' | 'privacy' | 'check' | 'results' | 'guide' | 'profiles' | 'live'
+export type Route = 'home' | 'how' | 'community' | 'privacy' | 'check' | 'results' | 'guide' | 'profiles' | 'live' | 'desktop'
 
 const ROUTE_HASH: Record<Route, string> = {
   home: '#/',
@@ -17,6 +18,7 @@ const ROUTE_HASH: Record<Route, string> = {
   guide: '#/guide',
   profiles: '#/profiles',
   live: '#/live',
+  desktop: '#/desktop',
 }
 
 export interface RouteContext {
@@ -31,12 +33,13 @@ export interface RouteTarget {
   step?: StepRef
 }
 
-/** null when there is no route in the hash ('' or '#'); unknown hashes are home. */
+/** null when there is no route in the hash ('' or '#'); unknown hashes are home, and so is #/desktop outside the desktop app. */
 export function hashToRoute(hash: string): Route | null {
   const path = hash.replace(/^#/, '')
   if (path === '') return null
   const clean = '#/' + path.replace(/^\/+/, '').replace(/\/+$/, '')
-  return (Object.keys(ROUTE_HASH) as Route[]).find((r) => ROUTE_HASH[r] === clean) ?? 'home'
+  const route = (Object.keys(ROUTE_HASH) as Route[]).find((r) => ROUTE_HASH[r] === clean) ?? 'home'
+  return route === 'desktop' && !isDesktop() ? 'home' : route
 }
 
 export function screenToHash(screen: Screen): string {

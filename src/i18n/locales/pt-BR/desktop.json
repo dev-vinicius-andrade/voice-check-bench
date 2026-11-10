@@ -1,0 +1,17 @@
+{
+  "desktop": {
+    "nav": "Desktop",
+    "title": "Desktop",
+    "coming": "O ajuste ao vivo dos plugins vai ficar aqui.",
+    "loading": "Consultando o motor…",
+    "error": "O motor não respondeu: {{message}}",
+    "unknown": "desconhecido",
+    "info": {
+      "label": "Motor",
+      "appVersion": "Versão do app",
+      "rustVersion": "Rust",
+      "os": "Sistema",
+      "arch": "Arquitetura"
+    }
+  }
+}

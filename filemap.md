@@ -78,7 +78,7 @@
 - `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
 - `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
 - `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records (keeps a validated `applied` on processed takes); `openAppDb()` opens DB `voice-check-bench` v2 (`DB_VERSION`), the upgrade only creates missing stores (`takes`, `profiles` = `PROFILES_STORE`), closes on versionchange
-- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages and guide; new visitor → home), `vcb-devs` device choice, `vcb-mic` mic profile with shape validation (legacy model 'Other' → ''), `vcb-mains` mains setting, `vcb-goal` voice goal (`loadGoal`/`saveGoal`, shape-validated, `perceivedList`), `vcb-applied` applied settings (`loadApplied`/`saveApplied`)
+- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages and guide; new visitor → home; inside the desktop app always → desktop, on the web a saved desktop screen → home), `vcb-devs` device choice, `vcb-mic` mic profile with shape validation (legacy model 'Other' → ''), `vcb-mains` mains setting, `vcb-goal` voice goal (`loadGoal`/`saveGoal`, shape-validated, `perceivedList`), `vcb-applied` applied settings (`loadApplied`/`saveApplied`)
 - `src/storage/applied.ts` — `parseApplied()`: strict rebuild of AppliedSettings (settings via `parseSuggestion`) for localStorage and processed takes
 - `src/mics/catalog.ts` — `MIC_CATALOG` known models (kind/pattern/address), `DEFAULT_MIC`, `findMic`, `addressTip`/`placementTip` (Msg `engine.mic.*`), `MIC_OTHER_LABEL`
 - `src/mics/catalog.test.ts` — catalog lookup and tip keys/texts
@@ -171,7 +171,7 @@
 - `src/components/common/MsgText.tsx` — `<MsgText msg>` renders a plain-language Msg through i18n; `useMsg()` translator
 - `src/components/common/Term.tsx` — `<Term id>`: glossary term with an info button whose tooltip (hover, focus, click/tap) shows the meaning and analogy
 - `src/components/layout/TopBar.tsx` — brand (→ home) + site nav; progress stepper as a second row on setup/step/results
-- `src/components/layout/SiteNav.tsx` — How it works · Community · Profiles · Tune live · Privacy links (active in primary; menu button < 600 px) + language choice (inside the menu on mobile) + Start/Continue pill (→ #/check)
+- `src/components/layout/SiteNav.tsx` — (Desktop, desktop app only) · How it works · Community · Profiles · Tune live · Privacy links (active in primary; menu button < 600 px) + language choice (inside the menu on mobile) + Start/Continue pill (→ #/check)
 - `src/components/layout/Footer.tsx` — "Made by", GitHub/LinkedIn/Stack Overflow/email icon links, email text, Source on GitHub · Report an issue
 - `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Effects · Results stepper (clickable)
 - `src/components/layout/LanguageMenu.tsx` — top-bar language button (current LOCALE_NAMES entry) + menu
@@ -260,7 +260,7 @@
 - `src/components/guide/nrChoice.ts` — `NrChoice` ('ai-elgato' | 'ai-nvidia' | 'reafir'), `loadNrChoice`/`saveNrChoice` (localStorage `vcb-nr-choice`, fails soft), `useNrChoice()`
 - `src/components/guide/waveLinkSteps.test.ts` · `GuidePaths.test.tsx` · `HostPicker.test.tsx` · `guideKeys.test.ts` — step lists from fixture suggestions (noisy/quiet, EQ bands), OBS mapping, rendered paths, host persistence, guide keys exist
 - `src/i18n/locales/{en,pt-BR}/guide.json` — `guide.*` strings (guide screen, host picker, Wave Link/OBS/NVIDIA/app paths, entry buttons)
-- `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide · #/profiles · #/live): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
+- `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide · #/profiles · #/live · #/desktop, home outside the desktop app): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
 - `src/hooks/useHashRoute.test.ts` — hash ↔ screen mapping, #/check resolution, #/guide, #/profiles, hook sync with history
 - `src/demo/demoSignals.ts` — `demoSamples()`: seeded synthetic voice (per-partial levels) + room noise + steady tones
 - `src/demo/demoTakes.ts` — `DEMO_SESSION`, `DEMO_MIC`, `buildDemoTakes()`: boomy 2 cm, balanced 8 cm, thin/noisy 15 cm, cleaner processed, fan tones 780/1560 Hz, analyzed
@@ -334,3 +334,21 @@
 - `src/live/LiveSession.ts` — `createLiveSession(getGoal)`: LiveSessionApi (one 48 kHz context, raw + fx inputs, 500 ms timer, errors logged once, idempotent stop)
 - `src/live/liveTestSignals.ts` — test-only voice-like bursts and delayed/gained/filtered/gated fx copies
 - `src/live/{ring,align,metrics,hints,analyzer,LiveSession}.test.ts` — ring addressing, lag estimation, metrics on synthetic voice (+ timing), each hint rule + strings, analyzer/smoothing, session errors and stop with mocked browser audio
+- `desktop/` — desktop app (Tauri v2, SPEC "Desktop app (v2.0)"); frontend is this Vite app
+- `desktop/src-tauri/Cargo.toml` · `Cargo.lock` — Rust crate `voice-check-bench-desktop` (lib `voice_check_bench_desktop_lib`)
+- `desktop/src-tauri/tauri.conf.json` — product name, identifier `io.andradev.voicecb`, Vite on 1420 for dev, `npm run build` → `../../dist`, main window 1280×860 (min 960×640), NSIS bundle
+- `desktop/src-tauri/build.rs` — tauri-build + records the rustc version (`VCB_RUSTC_VERSION`)
+- `desktop/src-tauri/src/main.rs` — binary entry (no console window in release)
+- `desktop/src-tauri/src/lib.rs` — Tauri builder, command `engine_info` → EngineInfo { appVersion, rustVersion?, os, arch }
+- `desktop/src-tauri/capabilities/default.json` — main window permissions (`core:default` only)
+- `desktop/src-tauri/icons/` — app icons generated by `tauri icon` from `app-icon.png` (placeholder)
+- `desktop/src-tauri/app-icon.png` — 1024 px placeholder source icon
+- `desktop/src-tauri/.gitignore` — `target/`, `gen/`
+- `.github/workflows/desktop.yml` — Windows desktop build check (desktop/src/package changes, manual): `npm run desktop:build`, NSIS installer artifact
+- `src/desktop/types.ts` — desktop bridge contract: EngineInfo (mirrors lib.rs)
+- `src/desktop/bridge.ts` — `isDesktop()` (`__TAURI_INTERNALS__`), `engineInfo()` via lazily imported `@tauri-apps/api/core` invoke (framework-free)
+- `src/desktop/bridge.test.ts` — isDesktop default/injected, engineInfo invokes `engine_info` (mocked)
+- `src/components/desktop/DesktopScreen.tsx` — route #/desktop (desktop app only; the app opens on it): title, "coming here" line, engine info list or error
+- `src/components/desktop/useEngineInfo.ts` — loads EngineInfo once per mount (loading/ready/error; injectable loader)
+- `src/components/desktop/desktop.test.tsx` — #/desktop is home on the web, launch screen in the app, saved desktop screen ignored on the web; DesktopScreen info and error
+- `src/i18n/locales/{en,pt-BR}/desktop.json` — `desktop.*` strings (nav, title, engine info)

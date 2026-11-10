@@ -1,5 +1,6 @@
 // localStorage JSON helpers. Every access is wrapped; bad or missing data yields defaults.
 import { isMainsSetting, type MainsSetting } from '../audio/mains'
+import { isDesktop } from '../desktop/bridge'
 import { DEFAULT_MIC } from '../mics/catalog'
 import { parseApplied } from './applied'
 import {
@@ -31,7 +32,7 @@ const MIC_KEY = 'vcb-mic'
 const MAINS_KEY = 'vcb-mains'
 const GOAL_KEY = 'vcb-goal'
 const APPLIED_KEY = 'vcb-applied'
-const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'setup', 'step', 'results', 'guide', 'profiles', 'live']
+const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'setup', 'step', 'results', 'guide', 'profiles', 'live', 'desktop']
 const VIEWS: readonly ChartView[] = ['a', 'ab', 'diff']
 const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
 const MIC_PATTERNS: readonly MicProfile['pattern'][] = ['cardioid', 'supercardioid', 'omni', 'figure8', 'unknown']
@@ -60,9 +61,12 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const idOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
 
+/** The desktop app always opens on its own screen; the web never shows it. */
+const launchScreen = (): Screen | null => (isDesktop() ? 'desktop' : null)
+
 export function defaultUiPrefs(): UiPrefs {
   // a brand new visitor (no saved prefs) lands on the home page
-  return { screen: 'home', step: 0, session: 's' + Date.now(), A: null, B: null, view: 'a', fxDist: null }
+  return { screen: launchScreen() ?? 'home', step: 0, session: 's' + Date.now(), A: null, B: null, view: 'a', fxDist: null }
 }
 
 export function loadUiPrefs(): UiPrefs {
@@ -74,7 +78,7 @@ export function loadUiPrefs(): UiPrefs {
       ? raw.step
       : d.step
   return {
-    screen: SCREENS.find((s) => s === raw.screen) ?? d.screen,
+    screen: launchScreen() ?? SCREENS.find((s) => s === raw.screen && s !== 'desktop') ?? d.screen,
     step,
     session: typeof raw.session === 'string' && raw.session !== '' ? raw.session : d.session,
     A: idOrNull(raw.A),

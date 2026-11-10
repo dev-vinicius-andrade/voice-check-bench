@@ -6,6 +6,8 @@ Stack: Vite 8 · React 19 · TypeScript 6 strict · MUI 9 + Emotion · Tailwind 
 - `npm run dev` — dev server (http://localhost:5173)
 - `npm run build` — typecheck + production build
 - `npm run typecheck` · `npm run lint` · `npm test`
+- `npm run desktop:dev` — desktop app (Tauri) with Vite on port 1420
+- `npm run desktop:build` — desktop NSIS installer (`desktop/src-tauri/target/release/bundle/nsis/`)
 - `python tools/apply-reaplugs.py --show` — print current Wave Link ReaPlugs values
 
 ## Conventions

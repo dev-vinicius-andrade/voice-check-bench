@@ -1,4 +1,5 @@
 import { GuideScreen } from './components/guide/GuideScreen'
+import { DesktopScreen } from './components/desktop/DesktopScreen'
 import { CommunityPage } from './components/pages/CommunityPage'
 import { HomePage } from './components/pages/HomePage'
 import { HowItWorksPage } from './components/pages/HowItWorksPage'
@@ -14,6 +15,7 @@ import { TopBar } from './components/layout/TopBar'
 import { useBootstrap } from './hooks/useBootstrap'
 import { useHashRoute } from './hooks/useHashRoute'
 import { useRecordingShortcuts } from './hooks/useRecordingShortcuts'
+import { isDesktop } from './desktop/bridge'
 import { useBench } from './store/benchStore'
 
 export default function App() {
@@ -35,6 +37,7 @@ export default function App() {
         {screen === 'guide' && <GuideScreen />}
         {screen === 'profiles' && <ProfilesPage />}
         {screen === 'live' && <LiveScreen />}
+        {screen === 'desktop' && isDesktop() && <DesktopScreen />}
       </main>
       <Footer />
       <StatusSnackbar />
