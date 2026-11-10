@@ -223,6 +223,7 @@ Change Wave Link settings while talking and see the effect right away, without r
 - **Inputs:** "Raw mic" and "With effects (Wave Link)". Defaults: last live pick (localStorage `vcb-live-devices`), else the check's raw/fx choice, fx falling back to an input named Stream Mix / Monitor Mix / Wave Link. Raw can be "None — only the Wave Link output" (the raw mic is often busy while Wave Link runs). Nothing is recorded or stored besides the pick.
 - **Session:** one engine session per visit, metrics every `LIVE_UPDATE_MS` over the last `LIVE_WINDOW_SEC`; stops on Stop and when leaving the screen. Status chip: in sync (delay in ms) / lining up / only Wave Link output. Each `LiveError` has a plain alert; `rawUnavailable` offers "Use only the Wave Link output" (restarts with no raw input).
 - **Panels** (while running, after the first metrics; the reading text is always on screen): Loudness (Wave Link speech level, too quiet / good / too loud from the level check's range and `PEAK_WARN_DB`, −60..0 dBFS meter with the target band, raw and fx markers, clipping count); Pauses (room noise between words raw → fx, how much quieter, dead-silence warning above 5 %); Tone (bands boom … air against the goal, ±12 dB, good < 3 dB, warning ≥ 3, bad ≥ 6; dimmed with "Keep talking" under 1 s of speech); Try now (the engine's hints). One column on phones, Loudness and Pauses side by side on desktop.
+- **Hold:** numbers don't vanish when you stop talking. Per input, the speech values (level, peak, clipping, tone) are the last ones measured over a window with ≥ 1 s of talk (`src/live/hold.ts`); Loudness and Tone keep showing them with a dimmed "Last heard N s ago" under the title, and "Keep talking" appears only before anything was heard. Pause noise and dead silence stay live (the last pause level stays while you talk without pausing). Start and Stop forget it. The engine also keeps the last 60 s (`history.ts`) and segments split at each change, summed over their whole length (`segments.ts`, via `tracker.ts`) for the desktop UI; the web panels don't show those.
 
 ## Desktop app (v2.0)
 A Windows app that runs the person's real Wave Link plugins live on the raw mic. Every change is heard and measured right away. Once it sounds right, the app writes the result into Wave Link. Proven by the spikes in `spike/vst2-host/FINDINGS.md` and `spike/vst3-probe/FINDINGS.md`.
@@ -252,10 +253,11 @@ A Windows app that runs the person's real Wave Link plugins live on the raw mic.
     - PluginId is the JUCE uniqueId derived from the Audio Module class id.
     - Plugins live on one thread with a Win32 message loop.
     - After a state load or a bypass change, wait ≥ 120 ms before trusting Noise Removal's output.
-    - Noise Removal adds a 480-sample delay it doesn't report; the engine adds it to the known chain latency.
+    - Noise Removal adds a 480-sample delay it doesn't report, but only while its own bypass is off (bypassed, it passes audio through undelayed); the engine adds it to the known chain latency in that case.
   - `chain`: the mic input's effects in Wave Link order.
     - Hostable effects are instantiated from their stored states.
     - Per-plugin bypass mirrors Wave Link `BypassState` and the plugin's own bypass, and export writes both consistently.
+    - Bypass in the preview is delay-compensated: a bypassed slot still delays the audio by its latency, so the chain latency (and the raw/processed alignment) stays constant while toggling effects for A/B (task 39).
   - `audio`:
     - Raw mic in → chain → monitor out. The default input is the one named "Wave XLR"/"Mic In" (any input can be picked); the default output is the device named "Headphones".
     - Parameter changes go through a lock-free queue and apply between blocks.

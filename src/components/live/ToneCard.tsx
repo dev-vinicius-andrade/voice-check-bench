@@ -2,15 +2,12 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { fmtSigned } from '../../i18n/format'
-import type { LiveMetrics } from '../../live/types'
+import type { HeldMetrics } from '../../live/hold'
 import { LivePanel } from './LivePanel'
 import { tonePct, toneColor } from './liveScale'
 
 /** BANDS indices shown: boom … air (rumble is left out). */
 const ROWS = [1, 2, 3, 4, 5, 6, 7, 8] as const
-/** Seconds of speech in the window before the tone means something. */
-const MIN_TALK_SEC = 1
-
 const DOT = { position: 'absolute', top: '50%', width: 12, height: 12, ml: '-6px', mt: '-6px', borderRadius: '50%' } as const
 
 function ToneRow({ band, raw, fx }: { band: number; raw: number | null; fx: number }) {
@@ -37,12 +34,12 @@ function ToneRow({ band, raw, fx }: { band: number; raw: number | null; fx: numb
   )
 }
 
-/** One row per band: goal at the centre, hollow dot raw, filled dot Wave Link, ±12 dB. Dimmed until 1 s of speech. */
-export function ToneCard({ metrics }: { metrics: LiveMetrics }) {
+/** One row per band: goal at the centre, hollow dot raw, filled dot Wave Link, ±12 dB. Dimmed until 1 s of speech was first heard; held after that. */
+export function ToneCard({ metrics }: { metrics: HeldMetrics }) {
   const { t } = useTranslation()
-  const waiting = metrics.talkSec < MIN_TALK_SEC
+  const waiting = metrics.fx.heardAgoMs === null
   return (
-    <LivePanel title={t('live.tone.title')} lead={t('live.tone.lead')} testId="live-tone" dim={waiting}>
+    <LivePanel title={t('live.tone.title')} lead={t('live.tone.lead')} testId="live-tone" dim={waiting} heardAgoMs={metrics.fx.heardAgoMs}>
       {waiting && (
         <Typography variant="body2" sx={{ fontWeight: 600 }} data-testid="live-tone-wait">{t('live.tone.keepTalking')}</Typography>
       )}

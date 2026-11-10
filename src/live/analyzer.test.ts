@@ -55,6 +55,16 @@ describe('LiveAnalyzer', () => {
     expect(m!.talkSec).toBeGreaterThan(1.5)
   })
 
+  it('step() ends windows on the 50 ms frame grid and returns the frames behind the metrics', () => {
+    const a = new LiveAnalyzer()
+    // rings end at 5000 + 6.5 s rounded down to whole chunks: not a multiple of a frame
+    const st = a.step(fill(raw, 5000), fill(fx, 5000), SR, DEFAULT_GOAL)!
+    expect(st.end % 2400).toBe(0)
+    expect(st.end).toBeLessThanOrEqual(5000 + Math.floor((6.5 * SR) / CHUNK) * CHUNK)
+    expect(st.frames.nF).toBe(80)
+    expect(st.frames.talkFrames * 0.05).toBeCloseTo(st.metrics.talkSec, 9)
+  })
+
   it('smooths repeated updates and forgets them on reset', () => {
     const a = new LiveAnalyzer()
     const rawRing = fill(raw, 0)

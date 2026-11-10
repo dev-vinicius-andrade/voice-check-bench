@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_GOAL } from '../types'
 import { startErrorCode } from './capture'
 import { createLiveSession } from './LiveSession'
+import type { LiveUpdate } from './tracker'
 import { rawAndFx, voiceLike } from './liveTestSignals'
 import { LIVE_UPDATE_MS, LiveStartError, type LiveError, type LiveMetrics } from './types'
 
@@ -168,6 +169,44 @@ describe('createLiveSession running', () => {
     expect(FakeCtx.all[0].close).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(LIVE_UPDATE_MS * 4)
     expect(got).toHaveLength(1)
+  })
+
+  it('delivers held values, history and segments with every update; markChange starts a segment', async () => {
+    stubMedia()
+    const s = createLiveSession(() => DEFAULT_GOAL)
+    const got: LiveUpdate[] = []
+    const plain: LiveMetrics[] = []
+    s.subscribe((m) => plain.push(m))
+    s.subscribeUpdates((u) => got.push(u))
+    s.markChange({ key: 'ignored.while.stopped' })
+    await s.start({ rawId: 'raw', fxId: 'fx' })
+    const [rawNode, fxNode] = FakeWorkletNode.all
+    const half = 2.5 * 48000
+    rawNode.feed(raw.subarray(0, half), 0)
+    fxNode.feed(fx.subarray(0, half), 0)
+    vi.advanceTimersByTime(LIVE_UPDATE_MS)
+    s.markChange({ key: 'live.change.test' })
+    rawNode.feed(raw.subarray(half - (half % 1024)), half - (half % 1024))
+    fxNode.feed(fx.subarray(half - (half % 1024)), half - (half % 1024))
+    vi.advanceTimersByTime(LIVE_UPDATE_MS)
+    expect(got).toHaveLength(2)
+    expect(plain).toEqual(got.map((u) => u.metrics))
+    const u = got[1]
+    expect(u.held.fx.heardAgoMs).toBe(0)
+    expect(u.history.points.map((p) => p.t)).toEqual([LIVE_UPDATE_MS, 2 * LIVE_UPDATE_MS])
+    expect(u.history.markers).toEqual([{ t: LIVE_UPDATE_MS, label: { key: 'live.change.test' } }])
+    expect(u.segments.map((g) => g.label.key)).toEqual(['live.segment.start', 'live.change.test'])
+    expect(u.segments[0].talkSec + u.segments[1].talkSec).toBeCloseTo(u.sinceStart.talkSec, 9)
+    // the second window overlaps the first: only its new 2 s are added
+    expect(u.sinceStart.talkSec).toBeLessThan(4.5 * 0.85)
+    expect(u.sinceStart.talkSec).toBeGreaterThan(u.metrics.talkSec)
+    expect(u.sinceStart.raw).not.toBeNull()
+    s.stop()
+    expect(s.report(DEFAULT_GOAL).segments).toHaveLength(2)
+    await s.start({ rawId: 'raw', fxId: 'fx' })
+    expect(s.report(DEFAULT_GOAL).segments).toHaveLength(1)
+    expect(s.report(DEFAULT_GOAL).sinceStart.talkSec).toBe(0)
+    s.stop()
   })
 
   it('runs on the Wave Link output alone and stays quiet until there is audio', async () => {

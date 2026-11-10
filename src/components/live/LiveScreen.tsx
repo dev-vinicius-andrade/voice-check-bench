@@ -3,7 +3,7 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { createLiveSession } from '../../live/LiveSession'
-import type { LiveMetrics } from '../../live/types'
+import type { HeldMetrics } from '../../live/hold'
 import { PageColumn, PageHead } from '../pages/PageLayout'
 import { ReadingText } from '../step/ReadingText'
 import { HintsCard } from './HintsCard'
@@ -15,7 +15,7 @@ import { ToneCard } from './ToneCard'
 import { useLiveDevices } from './useLiveDevices'
 import { useLiveSession, type LiveSessionFactory } from './useLiveSession'
 
-function LivePanels({ metrics }: { metrics: LiveMetrics }) {
+function LivePanels({ metrics }: { metrics: HeldMetrics }) {
   return (
     <div className="grid min-w-0 gap-4" data-testid="live-panels">
       <div className="grid min-w-0 gap-4 md:grid-cols-2">

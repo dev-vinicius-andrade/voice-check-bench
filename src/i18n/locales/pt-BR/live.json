@@ -72,6 +72,10 @@
       "row": "{{band}}: Wave Link {{fx}} dB da sua meta",
       "rowRaw": "{{band}}: microfone cru {{raw}} dB, Wave Link {{fx}} dB da sua meta"
     },
+    "held": "Ouvido há {{sec}} s",
+    "segment": {
+      "start": "Início"
+    },
     "hints": {
       "title": "Tente agora",
       "empty": "Nada para mudar agora. Continue falando."

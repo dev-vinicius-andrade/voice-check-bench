@@ -1,6 +1,8 @@
-// One live session per screen visit: start/stop, latest metrics, status and error. Stops on unmount (leaving the screen).
+// One live session per screen visit: start/stop, latest metrics with held speech values (src/live/hold.ts), status and
+// error. Stops on unmount (leaving the screen).
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { LiveStartError, type LiveConfig, type LiveError, type LiveMetrics, type LiveSessionApi, type LiveStatus } from '../../live/types'
+import { holdMetrics, type HeldMetrics } from '../../live/hold'
+import { LiveStartError, type LiveConfig, type LiveError, type LiveSessionApi, type LiveStatus } from '../../live/types'
 import { useBench } from '../../store/benchStore'
 import type { VoiceGoal } from '../../types'
 
@@ -9,8 +11,8 @@ export type LiveSessionFactory = (getGoal: () => VoiceGoal) => LiveSessionApi
 export interface LiveSessionState {
   status: LiveStatus
   error: LiveError | null
-  /** Latest metrics while running; null before the first update. */
-  metrics: LiveMetrics | null
+  /** Latest metrics while running, speech values held through pauses; null before the first update (reset on start/stop). */
+  metrics: HeldMetrics | null
   start(cfg: LiveConfig): Promise<void>
   stop(): void
 }
@@ -21,7 +23,7 @@ export function useLiveSession(create: LiveSessionFactory): LiveSessionState {
   const [session] = useState(() => create(() => useBench.getState().goal))
   const [status, setStatus] = useState<LiveStatus>('idle')
   const [error, setError] = useState<LiveError | null>(null)
-  const [metrics, setMetrics] = useState<LiveMetrics | null>(null)
+  const [metrics, setMetrics] = useState<HeldMetrics | null>(null)
   const mounted = useRef(true)
   /** Bumped by every start/stop so a slow start that was overtaken does not flip the state back. */
   const run = useRef(0)
@@ -29,7 +31,9 @@ export function useLiveSession(create: LiveSessionFactory): LiveSessionState {
   useEffect(() => {
     mounted.current = true
     const off = session.subscribe((m) => {
-      if (mounted.current) setMetrics(m)
+      if (!mounted.current) return
+      const now = Date.now()
+      setMetrics((prev) => holdMetrics(prev, m, now))
     })
     return () => {
       mounted.current = false

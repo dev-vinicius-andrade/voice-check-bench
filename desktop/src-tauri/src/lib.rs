@@ -1,5 +1,9 @@
 use serde::Serialize;
 
+pub mod chain;
+pub mod host;
+pub mod wavelink;
+
 /// What the engine reports about itself; proves the JS ↔ Rust bridge (`src/desktop/types.ts` EngineInfo).
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +27,14 @@ fn engine_info(app: tauri::AppHandle) -> EngineInfo {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![engine_info])
+        .invoke_handler(tauri::generate_handler![
+            engine_info,
+            wavelink::commands::wavelink_read,
+            wavelink::commands::wavelink_preview,
+            wavelink::commands::wavelink_export,
+            wavelink::commands::wavelink_backups,
+            wavelink::commands::wavelink_restore,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Voice Check Bench")
 }

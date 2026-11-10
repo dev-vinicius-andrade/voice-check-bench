@@ -1,14 +1,14 @@
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { fmtNum } from '../../i18n/format'
-import type { LiveMetrics } from '../../live/types'
+import type { HeldMetrics } from '../../live/hold'
 import { LivePanel } from './LivePanel'
 
 /** Share of dead silence above which noise removal is called too strong. */
 const DEAD_SILENCE_WARN = 0.05
 
-/** Room noise between words, raw → Wave Link, how much quieter, and the dead-silence warning. */
-export function PausesCard({ metrics }: { metrics: LiveMetrics }) {
+/** Room noise between words, raw → Wave Link (the last measured values while you talk), how much quieter, and the dead-silence warning. */
+export function PausesCard({ metrics }: { metrics: HeldMetrics }) {
   const { t } = useTranslation()
   const { fx, raw } = metrics
   const fxOk = Number.isFinite(fx.pauseDb)

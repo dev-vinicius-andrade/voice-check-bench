@@ -3,7 +3,7 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { LEVEL_GOOD_MAX, LEVEL_GOOD_MIN } from '../../audio/diagnose'
 import { fmtDbfs, fmtNum } from '../../i18n/format'
-import type { LiveMetrics } from '../../live/types'
+import type { HeldMetrics } from '../../live/hold'
 import { LivePanel } from './LivePanel'
 import { levelColor, levelWord, meterPct } from './liveScale'
 
@@ -18,7 +18,7 @@ function Marker({ db, color, testId }: { db: number; color: string; testId: stri
 }
 
 /** Wave Link speech level, a plain word, a −60..0 dBFS meter with the target band, and clipping. */
-export function LoudnessCard({ metrics }: { metrics: LiveMetrics }) {
+export function LoudnessCard({ metrics }: { metrics: HeldMetrics }) {
   const { t } = useTranslation()
   const { fx, raw } = metrics
   const word = levelWord(fx)
@@ -26,7 +26,7 @@ export function LoudnessCard({ metrics }: { metrics: LiveMetrics }) {
   const lo = meterPct(LEVEL_GOOD_MIN)
   const hi = meterPct(LEVEL_GOOD_MAX)
   return (
-    <LivePanel title={t('live.loudness.title')} testId="live-loudness">
+    <LivePanel title={t('live.loudness.title')} testId="live-loudness" heardAgoMs={fx.heardAgoMs}>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <Typography sx={{ fontSize: { xs: 32, sm: 40 }, fontWeight: 800, lineHeight: 1.1 }} data-testid="live-level">
           {fmtDbfs(fx.speechDb)}

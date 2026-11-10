@@ -306,40 +306,62 @@
 - `src/components/profiles/profiles.test.tsx` — profiles page CRUD with the memory store, save-as-profile gating
 - `src/i18n/locales/{en,pt-BR}/profiles.json` — `profiles.*` strings (nav link, Wave Link dialog, profiles page, save as profile)
 - `src/components/live/LiveScreen.tsx` — route #/live "Tune live": intro + note, input pickers, Start/Stop + status chip, error alert, reading text, panels while running (takes an injectable session factory for tests)
-- `src/components/live/useLiveSession.ts` — one LiveSessionApi per visit (goal read from the store), start/stop, latest metrics, status + LiveError; stops on unmount
+- `src/components/live/useLiveSession.ts` — one LiveSessionApi per visit (goal read from the store), start/stop, latest metrics held through pauses (`holdMetrics`, reset on start/stop), status + LiveError; stops on unmount
 - `src/components/live/useLiveDevices.ts` — the two live inputs derived from the store's device list; the pick is saved on change
 - `src/components/live/liveDevices.ts` — `pickLiveDevices()` (saved pick → check choice → Wave Link name), localStorage `vcb-live-devices`
 - `src/components/live/LiveDevicePickers.tsx` — "Raw mic" (with "None — only the Wave Link output") and "With effects (Wave Link)" selects; mic button while no input is listed
 - `src/components/live/LiveControls.tsx` — Start/Stop button, status chip (in sync / lining up / only Wave Link), one alert per LiveError (rawUnavailable → "Use only the Wave Link output")
-- `src/components/live/LivePanel.tsx` — titled card shared by the live panels (optional dim)
+- `src/components/live/LivePanel.tsx` — titled card shared by the live panels (optional dim; "Last heard N s ago" caption while the values are held)
 - `src/components/live/liveScale.ts` — level word/color (LEVEL_GOOD_MIN/MAX, PEAK_WARN_DB), meter and tone positions, tone color (3/6 dB)
 - `src/components/live/LoudnessCard.tsx` — Wave Link speech level, plain word, −60..0 dBFS meter with target band and raw/fx markers, clipping line
 - `src/components/live/PausesCard.tsx` — room noise between words raw → fx, dB quieter than raw, dead-silence warning (> 5 %)
 - `src/components/live/ToneCard.tsx` — one row per band boom…air: goal centre line, hollow raw dot, filled fx dot (±12 dB), value, aria-label per row; dimmed under 1 s of speech
 - `src/components/live/HintsCard.tsx` — "Try now": the engine's hint Msgs
 - `src/components/live/TuneLiveButton.tsx` — secondary "Tune live" button (refine / change-approach cards) and the guide's closing `GuideLiveCta`
-- `src/components/live/live.test.tsx` — LiveScreen with a fake session (start → metrics → panels, errors, fx-only retry, stop on unmount), Loudness/Tone cards, `pickLiveDevices`
+- `src/components/live/live.test.tsx` — LiveScreen with a fake session (start → metrics → panels, held values after talking, errors, fx-only retry, stop on unmount), Loudness/Pauses/Tone cards incl. the held caption (en + pt-BR), `pickLiveDevices`
 - `src/components/live/liveKeys.test.ts` — live.* keys used exist; en/pt-BR live.* parity
 - `src/i18n/locales/{en,pt-BR}/live.json` — `live.*` strings (screen, panels, errors, hints)
 - `public/worklets/tap-worklet.js` — AudioWorkletProcessor `tap` (live tuning): always posts mono `{ frame, samples }` chunks of 1024 frames stamped with the context frame
 - `src/live/types.ts` — live tuning contract: LiveMetrics, LiveSide, LiveConfig, LiveError, LiveStartError, LiveSessionApi, window/update/buffer/lag constants (orchestrator-owned)
 - `src/live/ring.ts` — `FloatRing`: fixed-size float ring addressed by absolute frame (`readLast`, `readEnding`; a gap empties it)
 - `src/live/align.ts` — `estimateLag()` (10 ms dB envelopes, Pearson cross-correlation over −20..500 ms, parabolic refinement → lagMs + sync), `LagTracker` (median of the last 5 confident estimates)
-- `src/live/metrics.ts` — `computeLiveMetrics()`: 50 ms frames, talk/pause from the raw mic (fx alone without one), per-input speech/peak/clip/pause/dead silence/tone (2048-pt spectra of ≤ 24 talk frames → targetDeviations)
+- `src/live/frames.ts` — frame-level live analysis shared by metrics and segments: constants, `liveFrames()` (lag pairing, 50 ms frames ending with the window, talk/pause from the raw mic or fx), talk-frame spectra/band energies, `ZeroRuns` (streaming digital-silence ratio)
+- `src/live/metrics.ts` — `computeLiveMetrics()` / `metricsOfFrames()`: per-input speech/peak/clip/pause/dead silence/tone (2048-pt spectra of ≤ 24 talk frames → targetDeviations) of one window
+- `src/live/hold.ts` — `holdMetrics()` reducer: last speech values heard with ≥ 1 s of talk per side + `heardAgoMs`, pause noise live (`HeldMetrics`)
+- `src/live/history.ts` — `pushHistory()` / `markHistory()`: last 60 s, one point per update (speech/pause raw+fx, talking) + change markers
+- `src/live/segments.ts` — `LiveSegments`: segments from Start and each markChange over their whole length, fed only the frames not seen yet (level histograms, band sums, clip count, zero runs); `segments()`, `sinceStart()`
+- `src/live/tracker.ts` — `LiveTracker` (hold + history + segments per update, `LiveUpdate`), `LiveTrackedSessionApi` (subscribeUpdates, markChange, report)
 - `src/live/hints.ts` — `liveHints()`: ≤ 4 Msg keys under live.hint.* (sync, level, dead silence, pause noise, ReaEQ tone bands)
 - `src/live/hintStrings.ts` — en + pt-BR source strings for live.hint.* and live.error.* (merged into the live.json locales by the UI)
 - `src/live/smooth.ts` — `smoothMetrics()`: EMA (α 0.4) of speech level, pause level and tone
-- `src/live/analyzer.ts` — `LiveAnalyzer.update()`: reads both rings over the same frames, aligns (last 6 s), measures the 4 s window, smooths, adds hints
+- `src/live/analyzer.ts` — `LiveAnalyzer.update()` / `step()` (+ frames and end sample): reads both rings over the same frames ending on the 50 ms grid, aligns (last 6 s), measures the 4 s window, smooths, adds hints
 - `src/live/capture.ts` — live getUserMedia constraints, support check, getUserMedia error → LiveError, `openTap()` (stream → tap worklet → ring)
-- `src/live/LiveSession.ts` — `createLiveSession(getGoal)`: LiveSessionApi (one 48 kHz context, raw + fx inputs, 500 ms timer, errors logged once, idempotent stop)
+- `src/live/LiveSession.ts` — `createLiveSession(getGoal)`: LiveTrackedSessionApi (one 48 kHz context, raw + fx inputs, 500 ms timer, metrics + hold/history/segments updates, markChange, errors logged once, idempotent stop)
 - `src/live/liveTestSignals.ts` — test-only voice-like bursts and delayed/gained/filtered/gated fx copies
 - `src/live/{ring,align,metrics,hints,analyzer,LiveSession}.test.ts` — ring addressing, lag estimation, metrics on synthetic voice (+ timing), each hint rule + strings, analyzer/smoothing, session errors and stop with mocked browser audio
+- `src/live/{hold,history,segments}.test.ts` — hold through pauses, 60 s window and markers, segments without double counting vs one pass, markChange split, bounded memory, `ZeroRuns` vs digitalSilence
 - `desktop/` — desktop app (Tauri v2, SPEC "Desktop app (v2.0)"); frontend is this Vite app
 - `desktop/src-tauri/Cargo.toml` · `Cargo.lock` — Rust crate `voice-check-bench-desktop` (lib `voice_check_bench_desktop_lib`)
 - `desktop/src-tauri/tauri.conf.json` — product name, identifier `io.andradev.voicecb`, Vite on 1420 for dev, `npm run build` → `../../dist`, main window 1280×860 (min 960×640), NSIS bundle
 - `desktop/src-tauri/build.rs` — tauri-build + records the rustc version (`VCB_RUSTC_VERSION`)
 - `desktop/src-tauri/src/main.rs` — binary entry (no console window in release)
 - `desktop/src-tauri/src/lib.rs` — Tauri builder, command `engine_info` → EngineInfo { appVersion, rustVersion?, os, arch }
+- `desktop/src-tauri/src/wavelink/mod.rs` — Wave Link Settings.json module (SPEC "Desktop app (v2.0)" `wavelink`): re-exports
+- `desktop/src-tauri/src/wavelink/error.rs` — `WlError` `{ code, message }`, codes notFound/parse/changedMeanwhile/missingEntry/invalidChange/closeTimeout/writeFailed/startFailed/verifyFailed
+- `desktop/src-tauri/src/wavelink/scan.rs` — span tree of a JSON text (byte ranges, keys in order, duplicates kept; leaves decoded by serde_json)
+- `desktop/src-tauri/src/wavelink/model.rs` — `list_inputs` (mic first, rule of src/wavelink parseSettings), `ChainEntry`/`WlInput`/`WlSnapshot`, `hash_text` (SHA-256)
+- `desktop/src-tauri/src/wavelink/edit.rs` — `ChainChange`, `apply` (in-place ParameterState/BypassState literals, .NET `+` escaping when the file uses it, refuses missing/ambiguous/invalid), `diff` → `DiffLine`
+- `desktop/src-tauri/src/wavelink/files.rs` — Settings.json path (`VCB_WAVELINK_SETTINGS` override), read, `Settings.before-<date>.json` backups (never overwritten), atomic write, `list_backups`, backup path check
+- `desktop/src-tauri/src/wavelink/process.rs` — `ProcessControl` trait; `WaveLinkProcess` (tasklist, taskkill polite/force, start via `explorer.exe shell:AppsFolder\<AUMID>`)
+- `desktop/src-tauri/src/wavelink/export.rs` — `export`/`restore` flow: hash check → backup → close (10 s, force opt-in) → atomic write → start → verify; `FlowReport`, `Step`, `Timings`
+- `desktop/src-tauri/src/wavelink/commands.rs` — Tauri commands `wavelink_read`, `wavelink_preview`, `wavelink_export`, `wavelink_backups`, `wavelink_restore`
+- `desktop/src-tauri/src/wavelink/{tests,flow_tests,test_support}.rs` — apply/diff on a synthesized .NET-style fixture and a temp copy of the real file (skipped when absent); export/restore with a fake process
+- `desktop/src-tauri/src/host/mod.rs` — plugin host engine (SPEC `host/vst2`, `host/vst3`): threading model doc, `Plugin` enum (load by file type, params, set_param, load/save Wave Link `ParameterState`, own bypass, latency, process), `ParamInfo`, `HostError`, constants `SAMPLE_RATE` 48 kHz · `BLOCK` 480 · `SETTLE` 120 ms · `NOISE_REMOVAL_EXTRA_LATENCY` 480
+- `desktop/src-tauri/src/host/thread.rs` — the one process-wide host thread: OleInitialize, Win32 message pump every 4 ms, `host().run(job)`, `is_host_thread`, `pump_messages`
+- `desktop/src-tauri/src/host/vst2/{mod,ffi,bank}.rs` — ReaPlugs VST2 hosting (port of spike/vst2-host): `AEffect` FFI + host callback, `Vst2Plugin` (setParameter banks / effGetChunk(0) chunks, suspend-load-resume, initialDelay latency), JUCE `CcnK…FxBk/FBCh` bank codec with inline tests
+- `desktop/src-tauri/src/host/vst3/{mod,com,module,state}.rs` — Elgato VST3 hosting (port of spike/vst3-probe): `Vst3Plugin` (component + controller, mono 48 kHz/480 realtime, bypass params, Noise Removal +480 while its own bypass is off), host COM objects + lock-free `ParamMailbox`/`RtChanges`, module/factory loading + JUCE PluginId, `VC2!`/JUCE-base64 `ParameterState` codec with inline tests
+- `desktop/src-tauri/src/chain.rs` — `ChainEntrySpec` {name, filePath, bypassed, parameterState}, `build_chain` → `ChainControl` (host-thread control: slots, params, set_param, set_bypass slot + plugin, load/save state, `export_states`, latency, settle) + `ChainProcessor` (audio thread, real-time safe `process_block[_tapped]`); built-in / failed entries pass through as not previewable
+- `desktop/src-tauri/tests/plugin_host.rs` — real plugins on a temp copy of Settings.json (skips when Settings, plugins or the `_test` take are absent; `VCB_SETTINGS_COPY`, `VCB_TEST_TAKE`): VST2/VST3 byte-identical round trips, ReaFIR by params, ReaComp Wet bytes, offline chain vs spike numbers, Noise Removal bypass off + latency
 - `desktop/src-tauri/capabilities/default.json` — main window permissions (`core:default` only)
 - `desktop/src-tauri/icons/` — app icons generated by `tauri icon` from `app-icon.png` (placeholder)
 - `desktop/src-tauri/app-icon.png` — 1024 px placeholder source icon

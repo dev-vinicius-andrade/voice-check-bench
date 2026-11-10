@@ -71,6 +71,10 @@
       "row": "{{band}}: Wave Link {{fx}} dB from your goal",
       "rowRaw": "{{band}}: raw mic {{raw}} dB, Wave Link {{fx}} dB from your goal"
     },
+    "held": "Last heard {{sec}} s ago",
+    "segment": {
+      "start": "Start"
+    },
     "hints": {
       "title": "Try now",
       "empty": "Nothing to change right now. Keep talking."
