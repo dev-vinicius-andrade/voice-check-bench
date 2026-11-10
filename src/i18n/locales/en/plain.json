@@ -215,10 +215,11 @@
     "refine": {
       "wrongDistance": "This take was recorded at {{actual}}, but the settings were made for {{dist}}, so it can't tell whether they work. Record again at {{dist}}, or get new settings made for {{actual}}.",
       "gateTooHigh": "The gate was closing on your voice: its Threshold goes down {{db, number(maximumFractionDigits: 1)}} dB, to {{to, number(maximumFractionDigits: 1)}} dB.",
+      "gateDoubled": "ReaGate's Dry is at {{from, number(maximumFractionDigits: 1)}} dB with Wet open, so your voice goes through it twice and gets about 6 dB louder whenever the gate opens. Dry goes to {{to, number(maximumFractionDigits: 1)}} dB.",
       "chopped": {
         "reafirHalf": "Noise removal is cutting your voice: lower the ReaFIR reduction to about half of what you set.",
         "toAi": "ReaFIR keeps cutting your voice: turn it off and use AI noise removal instead (Elgato Noise Removal).",
-        "gateOff": "The gate still cuts your voice: set its Dry to 0 dB so it stops cutting.",
+        "gateOff": "The gate still cuts your voice: switch ReaGate off in Wave Link (or turn its Wet all the way down and set Dry to 0 dB).",
         "aiLower": "The noise remover is cutting your voice and your pauses: lower its strength, or try Voice Focus in Wave Link instead. Pauses should sound quiet, not dead silent.",
         "other": "Something in Wave Link is cutting your sound to total silence. Switch your effects off one at a time to find which one does it."
       },

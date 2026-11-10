@@ -1,0 +1,4 @@
+# build outputs
+/target/
+# probe outputs: Settings copy, decoded plugin states, processed audio derived from private recordings
+/out/

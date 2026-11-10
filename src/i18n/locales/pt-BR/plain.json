@@ -215,10 +215,11 @@
     "refine": {
       "wrongDistance": "Esta gravação foi feita a {{actual}}, mas as configurações foram feitas para {{dist}}, então ela não mostra se elas funcionam. Grave de novo a {{dist}} ou peça configurações novas feitas para {{actual}}.",
       "gateTooHigh": "O gate estava fechando em cima da sua voz: o Threshold dele desce {{db, number(maximumFractionDigits: 1)}} dB, para {{to, number(maximumFractionDigits: 1)}} dB.",
+      "gateDoubled": "O Dry do ReaGate está em {{from, number(maximumFractionDigits: 1)}} dB com o Wet aberto, então sua voz passa por ele duas vezes e fica uns 6 dB mais alta sempre que o gate abre. O Dry vai para {{to, number(maximumFractionDigits: 1)}} dB.",
       "chopped": {
         "reafirHalf": "A remoção de ruído está cortando sua voz: diminua a redução do ReaFIR para mais ou menos metade do que você configurou.",
         "toAi": "O ReaFIR continua cortando sua voz: desligue o ReaFIR e use uma remoção de ruído com IA (Elgato Noise Removal).",
-        "gateOff": "O gate ainda corta sua voz: coloque o Dry dele em 0 dB para ele parar de cortar.",
+        "gateOff": "O gate ainda corta sua voz: desligue o ReaGate no Wave Link (ou abaixe o Wet dele até o fim e coloque o Dry em 0 dB).",
         "aiLower": "O removedor de ruído está cortando sua voz e suas pausas: diminua a força dele ou experimente o Voice Focus do Wave Link no lugar. As pausas devem soar baixinhas, não em silêncio total.",
         "other": "Algum efeito no Wave Link está cortando o som para silêncio total. Desligue seus efeitos um de cada vez para descobrir qual é."
       },

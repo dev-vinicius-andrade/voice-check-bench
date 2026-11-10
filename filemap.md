@@ -11,6 +11,8 @@
 - `tools/community/review.ts` — `npm run community:review`: issue checker for `ISSUE_NUMBER` (accepted/invalid/duplicate label, bot comment by marker, close/reopen); without it or with `--dry-run` prints only
 - `tools/community/github.ts` — shared GitHub REST helpers (`api`, `apiList`, `fetchIssues`), `toCommunityIssue` (API/`--from-file` → CommunityIssue), `loadAliases`
 - `tools/community/aliases.json` — manual mic-name aliases and `distinct` pairs (MicAliases)
+- `spike/vst2-host/` — throwaway Rust spike: hosts ReaPlugs VST2, Wave Link bank state round trip, offline chain, live cpal I/O; results in `FINDINGS.md` (reference for desktop tasks 38–40)
+- `spike/vst3-probe/` — throwaway Rust spike: hosts Elgato VST3 effects, JUCE `VC2!` state codec, offline Noise Removal; results in `FINDINGS.md`
 - `.github/ISSUE_TEMPLATE/mic-result.yml` — "Mic result" issue form: summary (json), notes, public-issue consent; label `mic-result`
 - `.github/ISSUE_TEMPLATE/config.yml` — issue chooser (blank issues allowed)
 - `.github/workflows/community.yml` — job `review` (issue checker on mic-result issue events) then `aggregate` (rebuilds and commits `public/community/mics.json`; also every 6 hours and on demand)

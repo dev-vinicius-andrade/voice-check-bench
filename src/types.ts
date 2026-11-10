@@ -220,7 +220,7 @@ export interface AppliedSettings {
   attempt: number
 }
 
-export type RefineReason = 'chopped' | 'tooLoud' | 'quieter' | 'thin' | 'harsh' | 'stillNoisy' | 'wrongDistance' | 'gateTooHigh'
+export type RefineReason = 'chopped' | 'tooLoud' | 'quieter' | 'thin' | 'harsh' | 'stillNoisy' | 'wrongDistance' | 'gateTooHigh' | 'gateDoubled'
 
 export interface Refinement {
   /** Next settings to apply. */

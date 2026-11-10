@@ -99,12 +99,12 @@ describe('refine on the real session', () => {
     expect(JSON.stringify(applied)).toBe(before)
   })
 
-  it('attempt 2 still chopped: switch to AI noise removal and turn the gate off (dry 0)', () => {
+  it('attempt 2 still chopped: switch to AI noise removal and turn the gate off (Wet down, Dry 0)', () => {
     const { c15, fx, applied } = realSession()
     const r = refine(c15, fx, withAttempt(applied, 2))
     expect(keys(r)?.slice(0, 2)).toEqual(['plain.refine.chopped.toAi', 'plain.refine.chopped.gateOff'])
     expect(r?.noiseRemoval).toBe('ai-elgato')
-    expect(r?.settings.gate).toMatchObject({ threshold: -41, dry: 0 })
+    expect(r?.settings.gate).toMatchObject({ threshold: -41, wet: -100, dry: 0 })
   })
 
   it('after 3 attempts without improving: change approach, no more number tweaks', () => {
@@ -140,24 +140,27 @@ describe('refine on the too-loud session (Wet at the cap, clipping, AI noise rem
     expect(r?.settings.comp.wet).toBe(0)
   })
 
-  it('at the right distance: too loud, so Wet comes down (not up), the gate stays, the AI remover goes down', () => {
+  it('at the right distance: the doubled gate comes down first, then Wet only by what is left; the AI remover goes down', () => {
     const { c15, fx, applied } = clippedSession()
     const ev = evaluateProcessed(c15, fx, applied)
     expect(ev?.regressions).toEqual(['tooLoud', 'harsh', 'chopped'])
     expect(ev?.improved).toBe(false)
     const r = refine(c15, fx, applied)
-    expect(keys(r)).toEqual(['plain.refine.chopped.aiLower', 'plain.refine.tooLoud', 'plain.refine.harshFromClipping'])
-    // speech -13.9 -> target -21: ceil(7.1) = 8 dB down, 18 -> 10
-    expect(r?.changes[1].msg.params).toEqual({ db: 8, to: 10 })
-    expect(r?.settings.comp.wet).toBe(10)
-    // ReaGate is already off (Dry 0): no threshold change; the EQ is not touched (the harshness is distortion)
-    expect(r?.settings.gate).toEqual(applied.settings.gate)
+    expect(keys(r)).toEqual(['plain.refine.chopped.aiLower', 'plain.refine.gateDoubled', 'plain.refine.tooLoud', 'plain.refine.harshFromClipping'])
+    // ReaGate Wet 0 + Dry 0 adds the voice twice (+6.0 dB); Dry -20 leaves +0.8 dB: 5.2 dB less
+    expect(r?.changes[1].msg.params).toEqual({ from: 0, to: -20 })
+    expect(r?.settings.gate).toEqual({ ...applied.settings.gate, dry: -20 })
+    // speech -13.9 - 5.2 = -19.1 -> target -21: ceil(1.9) = 2 dB down, 18 -> 16 (the clip minimum is covered by the gate)
+    expect(r?.changes[2].msg.params).toEqual({ db: 2, to: 16 })
+    expect(r?.settings.comp.wet).toBe(16)
+    // no threshold change (Dry 0 never cut the voice); the EQ is not touched (the harshness is distortion)
     expect(r?.settings.eq).toEqual(applied.settings.eq)
     expect(r?.noiseRemoval).toBe('ai-elgato')
   })
 
   it('a clipped peak alone lowers Wet at least 3 dB, never below 0', () => {
-    const { c15, fx, applied } = clippedSession()
+    const { c15, fx, applied: doubled } = clippedSession()
+    const applied = withGate(doubled, { dry: -20 })
     const raw = c15.analysis as Analysis
     const peaky = sessionTake(11, 'fx', fx.name, fakeAnalysis({ ...raw, speechMed: -20, peak: -0.5, snr: raw.snr + 10, zeroRatio: 0, gateSwitches: 0 }))
     const r = refine(c15, peaky, applied)
@@ -168,7 +171,8 @@ describe('refine on the too-loud session (Wet at the cap, clipping, AI noise rem
   })
 
   it('too loud replaces quieter, even when the speech level dropped', () => {
-    const { c15, fx, applied } = clippedSession()
+    const { c15, fx, applied: doubled } = clippedSession()
+    const applied = withGate(doubled, { dry: -20 })
     const raw = c15.analysis as Analysis
     const dropped = sessionTake(12, 'fx', fx.name, fakeAnalysis({ ...raw, speechMed: raw.speechMed - 10, peak: 0, snr: raw.snr + 10 }))
     const ev = evaluateProcessed(c15, dropped, applied)
@@ -181,9 +185,10 @@ describe('refine on the too-loud session (Wet at the cap, clipping, AI noise rem
     const { c15, applied } = clippedSession()
     const raw = c15.analysis as Analysis
     const fx = sessionTake(13, 'fx', 'Processed · 15 cm · Record Mix', fakeAnalysis({ ...raw, zeroRatio: 0.2, snr: raw.snr + 10 }))
-    const r = refine(c15, fx, { ...applied, noiseRemoval: 'none' })
+    const off = withGate(applied, { wet: -100, dry: 0 }, { noiseRemoval: 'none' })
+    const r = refine(c15, fx, off)
     expect(keys(r)).toEqual(['plain.refine.chopped.other'])
-    expect(r?.settings.gate).toEqual(applied.settings.gate)
+    expect(r?.settings.gate).toEqual(off.settings.gate)
   })
 })
 
@@ -198,7 +203,18 @@ describe('refine rules', () => {
     expect(refine(c15, fxOf({ zeroRatio: 0.06 }), withGate(applied, { threshold: -66 }))?.settings.gate.threshold).toBe(-72)
     const r = refine(c15, fxOf({ zeroRatio: 0.06 }), withGate(applied, { threshold: -72 }, { noiseRemoval: 'none' }))
     expect(keys(r)).toEqual(['plain.refine.chopped.gateOff'])
-    expect(r?.settings.gate).toMatchObject({ threshold: -72, dry: 0 })
+    expect(r?.settings.gate).toMatchObject({ threshold: -72, wet: -100, dry: 0 })
+  })
+
+  it('a doubled gate (Wet and Dry both open) goes back to Dry -20 even when nothing else is wrong; -10 is not doubled', () => {
+    // not improved (as in the quieter rule below), nothing else to change
+    const fx = fxOf({ speechMed: raw.speechMed - 3.9, snr: raw.snr + 3 })
+    const r = refine(c15, fx, withGate(applied, { dry: -3 }))
+    expect(keys(r)).toEqual(['plain.refine.gateDoubled'])
+    expect(r?.changes[0].msg.params).toEqual({ from: -3, to: -20 })
+    expect(r?.settings.gate.dry).toBe(-20)
+    expect(refine(c15, fx, applied)?.changes.some((c) => c.reason === 'gateDoubled')).toBe(false)
+    expect(refine(c15, fx, withGate(applied, { wet: -100, dry: 0 }))?.changes.some((c) => c.reason === 'gateDoubled')).toBe(false)
   })
 
   it('quieter never pushes the speech past the middle of the good level range (-21 dBFS)', () => {

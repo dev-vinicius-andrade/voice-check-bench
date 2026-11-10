@@ -206,8 +206,9 @@ Real case: applying the suggestion made the take worse (35 → 0: 15 cm chosen a
 **Loop:**
 - `applied` (store, localStorage `vcb-applied`): set by `markApplied` when the person downloads/saves an adjusted Wave Link file, applies a profile, or confirms "I applied these" at the end of the guide / suggested settings. Each new processed take copies `applied`.
 - Evaluation of a processed take with `applied`: improved when fxScore ≥ rawScore + 5 and no regressions; else `refine(raw, fx, applied, goal): Refinement` (pure, src/plain/refine.ts):
-  - chopped / zeroRatio > 0.05 → if noiseRemoval = reafir: switch to 'ai-elgato' (attempt ≥ 2) or "lower ReaFIR reduction by half" (attempt 1); AI route: "lower the noise remover's strength or try Voice Focus; pauses should sound quiet, not dead silent". Gate: threshold − 10 dB (min −72) or dry 0 (gate off) if still chopped on a later attempt — skipped when the gate is already off (dry 0); then with no noise removal: "another effect in Wave Link is cutting the sound; switch effects off one at a time".
-  - tooLoud → comp wet −= ceil(fx speech − (−21)), at least 3 dB when the peak clipped, floor 0.
+  - chopped / zeroRatio > 0.05 → if noiseRemoval = reafir: switch to 'ai-elgato' (attempt ≥ 2) or "lower ReaFIR reduction by half" (attempt 1); AI route: "lower the noise remover's strength or try Voice Focus; pauses should sound quiet, not dead silent". Gate: threshold − 10 dB (min −72), or off (Wet −100, Dry 0) if still chopped on a later attempt — skipped when the gate already passes everything (off, or Dry ≥ −1 dB); then with no noise removal: "another effect in Wave Link is cutting the sound; switch effects off one at a time".
+  - gateDoubled (any non-improved take): ReaGate adds Wet and Dry, so Wet open with Dry > −10 dB passes the voice twice (+6 dB at 0/0) → Dry −20 (`GATE_SOFT_DRY_DB`). Never write Wet and Dry both at 0 dB to mean "gate off" (spike finding, `spike/vst2-host/FINDINGS.md`).
+  - tooLoud → comp wet −= ceil(fx speech − gate fix − (−21)), at least 3 dB minus the gate fix when the peak clipped, floor 0 (the dB the doubled-gate fix removes count first).
   - quieter (levelDrop ≥ 4, never with tooLoud) → comp wet += min(round(levelDrop), floor(−21 − fx speech)) (cap 18; skipped when ≤ 0), so it never overshoots the target.
   - thin (bass loss) → move low shelf 150 Hz and the 250 Hz band toward 0 by the measured boom/warmth loss vs raw (never past 0 unless the goal wants more bass).
   - harsh → high shelf and 3.5 kHz band −(presence/sibilance rise × 0.7), min −4. With tooLoud: no EQ change, "harsh from clipping" instead (the harshness is the limiter's distortion; fix the loudness first).
@@ -222,3 +223,81 @@ Change Wave Link settings while talking and see the effect right away, without r
 - **Inputs:** "Raw mic" and "With effects (Wave Link)". Defaults: last live pick (localStorage `vcb-live-devices`), else the check's raw/fx choice, fx falling back to an input named Stream Mix / Monitor Mix / Wave Link. Raw can be "None — only the Wave Link output" (the raw mic is often busy while Wave Link runs). Nothing is recorded or stored besides the pick.
 - **Session:** one engine session per visit, metrics every `LIVE_UPDATE_MS` over the last `LIVE_WINDOW_SEC`; stops on Stop and when leaving the screen. Status chip: in sync (delay in ms) / lining up / only Wave Link output. Each `LiveError` has a plain alert; `rawUnavailable` offers "Use only the Wave Link output" (restarts with no raw input).
 - **Panels** (while running, after the first metrics; the reading text is always on screen): Loudness (Wave Link speech level, too quiet / good / too loud from the level check's range and `PEAK_WARN_DB`, −60..0 dBFS meter with the target band, raw and fx markers, clipping count); Pauses (room noise between words raw → fx, how much quieter, dead-silence warning above 5 %); Tone (bands boom … air against the goal, ±12 dB, good < 3 dB, warning ≥ 3, bad ≥ 6; dimmed with "Keep talking" under 1 s of speech); Try now (the engine's hints). One column on phones, Loudness and Pauses side by side on desktop.
+
+## Desktop app (v2.0)
+A Windows app that runs the person's real Wave Link plugins live on the raw mic. Every change is heard and measured right away. Once it sounds right, the app writes the result into Wave Link. Proven by the spikes in `spike/vst2-host/FINDINGS.md` and `spike/vst3-probe/FINDINGS.md`.
+- **Why:** the web live mode only sees what Wave Link outputs, and its numbers vanish when you stop talking. The app owns the chain, so:
+  - raw and processed are sample-aligned (known delay, no guessing);
+  - changes apply instantly;
+  - export is byte-exact.
+- **Non-goals (v2.0):**
+  - macOS and Linux.
+  - The app's own DSP, or a virtual audio device.
+  - Wave Link's built-in effects (VoiceFocus, WaveEQ, WaveCompressor, WaveExpander). They have no plugin file, so they are shown as "can't preview, kept as is".
+  - Changing Wave Link while it runs. It has no control API, so Settings.json is written only with Wave Link closed.
+- **Stack:**
+  - Tauri v2 in `desktop/`, with the Rust side in `desktop/src-tauri/`.
+  - The frontend is this Vite app (same `src/`); desktop screens render only when `isDesktop()`.
+  - Rust: `cpal` (WASAPI shared), own VST2 FFI (from the spike), the `vst3` crate (coupler-rs) for VST3, `libloading`, `serde_json`, `base64`.
+  - Windows only, 48 kHz, 480-sample blocks (the WASAPI shared-mode minimum and the Elgato Noise Removal frame size).
+- **Engine (Rust, `desktop/src-tauri/src/`):**
+  - `host/vst2`: ReaPlugs.
+    - State is a JUCE bank (`CcnK…FBCh`, fxVersion 1100, 1 program).
+    - ReaGate and ReaComp: 19 big-endian float params via set/getParameter.
+    - ReaEQ and ReaFIR: `effGetChunk(0)`.
+    - Re-read the parameter list after each state load, because ReaEQ changes numParams.
+    - ReaFIR re-encodes its noise profile on every save: compare it by parameters, never by bytes.
+  - `host/vst3`: Elgato effects.
+    - State is JUCE `VC2!` XML wrapping `<IComponent>` (JUCE base64 of `IComponent::getState`).
+    - PluginId is the JUCE uniqueId derived from the Audio Module class id.
+    - Plugins live on one thread with a Win32 message loop.
+    - After a state load or a bypass change, wait ≥ 120 ms before trusting Noise Removal's output.
+    - Noise Removal adds a 480-sample delay it doesn't report; the engine adds it to the known chain latency.
+  - `chain`: the mic input's effects in Wave Link order.
+    - Hostable effects are instantiated from their stored states.
+    - Per-plugin bypass mirrors Wave Link `BypassState` and the plugin's own bypass, and export writes both consistently.
+  - `audio`:
+    - Raw mic in → chain → monitor out. The default input is the one named "Wave XLR"/"Mic In" (any input can be picked); the default output is the device named "Headphones".
+    - Parameter changes go through a lock-free queue and apply between blocks.
+    - Monitor: Processed / Raw / Off. Output gain starts at −10 dB.
+    - Counters for underruns and processing time.
+  - `stream`: every 100 ms, sends the UI that period's raw and processed blocks (mono float32, already aligned by the chain latency) plus meters, over a Tauri channel.
+  - `wavelink`: reads Settings.json (read-only) and lists inputs and their chains. Export runs these steps:
+    1. Show the diff and ask for confirmation.
+    2. Back up to `Settings.backup-<date>.json` (same naming as the web flow).
+    3. Close Wave Link: close its window and wait up to 10 s; force it only after a second confirmation.
+    4. Write Settings.json.
+    5. Start Wave Link again.
+    6. Re-read the file and verify every changed `ParameterState`.
+
+    Tests only ever touch copies.
+- **Live analysis (framework-free TS, `src/desktop/`):** reuses `computeLiveMetrics` with the known lag (no `LagTracker`), and adds:
+  - **Hold:** for each side, the last values measured with ≥ 1 s of speech stay on screen during pauses, marked "last heard N s ago". Pause noise keeps updating.
+  - **History:** a 60 s scrolling chart of raw and processed speech level and of pause noise (one point per 500 ms), with a marker at every setting change.
+  - **Segments:** each setting change starts a segment. There is a summary per segment and one since Start: median speech level, pause noise, clipped frames, dead-silence share, and tone vs goal over all speech frames of the segment. "Before/after this change" is then a pair of rows.
+  - The same hold + history goes into the web live mode (`src/live/`), fixing "it resets when I stop talking".
+- **Tuning:**
+  - Each plugin card has sliders for the values the guide already uses:
+    - ReaGate threshold, hold, release, Wet and Dry;
+    - ReaComp threshold, ratio, attack, release and Wet;
+    - ReaEQ bands;
+    - Elgato Noise Removal strength (VAD Threshold) and on/off;
+    - ReaFIR on/off.
+  - "Open plugin window" opens the plugin's own editor, for example to capture a ReaFIR noise profile.
+  - "Try this" advice turns live metrics into concrete changes, using the refine rules and constants (`src/plain/refine.ts`, `src/audio/diagnose.ts`):
+    - too loud → Wet down until speech sits at −21 dBFS;
+    - doubled gate → Dry −20;
+    - dead silence → noise removal lower, or gate threshold −10;
+    - too quiet → Wet up (cap 18);
+    - harsh or boomy vs the goal → the guide's EQ moves.
+  - One tap applies a change live; each change has its own Undo.
+- **Start points:** the current Wave Link chain (default), a saved profile, or the web app's suggestion (SuggestionJson → plugin values through the existing `src/wavelink` mapping).
+- **Safety:**
+  - Nothing is written to Wave Link without "Save to Wave Link" plus a confirmation.
+  - A backup is made every time, and the app has "Restore backup".
+  - While previewing, the person also hears Wave Link's own monitor. The app tells them to mute the mic in Wave Link's monitor mix, or to pick Monitor: Off and listen in Wave Link.
+  - ReaFIR in the preview adds 85 ms. The app says so and offers to preview without it.
+- **Distribution:**
+  - GitHub Releases (NSIS installer), built by a workflow on tags `desktop-v*`.
+  - Unsigned at first; the download page explains the SmartScreen warning.
+  - The site gets a "Desktop app" page with the download link. The web app stays fully usable without it.

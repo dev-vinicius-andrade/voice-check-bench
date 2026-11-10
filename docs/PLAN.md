@@ -60,3 +60,29 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 
 ## v1.3 — Live tuning (SPEC "Live tuning (v1.3)")
 36. `[x]` **Live tuning screen** — Medium. Route `#/live` (Screen 'live', nav "Tune live", entries in the guide and the refine / change-approach cards), `src/components/live/*` (pickers, Start/Stop, status chip, LiveError alerts, Loudness / Pauses / Tone / Try now panels, reading text), `useLiveSession` over `createLiveSession`, localStorage `vcb-live-devices`, `live.json` en + pt-BR, tests with a fake session.
+
+## v2.0 — Desktop app (SPEC "Desktop app (v2.0)"; spikes in `spike/`)
+37. `[ ]` **Desktop scaffold** — Medium.
+    - Tauri v2 in `desktop/`, frontend = this Vite app, `isDesktop()` bridge in `src/desktop/bridge.ts`.
+    - Scripts `desktop:dev` and `desktop:build`, CLAUDE.md commands, CI build check.
+    - Verify: `npm run desktop:build` produces an installer, and the web build is unchanged.
+38. `[ ]` **Plugin host engine** — Careful. After 37.
+    - `host/vst2`, `host/vst3` and `chain` from the spike code: message-loop thread, latency compensation, bypass handling, state import/export.
+    - Verify: Rust tests on a Settings copy. ReaGate, ReaComp, ReaEQ and the three Elgato states round-trip byte-identical; ReaFIR is equal by parameters. Offline chain on a `_test` take matches the spike numbers.
+39. `[ ]` **Audio engine + stream** — Careful. After 38.
+    - cpal I/O, parameter queue, monitor modes, aligned raw/processed channel, counters.
+    - Verify: a 10 min run with 0 underruns, processing p99 < 20 % of a block, measured alignment 0 samples.
+40. `[ ]` **Wave Link read + export** — Careful. After 37; can run in parallel with 38.
+    - Read the chain, diff, backup, close/write/restart, verify, restore.
+    - Verify: tests on copies only, then a manual run by the user.
+41. `[ ]` **Hold + history + segments** — Careful. After 37; can run in parallel.
+    - Framework-free TS in `src/desktop/` and in the web `src/live/`: hold, 60 s history, segments, summaries.
+    - Verify: tests.
+42. `[ ]` **Live advice → parameter changes** — Careful. After 41.
+    - A pure module mapping metrics + chain values to changes, using the refine rules and constants, with Undo.
+    - Verify: a test for each rule.
+43. `[ ]` **Desktop UI** — Medium. After 39–42, and after the user approves a mockup.
+    - Device pickers, plugin cards with sliders, monitor A/B, history chart, segment table, advice list, export dialog with diff.
+    - en + pt-BR.
+44. `[ ]` **Release + download page** — Medium. After 43.
+    - Tag workflow → GitHub Release, the site's "Desktop app" page, README.
