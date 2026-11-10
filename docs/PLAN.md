@@ -84,5 +84,6 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 43. `[ ]` **Desktop UI** — Medium. After 39–42, and after the user approves a mockup.
     - Device pickers, plugin cards with sliders, monitor A/B, history chart, segment table, advice list, export dialog with diff.
     - en + pt-BR.
-44. `[ ]` **Release + download page** — Medium. After 43.
-    - Tag workflow → GitHub Release, the site's "Desktop app" page, README.
+44. `[~]` **Release + download page** — Medium.
+    - `[x]` Tag workflow → GitHub Release (`.github/workflows/release.yml`): tag `v<package.json version>`, NSIS installer + `.sha256`, a `-` suffix publishes a pre-release. Pulled forward so each step can be tried from a real download.
+    - `[ ]` After 43: the site's "Desktop app" page, README section, first non-pre-release.

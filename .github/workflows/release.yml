@@ -1,0 +1,76 @@
+name: Desktop release (Windows)
+
+# Push a tag `v<version>` matching package.json (e.g. v2.0.0-alpha.1) to build the
+# NSIS installer and publish it as a GitHub Release. A version with a '-' suffix is
+# published as a pre-release.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check tag matches package.json version
+        id: version
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version v${version}"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if [[ "${version}" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri -> target
+      - run: npm ci
+      - run: npm run desktop:build
+
+      - name: Collect installer and checksum
+        shell: bash
+        run: |
+          mkdir -p out
+          src=$(ls desktop/src-tauri/target/release/bundle/nsis/*_${{ steps.version.outputs.version }}_x64-setup.exe)
+          name="VoiceCheckBench-${{ steps.version.outputs.version }}-windows-x64-setup.exe"
+          cp "$src" "out/${name}"
+          (cd out && sha256sum "${name}" > "${name}.sha256")
+          ls -l out
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          if [ "${{ steps.version.outputs.prerelease }}" = "true" ]; then flags+=(--prerelease); else flags+=(--latest); fi
+          cat > notes.md <<'NOTES'
+          Windows installer for the Voice Check Bench desktop app.
+
+          **Download:** the `-setup.exe` file below. The `.sha256` file holds its checksum.
+
+          The installer is not code-signed yet. Windows SmartScreen may show "Windows protected your PC": click **More info**, then **Run anyway**.
+
+          Pre-releases are work in progress and may be missing features.
+          NOTES
+          gh release create "${GITHUB_REF_NAME}" out/* \
+            --title "Voice Check Bench ${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            --verify-tag "${flags[@]}"

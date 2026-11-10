@@ -367,6 +367,7 @@
 - `desktop/src-tauri/app-icon.png` — 1024 px placeholder source icon
 - `desktop/src-tauri/.gitignore` — `target/`, `gen/`
 - `.github/workflows/desktop.yml` — Windows desktop build check (desktop/src/package changes, manual): `npm run desktop:build`, NSIS installer artifact
+- `.github/workflows/release.yml` — desktop release on tag `v<package.json version>`: builds the NSIS installer, publishes a GitHub Release (pre-release when the version has a `-` suffix) with the `.exe` and its `.sha256`
 - `src/desktop/types.ts` — desktop bridge contract: EngineInfo (mirrors lib.rs)
 - `src/desktop/bridge.ts` — `isDesktop()` (`__TAURI_INTERNALS__`), `engineInfo()` via lazily imported `@tauri-apps/api/core` invoke (framework-free)
 - `src/desktop/bridge.test.ts` — isDesktop default/injected, engineInfo invokes `engine_info` (mocked)

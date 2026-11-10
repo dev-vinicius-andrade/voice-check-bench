@@ -8,6 +8,7 @@ Stack: Vite 8 · React 19 · TypeScript 6 strict · MUI 9 + Emotion · Tailwind 
 - `npm run typecheck` · `npm run lint` · `npm test`
 - `npm run desktop:dev` — desktop app (Tauri) with Vite on port 1420
 - `npm run desktop:build` — desktop NSIS installer (`desktop/src-tauri/target/release/bundle/nsis/`)
+- Desktop release: set `version` in package.json, push tag `v<version>` (a `-` suffix = pre-release); `release.yml` publishes it
 - `python tools/apply-reaplugs.py --show` — print current Wave Link ReaPlugs values
 
 ## Conventions
