@@ -97,6 +97,59 @@
         "noisy": "Ambientes barulhentos"
       },
       "votes": "{{dist}} ({{votes}} de {{reports}})",
+      "solutions": {
+        "title": "Ajustes compartilhados",
+        "intro": "Ajustes que as pessoas compartilharam para o microfone delas, ordenados pelos 👍 no GitHub. Votos mostram que as pessoas acharam útil, não que seja o melhor para você.",
+        "listLabel": "Ajustes compartilhados",
+        "filter": {
+          "mic": "Microfone",
+          "allMics": "Todos os microfones",
+          "style": "Estilo de voz",
+          "anyStyle": "Qualquer estilo",
+          "room": "Ambiente",
+          "sort": "Ordenar por"
+        },
+        "room": {
+          "any": "Qualquer ambiente",
+          "noisy": "Barulhento",
+          "quiet": "Silencioso"
+        },
+        "sort": {
+          "votes": "Mais votos",
+          "gain": "Maior melhora",
+          "newest": "Mais recentes"
+        },
+        "chip": {
+          "noisy": "Ambiente barulhento",
+          "quiet": "Ambiente silencioso",
+          "dist": "Microfone a {{dist}}",
+          "gain": "Voz {{gain}} mais clara acima do ambiente"
+        },
+        "settings": {
+          "eq": "Timbre (ReaEQ)",
+          "eqNone": "Sem mudanças",
+          "comp": "Nivelador de volume (ReaComp)",
+          "compValue": "começa em {{threshold}}, proporção {{ratio}}:1",
+          "gate": "Silêncio entre as palavras (ReaGate)",
+          "gateValue": "abre em {{threshold}}",
+          "noise": "Remoção de ruído (ReaFIR)",
+          "on": "Ligada",
+          "off": "Desligada"
+        },
+        "issue": "Ajustes compartilhados #{{issue}}",
+        "votesLabel_one": "{{count}} pessoa achou isto útil",
+        "votesLabel_many": "{{count}} pessoas acharam isto útil",
+        "votesLabel_other": "{{count}} pessoas acharam isto útil",
+        "vote": "👍 Votar no GitHub",
+        "use": "Usar estes ajustes",
+        "more_one": "Mostrar mais ({{count}} restante)",
+        "more_many": "Mostrar mais ({{count}} restantes)",
+        "more_other": "Mostrar mais ({{count}} restantes)",
+        "none": "Nenhum ajuste compartilhado ainda.",
+        "howTo": "Veja como compartilhar os seus",
+        "noMatch": "Nada corresponde a estes filtros.",
+        "clear": "Limpar filtros"
+      },
       "share": {
         "title": "Como compartilhar",
         "s1": "Termine um teste.",

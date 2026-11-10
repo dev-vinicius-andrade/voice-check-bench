@@ -4,14 +4,14 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { COMMUNITY_LABEL } from '../../community/types'
 import { SITE } from '../../site'
-import { SHARE_STEPS } from './howItWorksData'
+import { HOW_TO_SHARE_ID, SHARE_STEPS } from './howItWorksData'
 
 
 /** "How to share" box with the link to all shared results on GitHub. */
 export function CommunityHowToShare() {
   const { t } = useTranslation()
   return (
-    <Paper className="grid gap-3 p-5">
+    <Paper id={HOW_TO_SHARE_ID} className="grid gap-3 p-5">
       <Typography variant="h6" component="h2" sx={{ textTransform: 'uppercase' }}>
         {t('pages.community.share.title')}
       </Typography>

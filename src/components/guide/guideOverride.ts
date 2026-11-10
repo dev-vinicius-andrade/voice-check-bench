@@ -31,10 +31,17 @@ export const useGuideOverride = create<GuideOverrideStore>((set) => ({
 }))
 
 const REFINED_WHY = { key: 'guide.refined.eqWhy' }
+const COMMUNITY_WHY = { key: 'guide.refined.communityEqWhy' }
+
+/** Issue number of settings picked on the Community page (basedOn "community #<issue>"), else null. */
+export function communityIssue(basedOn: string): string | null {
+  return /^community #(\d+)$/.exec(basedOn)?.[1] ?? null
+}
 
 /** The suggestion with the refined values (EQ reasons kept where the band is unchanged). Pure. */
 export function overrideSuggestion(s: Suggestion, r: GuideRefined): Suggestion {
   const j = r.settings
+  const why = communityIssue(j.basedOn) ? COMMUNITY_WHY : REFINED_WHY
   const ai = r.noiseRemoval === 'ai-elgato' || r.noiseRemoval === 'ai-nvidia'
   const nr = s.noiseReduction ?? (j.noiseReduction || ai ? { plugin: 'ReaFIR' as const, steps: [], alternatives: [], preferAi: false } : null)
   return {
@@ -46,7 +53,7 @@ export function overrideSuggestion(s: Suggestion, r: GuideRefined): Suggestion {
     deess: j.deess,
     noisyRoom: j.noisyRoom,
     chain: j.chain,
-    eq: j.eq.map((e) => ({ ...e, why: s.eq.find((b) => b.type === e.type && Math.abs(b.freq - e.freq) < 1)?.why ?? REFINED_WHY })),
+    eq: j.eq.map((e) => ({ ...e, why: s.eq.find((b) => b.type === e.type && Math.abs(b.freq - e.freq) < 1)?.why ?? why })),
     // AI routes need preferAi so the guide shows the AI step and skips ReaFIR; 'none' drops noise removal
     noiseReduction: r.noiseRemoval === 'none' ? null : nr && { ...nr, preferAi: ai },
   }

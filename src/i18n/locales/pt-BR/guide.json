@@ -3,6 +3,9 @@
     "refined": {
       "title": "Seus ajustes refinados (tentativa {{n}})",
       "text": "Estes valores foram ajustados depois da sua última gravação. Quando terminar, grave de novo a {{dist}}.",
+      "communityTitle": "Ajustes compartilhados pela comunidade (#{{issue}})",
+      "communityText": "Alguém compartilhou estes valores no GitHub. Cada ambiente e cada voz são diferentes, então, quando terminar, grave de novo a {{dist}} para conferir se funcionam para você.",
+      "communityEqWhy": "Dos ajustes compartilhados.",
       "original": "Mostrar os ajustes originais",
       "eqWhy": "Ajustado depois da sua última gravação."
     },

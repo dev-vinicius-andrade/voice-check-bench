@@ -97,6 +97,57 @@
         "noisy": "Noisy rooms"
       },
       "votes": "{{dist}} ({{votes}} of {{reports}})",
+      "solutions": {
+        "title": "Shared settings",
+        "intro": "Settings people shared for their mic, ranked by 👍 on GitHub. Votes mean people found them helpful, not that they are the best for you.",
+        "listLabel": "Shared settings",
+        "filter": {
+          "mic": "Mic",
+          "allMics": "All mics",
+          "style": "Voice style",
+          "anyStyle": "Any style",
+          "room": "Room",
+          "sort": "Sort by"
+        },
+        "room": {
+          "any": "Any room",
+          "noisy": "Noisy",
+          "quiet": "Quiet"
+        },
+        "sort": {
+          "votes": "Most votes",
+          "gain": "Biggest improvement",
+          "newest": "Newest"
+        },
+        "chip": {
+          "noisy": "Noisy room",
+          "quiet": "Quiet room",
+          "dist": "Mic at {{dist}}",
+          "gain": "Voice {{gain}} clearer over the room"
+        },
+        "settings": {
+          "eq": "Tone (ReaEQ)",
+          "eqNone": "No changes",
+          "comp": "Volume leveller (ReaComp)",
+          "compValue": "starts at {{threshold}}, ratio {{ratio}}:1",
+          "gate": "Quiet between words (ReaGate)",
+          "gateValue": "opens at {{threshold}}",
+          "noise": "Noise reduction (ReaFIR)",
+          "on": "On",
+          "off": "Off"
+        },
+        "issue": "Shared settings #{{issue}}",
+        "votesLabel_one": "{{count}} person found this helpful",
+        "votesLabel_other": "{{count}} people found this helpful",
+        "vote": "👍 Vote on GitHub",
+        "use": "Use these settings",
+        "more_one": "Show more ({{count}} left)",
+        "more_other": "Show more ({{count}} left)",
+        "none": "No shared settings yet.",
+        "howTo": "See how to share yours",
+        "noMatch": "Nothing matches these filters.",
+        "clear": "Clear filters"
+      },
       "share": {
         "title": "How to share",
         "s1": "Finish a check.",

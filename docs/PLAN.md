@@ -51,3 +51,6 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 ## v1.1 — Refinement loop (SPEC "Refinement loop")
 32. `[x]` **Engine fixes + refine()** — Careful.
 33. `[x]` **Loop UI + applied tracking** — Medium.
+
+## v1.2 — Community checks and votes (SPEC "Community results via GitHub issues": Automatic checks, Votes)
+34. `[x]` **Issue checker, mic matching, votes** — Careful. `src/community/micMatch.ts`, `src/community/review.ts`, `parseSummaryDetailed` in `validate.ts`, `aggregate()` over reviewed reports + `solutions`, `tools/community/review.ts` (`npm run community:review`), `tools/community/github.ts`, `tools/community/aliases.json`, workflow jobs `review` → `aggregate`, cron every 6 hours.

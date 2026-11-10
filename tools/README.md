@@ -91,13 +91,39 @@ People can share an anonymized result for their microphone, and the app shows wh
 `tools/community/aggregate.ts` (`npm run community:aggregate`):
 
 1. Fetches every issue labelled `mic-result` (open and closed) through the GitHub REST API, 100 per page. Pull requests are skipped. `GITHUB_TOKEN` is used when set (higher rate limit).
-2. Reads the ```` ```json ```` block under `### Summary` in each issue body and checks it strictly (`src/community/validate.ts`): known keys only, allowed enums, numbers in sane ranges, 1–5 takes, at most 12 EQ bands. Anything malformed is ignored.
-3. Aggregates (`src/community/aggregate.ts`): identical summaries count once; reports are grouped by the normalized model (`micKey`, so "Fifine K688" and "fifine-k688" are the same mic); reports with an empty model or without a raw control take (2/8/15 cm) are left out. Per mic: typical raw SNR and noise floor (median, 25th and 75th percentile), median tone deviation per band from each report's best raw control take, votes for the best distance, SNR gain of the processed take, median suggested EQ (notches excluded) and the share of noisy rooms.
-4. Writes `public/community/mics.json` (the app fetches it as `community/mics.json`). When nothing but the timestamp would change, the file is left alone.
+2. Reads the ```` ```json ```` block under `### Summary` in each issue body and checks it strictly (`src/community/validate.ts`): known keys only, allowed enums, numbers in sane ranges, 1–5 takes, at most 12 EQ bands.
+3. Reviews every issue exactly like the checker below (`src/community/review.ts`), so only `accepted` reports count, and a report replaced by a newer one from the same person does not.
+4. Aggregates (`src/community/aggregate.ts`): reports are grouped by their matched mic (see "Mic names"); the name shown is the most common spelling. Per mic: typical raw SNR and noise floor (median, 25th and 75th percentile), median tone deviation per band from each report's best raw control take, votes for the best distance, SNR gain of the processed take, median suggested EQ (notches excluded) and the share of noisy rooms.
+5. Writes `public/community/mics.json` (the app fetches it as `community/mics.json`). When nothing but the timestamp would change, the file is left alone.
 
-The workflow `.github/workflows/community.yml` runs the script when a `mic-result` issue is opened, edited, labelled, reopened or closed, once a day and on demand, and commits `public/community/mics.json` when it changed.
+Per mic the index also lists the shared settings (`solutions`): one per counted report with a suggestion, ranked by the 👍 reactions on its issue, then newest. Free text from the issue (hints, EQ reasons, noise-reduction steps) is not copied into `solutions`.
 
-To drop a report from the stats, edit the issue's Summary, or remove the `mic-result` label and run the workflow again.
+The workflow `.github/workflows/community.yml` runs the checker and then this script when a `mic-result` issue is opened, edited, reopened, labelled or unlabelled, every 6 hours (reactions do not trigger workflows, so this is how new votes arrive) and on demand, and commits `public/community/mics.json` when it changed.
+
+To drop a report from the stats, add the `rejected` label (set by hand only; the checker then leaves the issue alone), or remove the `mic-result` label, and run the workflow again.
+
+## Automatic checks
+
+`tools/community/review.ts` (`npm run community:review`) runs on each `mic-result` issue event (not on the bot's own changes). It reviews all issues in issue-number order and then changes only the issue in `ISSUE_NUMBER`:
+
+| Verdict | When | Label | Issue |
+|---|---|---|---|
+| rejected | the `rejected` label is set (by hand) | untouched | untouched |
+| invalid | no Summary block, broken JSON, a missing/invalid value, no raw control take, or a model without letters/digits | `invalid` | closed as not planned |
+| duplicate | the same Summary as an issue that already counts | `duplicate` | closed as not planned |
+| accepted | everything else; a newer report by the same person for the same mic replaces the older one | `accepted` | reopened if the bot had closed it (never when a person closed it) |
+
+It keeps exactly one of `accepted` / `invalid` / `duplicate` (creating the label when the repo lacks it) and one comment of its own, found by the hidden `<!-- vcb-review -->` marker and edited in place. The comment says what is wrong or which mic the result counts for; the only text it quotes from the issue is the mic model, as a code span. Verdicts never depend on the labels the checker sets, so editing the issue simply runs the check again. Other issues whose verdict changes as a side effect keep their labels until their next event; the stats are always rebuilt from scratch.
+
+### Mic names
+
+Models are compared by `micKey` (lowercase letters and digits only) and matched in this order (`src/community/micMatch.ts`):
+1. **Alias** in `tools/community/aliases.json`: `"aliases": { "k688": "fifinek688" }`.
+2. **Exact** key of a mic already counted.
+3. **Fuzzy**: one typo for keys of 5+ characters, two for 8+, but never when the digits differ ("SM57" vs "SM58"); or a key of 4+ characters with a digit inside the other ("k688" in "fifinek688", "at2020" in "at2020usb"). With several candidates, the mic with most reports wins.
+4. Otherwise a **new** mic.
+
+When two different mics get joined, list the pair under `"distinct": [["at2020", "at2020usb"]]`. A missing or broken `aliases.json` is logged and treated as empty.
 
 ## Running locally
 
@@ -109,7 +135,16 @@ npm run community:aggregate
 GITHUB_TOKEN=... COMMUNITY_REPO=you/voice-check-bench npm run community:aggregate
 
 # Offline: a JSON array of issue-like objects, e.g. [{ "body": "### Summary\n\n```json\n{...}\n```" }]
+# (optional fields as in the API: number, user.login, labels, state, reactions["+1"])
 npm run community:aggregate -- --from-file issues.json
+
+# Checker: print every verdict (writes nothing)
+npm run community:review
+
+# Checker for one issue, read-only: prints the label/comment/state changes it would make
+ISSUE_NUMBER=12 npm run community:review -- --dry-run
 ```
+
+Without `--dry-run`, `ISSUE_NUMBER` makes real changes on the repo (needs a `GITHUB_TOKEN` allowed to write issues).
 
 The script prints how many issues it read, how many summaries were valid and how many mics are in the index. Do not commit a `mics.json` built from test data.

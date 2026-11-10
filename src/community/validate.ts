@@ -25,7 +25,7 @@ const BAND_COUNT = 9
 const MAX_TEXT = 2000
 const MAX_LIST = 20
 
-/** Thrown internally on the first invalid field; parseSummary turns it into null. */
+/** Thrown internally on the first invalid field; parseSummary turns it into null, parseSummaryDetailed into a problem. */
 class Invalid extends Error {}
 const fail = (what: string): never => {
   throw new Invalid(what)
@@ -167,23 +167,51 @@ function parseSuggestion(v: unknown): CommunitySummary['suggestion'] {
   }
 }
 
+/** Rebuilds a summary from known keys; throws Invalid naming the first bad field. */
+function parseOrThrow(v: unknown): CommunitySummary {
+  const o = obj(v, 'summary')
+  if (o.app !== 'voice-check-bench' || o.version !== 1) fail('app/version')
+  const takes = arr(o.takes, MAX_TAKES, 'takes')
+  if (!takes.length) fail('takes')
+  return {
+    app: 'voice-check-bench',
+    version: 1,
+    mic: parseMic(o.mic),
+    takes: takes.map(parseTake),
+    suggestion: parseSuggestion(o.suggestion),
+    ...(GOAL_STYLES.includes(o.goalStyle as VoiceStyle) ? { goalStyle: o.goalStyle as VoiceStyle } : {}),
+  }
+}
+
 /** Valid summary rebuilt from known keys, or null when anything is missing, of the wrong type or out of range. */
 export function parseSummary(v: unknown): CommunitySummary | null {
   try {
-    const o = obj(v, 'summary')
-    if (o.app !== 'voice-check-bench' || o.version !== 1) fail('app/version')
-    const takes = arr(o.takes, MAX_TAKES, 'takes')
-    if (!takes.length) fail('takes')
-    return {
-      app: 'voice-check-bench',
-      version: 1,
-      mic: parseMic(o.mic),
-      takes: takes.map(parseTake),
-      suggestion: parseSuggestion(o.suggestion),
-      ...(GOAL_STYLES.includes(o.goalStyle as VoiceStyle) ? { goalStyle: o.goalStyle as VoiceStyle } : {}),
-    }
+    return parseOrThrow(v)
   } catch (e) {
     if (e instanceof Invalid) return null
+    throw e
+  }
+}
+
+export type ParseSummaryResult = { ok: true; summary: CommunitySummary } | { ok: false; problem: string }
+
+/**
+ * Issue body → summary, or an English problem for the checker's comment. The problem names a field
+ * ("mic.model") or the block; it never contains text from the body.
+ */
+export function parseSummaryDetailed(body: string): ParseSummaryResult {
+  const candidate = summaryCandidate(body)?.trim()
+  if (!candidate || candidate === '_No response_') return { ok: false, problem: 'Summary block missing' }
+  let value: unknown
+  try {
+    value = JSON.parse(candidate) as unknown
+  } catch {
+    return { ok: false, problem: 'Summary is not valid JSON' }
+  }
+  try {
+    return { ok: true, summary: parseOrThrow(value) }
+  } catch (e) {
+    if (e instanceof Invalid) return { ok: false, problem: `Summary has a missing or invalid value: ${e.message}` }
     throw e
   }
 }
@@ -193,24 +221,24 @@ const JSON_FENCE = /```json[^\n]*\n([\s\S]*?)```/i
 const ANY_FENCE = /```[^\n]*\n([\s\S]*?)```/
 
 /**
- * The JSON value from an issue-form body. Issue forms render the `summary` textarea (render: json) as
+ * Text of the summary block in an issue-form body. Issue forms render the `summary` textarea (render: json) as
  * "### Summary" followed by a ```json fenced block. Takes the first ```json block of that section (else any
  * fenced block, else the section text); without the heading, the first ```json block of the body.
- * Returns undefined when nothing parses.
  */
-export function extractSummaryFromIssueBody(body: string): unknown {
+function summaryCandidate(body: string): string | undefined {
   if (typeof body !== 'string') return undefined
   const text = body.replace(/\r\n/g, '\n')
   const head = SUMMARY_HEADING.exec(text)
-  let candidate: string | undefined
-  if (head) {
-    const rest = text.slice(head.index + head[0].length)
-    const next = /^###\s/m.exec(rest)
-    const section = next ? rest.slice(0, next.index) : rest
-    candidate = JSON_FENCE.exec(section)?.[1] ?? ANY_FENCE.exec(section)?.[1] ?? section
-  } else {
-    candidate = JSON_FENCE.exec(text)?.[1]
-  }
+  if (!head) return JSON_FENCE.exec(text)?.[1]
+  const rest = text.slice(head.index + head[0].length)
+  const next = /^###\s/m.exec(rest)
+  const section = next ? rest.slice(0, next.index) : rest
+  return JSON_FENCE.exec(section)?.[1] ?? ANY_FENCE.exec(section)?.[1] ?? section
+}
+
+/** The JSON value of the summary block (see summaryCandidate). Returns undefined when nothing parses. */
+export function extractSummaryFromIssueBody(body: string): unknown {
+  const candidate = summaryCandidate(body)
   if (candidate === undefined) return undefined
   try {
     return JSON.parse(candidate.trim()) as unknown

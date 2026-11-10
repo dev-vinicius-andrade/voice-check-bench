@@ -1,26 +1,63 @@
-# Rebuilds public/community/mics.json from the "mic-result" issues and commits it when it changed.
+# Checks "mic-result" issues (labels + bot comment), then rebuilds public/community/mics.json and commits it
+# when it changed. Reactions do not trigger workflows: the schedule picks up new 👍 votes.
 name: Community mic stats
 
 on:
   issues:
-    types: [opened, edited, labeled, reopened, closed]
+    types: [opened, edited, reopened, labeled, unlabeled]
   schedule:
-    - cron: "17 4 * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
-  issues: read
-
-concurrency:
-  group: community-mic-stats
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  aggregate:
-    # issue events only matter for issues with the mic-result label
-    if: github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'mic-result')
+  review:
+    # mic-result issues only (an unlabeled event still carries the removed label); never react to the bot itself
+    if: >-
+      github.event_name == 'issues' &&
+      github.actor != 'github-actions[bot]' &&
+      (contains(github.event.issue.labels.*.name, 'mic-result') || github.event.label.name == 'mic-result')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    concurrency:
+      group: community-review-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # the issue number is passed through env only; issue titles and bodies never reach the shell
+      - name: Check the issue
+        run: npm run community:review
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  aggregate:
+    needs: review
+    # runs after the review, or alone on schedule / workflow_dispatch (review skipped)
+    if: >-
+      always() &&
+      (needs.review.result == 'success' || needs.review.result == 'skipped') &&
+      (github.event_name != 'issues' ||
+        contains(github.event.issue.labels.*.name, 'mic-result') || github.event.label.name == 'mic-result')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+    concurrency:
+      group: community-mic-stats
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 

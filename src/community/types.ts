@@ -67,6 +67,27 @@ export interface CommunityMicStats {
   eq: { type: 'Low Shelf' | 'Band' | 'High Shelf'; freq: number; gainMedian: number; reports: number }[]
   /** Share of reports whose suggestion was noisyRoom (0..1). */
   noisyRoomShare: number
+  /** One entry per counted report that has a suggestion, most votes first (v1.2). Absent in older index files. */
+  solutions?: CommunitySolution[]
+}
+
+/** Settings one person shared, ranked by the 👍 reactions on its issue (v1.2). */
+export interface CommunitySolution {
+  /** Issue number (link: https://github.com/${COMMUNITY_REPO}/issues/<issue>). Also the "newest" order. */
+  issue: number
+  /** 👍 reactions on the issue. */
+  votes: number
+  /** goalStyle of the report, null when absent. */
+  style: VoiceStyle | null
+  /** The report's suggestion was made for a noisy room. */
+  noisyRoom: boolean
+  /** SNR of the report's best raw control take, dB (rounded 0.1). */
+  rawSnr: number
+  /** Distance of that best raw control take ('2 cm' | '8 cm' | '15 cm'). */
+  dist: string
+  /** Processed SNR minus best raw SNR, when the report has a processed (fx) take; else null. */
+  snrGain: number | null
+  suggestion: Omit<SuggestionJson, 'basedOn'>
 }
 
 export interface CommunityIndex {
@@ -77,6 +98,50 @@ export interface CommunityIndex {
   reports: number
   mics: CommunityMicStats[]
 }
+
+/** Labels the issue checker sets (tools/community/review.ts). `rejected` is only set by hand and always wins. */
+export const COMMUNITY_REVIEW_LABELS = {
+  accepted: 'accepted',
+  invalid: 'invalid',
+  duplicate: 'duplicate',
+  rejected: 'rejected',
+} as const
+
+/** Manual mic-name corrections, tools/community/aliases.json. Keys are micKey() values. */
+export interface MicAliases {
+  /** micKey → canonical micKey ("k688" → "fifinek688"). */
+  aliases: Record<string, string>
+  /** Pairs of micKeys that look alike but are different mics; fuzzy matching never joins them. */
+  distinct: [string, string][]
+}
+
+/** A mic-result issue as the checker and the aggregator see it (bodies are untrusted). */
+export interface CommunityIssue {
+  number: number
+  /** GitHub login of the author. Never written to mics.json. */
+  author: string
+  body: string
+  labels: string[]
+  state: 'open' | 'closed'
+  /** 👍 reactions. */
+  votes: number
+}
+
+/** How a report's model name was matched to a known mic. */
+export interface MicMatch {
+  /** Canonical micKey the report counts under. */
+  key: string
+  /** Display name of that mic (most common spelling among its reports, or the report's own for a new mic). */
+  model: string
+  how: 'new' | 'exact' | 'alias' | 'fuzzy'
+}
+
+/** Checker verdict for one issue. */
+export type ReviewVerdict =
+  | { kind: 'accepted'; mic: MicMatch; /** Earlier issue by the same author for the same mic, now replaced in the stats. */ replaces: number | null }
+  | { kind: 'invalid'; /** English, for the issue comment: what is wrong ("mic.model", "Summary block missing"). */ problem: string }
+  | { kind: 'duplicate'; /** Issue with the identical Summary that counts instead. */ of: number }
+  | { kind: 'rejected' }
 
 /** Normalized model key: "Fifine K688", "fifine-k688 " → "fifinek688". Empty model → ''. */
 export const micKey = (model: string): string =>

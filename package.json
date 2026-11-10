@@ -11,7 +11,8 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "community:aggregate": "tsx tools/community/aggregate.ts"
+    "community:aggregate": "tsx tools/community/aggregate.ts",
+    "community:review": "tsx tools/community/review.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

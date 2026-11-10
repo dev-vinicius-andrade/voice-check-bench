@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractSummaryFromIssueBody, parseSummary } from './validate'
+import { extractSummaryFromIssueBody, parseSummary, parseSummaryDetailed } from './validate'
 import { summary, take } from './testFixtures'
 
 // Intentionally invalid inputs are built as plain JSON-like objects (unknown), like a parsed issue body.
@@ -81,5 +81,22 @@ describe('extractSummaryFromIssueBody', () => {
   it('returns undefined for missing or broken JSON', () => {
     expect(extractSummaryFromIssueBody('just text')).toBeUndefined()
     expect(extractSummaryFromIssueBody('### Summary\n\n```json\n{"app": \n```')).toBeUndefined()
+  })
+})
+
+describe('parseSummaryDetailed', () => {
+  const fenced = (s: unknown) => `### Summary\n\n\`\`\`json\n${JSON.stringify(s)}\n\`\`\``
+
+  it('returns the same summary as parseSummary', () => {
+    const s = summary('Fifine K688', [take('c2', 30)])
+    expect(parseSummaryDetailed(fenced(s))).toEqual({ ok: true, summary: parseSummary(s) })
+  })
+
+  it('names the problem without echoing the body', () => {
+    expect(parseSummaryDetailed('just text')).toEqual({ ok: false, problem: 'Summary block missing' })
+    expect(parseSummaryDetailed('### Summary\n\n_No response_')).toEqual({ ok: false, problem: 'Summary block missing' })
+    expect(parseSummaryDetailed('### Summary\n\n```json\n{"secret": \n```')).toEqual({ ok: false, problem: 'Summary is not valid JSON' })
+    expect(parseSummaryDetailed(fenced(withAnalysis({ snr: 999 })))).toEqual({ ok: false, problem: 'Summary has a missing or invalid value: snr' })
+    expect(parseSummaryDetailed(fenced({ ...base(), version: 2 }))).toEqual({ ok: false, problem: 'Summary has a missing or invalid value: app/version' })
   })
 })

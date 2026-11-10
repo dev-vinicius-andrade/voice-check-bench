@@ -3,6 +3,9 @@
     "refined": {
       "title": "Your refined settings (attempt {{n}})",
       "text": "These values were adjusted after your last take. When you're done, record again at {{dist}}.",
+      "communityTitle": "Settings shared by the community (#{{issue}})",
+      "communityText": "Someone shared these values on GitHub. Every room and voice is different, so when you're done, record again at {{dist}} to check they work for you.",
+      "communityEqWhy": "From the shared settings.",
       "original": "Show the original settings",
       "eqWhy": "Adjusted after your last take."
     },

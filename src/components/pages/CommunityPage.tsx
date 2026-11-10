@@ -10,6 +10,7 @@ import { CommunityHowToShare } from './CommunityHowToShare'
 import { CommunityMicList } from './CommunityMicList'
 import { filterMics, fmtGenerated } from './communityFormat'
 import { PageColumn, PageHead, StartButton } from './PageLayout'
+import { SolutionsSection } from './SolutionsSection'
 import { useCommunityIndexStatus } from './useCommunityIndexStatus'
 
 function EmptyState() {
@@ -84,6 +85,7 @@ export function CommunityPage() {
           </Typography>
         )}
       </section>
+      {hasAny && all && <SolutionsSection mics={all} />}
       <CommunityHowToShare />
     </PageColumn>
   )

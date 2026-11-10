@@ -23,3 +23,5 @@ export const HOME_STEPS = ['mic', 'raw', 'fx', 'settings'] as const
 
 /** pages.community.share.<id> */
 export const SHARE_STEPS = ['s1', 's2', 's3', 's4', 's5'] as const
+/** Element id of the Community page's "How to share" box (the shared-settings empty state scrolls to it). */
+export const HOW_TO_SHARE_ID = 'how-to-share'

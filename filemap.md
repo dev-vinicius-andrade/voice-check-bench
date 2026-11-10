@@ -7,10 +7,13 @@
 - `tools/apply-reaplugs.py` — writes exported settings into Wave Link Settings.json (`--show`, preview, `--write`, `--self-test`, `--input`)
 - `tools/README.md` — tool usage, Wave Link FXP layout, noisy rooms (notches, manual ReaFIR), safety and restore; community results (sharing, index build, running locally)
 - `tools/example-settings.json` — sample settings export for previewing the tool
-- `tools/community/aggregate.ts` — `npm run community:aggregate`: fetches `mic-result` issues (GitHub REST, paginated, GITHUB_TOKEN optional) or `--from-file`, writes `public/community/mics.json` (skips the write when only `generated` would change)
+- `tools/community/aggregate.ts` — `npm run community:aggregate`: fetches `mic-result` issues (GitHub REST, paginated, GITHUB_TOKEN optional) or `--from-file`, reviews them (`reviewIssues`), writes `public/community/mics.json` (skips the write when only `generated` would change)
+- `tools/community/review.ts` — `npm run community:review`: issue checker for `ISSUE_NUMBER` (accepted/invalid/duplicate label, bot comment by marker, close/reopen); without it or with `--dry-run` prints only
+- `tools/community/github.ts` — shared GitHub REST helpers (`api`, `apiList`, `fetchIssues`), `toCommunityIssue` (API/`--from-file` → CommunityIssue), `loadAliases`
+- `tools/community/aliases.json` — manual mic-name aliases and `distinct` pairs (MicAliases)
 - `.github/ISSUE_TEMPLATE/mic-result.yml` — "Mic result" issue form: summary (json), notes, public-issue consent; label `mic-result`
 - `.github/ISSUE_TEMPLATE/config.yml` — issue chooser (blank issues allowed)
-- `.github/workflows/community.yml` — rebuilds and commits `public/community/mics.json` on mic-result issue events, daily and on demand
+- `.github/workflows/community.yml` — job `review` (issue checker on mic-result issue events) then `aggregate` (rebuilds and commits `public/community/mics.json`; also every 6 hours and on demand)
 - `public/community/mics.json` — community index served by the app (generated; empty until the first run)
 - `README.md` — project overview, requirements, workflow, scripts
 - `package.json` — scripts and dependencies
@@ -56,13 +59,19 @@
 - `src/community/summary.test.ts` — summary anonymization, free take, non-finite numbers as null, goal style without perceived issues
 - `src/community/shareUrl.ts` — `buildShareUrl()`: pre-filled issue-form link ≤ 7500 chars (round, 3 tones, drop rel, else no summary + truncated)
 - `src/community/shareUrl.test.ts` — link shape, shrink steps, blank-form fallback
-- `src/community/types.ts` — community data contract: `CommunitySummary` (optional `goalStyle`), `CommunityIndex`, `micKey()`, repo/label/template constants
-- `src/community/validate.ts` — `parseSummary()` strict shape/range check (rebuilds known keys; null bandSnr/noiseKind/spread accepted), `extractSummaryFromIssueBody()`
-- `src/community/validate.test.ts` — accepted/rejected summaries, issue-form body parsing
-- `src/community/aggregate.ts` — `aggregate()` summaries → CommunityIndex (dedupe, micKey groups, spreads, best-control deviations, distance votes, EQ medians), `percentile`, `spread`, `bestRawControl`
-- `src/community/aggregate.test.ts` — grouping, dedupe, malformed bodies, spreads, votes, fx gain, EQ without notches, null bandSnr
+- `src/community/types.ts` — community data contract: `CommunitySummary` (optional `goalStyle`), `CommunityIndex`, `CommunitySolution`, review types (`MicAliases`, `CommunityIssue`, `MicMatch`, `ReviewVerdict`, `COMMUNITY_REVIEW_LABELS`), `micKey()`, repo/label/template constants
+- `src/community/validate.ts` — `parseSummary()` strict shape/range check (rebuilds known keys; null bandSnr/noiseKind/spread accepted), `parseSummaryDetailed()` (issue body → summary or English problem), `extractSummaryFromIssueBody()`
+- `src/community/validate.test.ts` — accepted/rejected summaries, issue-form body parsing, detailed problems
+- `src/community/aggregate.ts` — `aggregate()` reviewed reports → CommunityIndex (accepted and not replaced only, matched-mic groups, spreads, best-control deviations, distance votes, EQ medians, `solutions` by votes), `percentile`, `spread`, `bestRawControl`, `displayModel`, `publicSuggestion` (no free text)
+- `src/community/micMatch.ts` — `matchMic()` alias → exact → fuzzy (Levenshtein without digit changes, containment) → new; `levenshtein()`
+- `src/community/micMatch.test.ts` — K688 spellings, SM7/SM7B, AT2020 distinct, SM57/SM58 digits, tie-breaks
+- `src/community/review.ts` — `reviewIssues()` verdict per issue (rejected/invalid/duplicate/accepted + replaces), `reviewedReports()`, `summaryHash()`, `reviewComment()` (marker, escaped model)
+- `src/community/review.test.ts` — verdict order, problems, duplicates, replacements, bot labels ignored, comment text and escaping
+- `src/community/aggregate.test.ts` — grouping via review, dedupe, malformed bodies, spreads, votes, fx gain, EQ without notches, null bandSnr, replaced reports, solutions order and free-text stripping
 - `src/community/testFixtures.ts` — test-only summary/take/EQ builders
 - `src/community/useCommunity.ts` — `loadCommunityIndex()` (fetched once, fails soft), `useCommunityIndex()`, `useCommunityMic(model)`
+- `src/community/solutions.ts` — shared settings (v1.2): `collectSolutions`, `micsWithSolutions`, `effectiveMic` (chosen → own mic → all), `filterSolutions` (mic/style/room; votes · biggest improvement · newest), `parseSolutionFilter`, `issueUrl`
+- `src/community/solutions.test.ts` — flatten, sorts (nulls last), filters, mic resolution, stored-filter parsing
 - `public/worklets/` — AudioWorklet scripts served as static files
 - `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
 - `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
@@ -180,6 +189,13 @@
 - `src/components/pages/CommunityHowToShare.tsx` — "How to share" steps and link to the mic-result issues
 - `src/components/pages/communityFormat.ts` — SNR/distance/noisy-share formatting, search filter + sort, generated date
 - `src/components/pages/useCommunityIndexStatus.ts` — community index with loading / ready / unavailable state
+- `src/components/pages/SolutionsSection.tsx` — "Shared settings" on the Community page: heading + intro, filters, cards (10 + "Show more"), none-shared / nothing-matches states
+- `src/components/pages/SolutionFilters.tsx` — mic · voice style · room toggle · sort controls (wrap on mobile)
+- `src/components/pages/SolutionCard.tsx` — one shared solution: votes, chips (style, room, distance, SNR gain), settings summary, "Vote on GitHub" / "Use these settings"
+- `src/components/pages/SolutionSettings.tsx` — compact EQ / compressor / gate / noise-removal summary of a solution
+- `src/components/pages/useSolutionFilter.ts` — filter state remembered in localStorage `vcb-community-filter` (try/catch), defaults to the saved mic when it has solutions
+- `src/components/pages/solutionApply.ts` — `solutionRefinement()` (basedOn "community #N") and `applyCommunitySolution()` → guide override + guide screen
+- `src/components/pages/solutions.test.tsx` — SolutionCard render + "Use these settings", section empty states, default mic, clear filters, show more, blocked storage
 - `src/components/pages/PrivacyPage.tsx` — privacy: local storage, sharing, removal, no tracking, the Wave Link tool
 - `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic profile card, mic card, start/results buttons
 - `src/components/setup/MicProfileCard.tsx` — "Which mic do you have?": model autocomplete ("Other / not listed" stores ''), type/pattern/where-you-speak selects with plain explanations, power-grid (mains) select, tips, community line
@@ -221,7 +237,7 @@
 - `src/components/guide/GuideScreen.tsx` — route #/guide: page head, empty state (start/finish the check) without a suggestion, refined-settings banner, host picker, path for the picked host (with the guide override applied)
 - `src/components/guide/guideOverride.ts` — guide override (v1.1): in-memory zustand `useGuideOverride` (refined settings + route + dist + attempt, set by RefineCard "I'll change them by hand"; an AI route also saves the nrChoice), `overrideSuggestion(s, refined)`
 - `src/components/guide/guideOverride.test.ts` — override values/EQ reasons, AI route skips ReaFIR
-- `src/components/guide/RefinedBanner.tsx` — "Your refined settings (attempt N)" banner with "Show the original settings" (clears the override)
+- `src/components/guide/RefinedBanner.tsx` — "Your refined settings (attempt N)" banner (or "Settings shared by the community (#N)" for Community picks) with "Show the original settings" (clears the override)
 - `src/components/guide/hostPref.ts` — `Host` (wavelink/obs/apps/nvidia/unsure), `loadHost`/`saveHost` (localStorage `vcb-host`, fails soft), `useHost()`
 - `src/components/guide/HostPicker.tsx` — "What do you use for your mic?" cards, "Not sure" chooser with recommendations, compact "You picked" line with Change
 - `src/components/guide/GuideStepper.tsx` — vertical progress checklist (MUI Stepper): "Done, next" / "Back", jump to any step, all-done message
