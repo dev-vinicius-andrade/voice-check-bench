@@ -8,6 +8,7 @@ import { routeContext, routeToScreen } from '../../hooks/useHashRoute'
 import { useBench } from '../../store/benchStore'
 import { useSuggestion } from '../../store/hooks'
 import { isAnalysisError, type Suggestion } from '../../types'
+import { GuideLiveCta } from '../live/TuneLiveButton'
 import { PageColumn, PageHead } from '../pages/PageLayout'
 import { AppsGuide } from './AppsGuide'
 import { HostPicker } from './HostPicker'
@@ -61,6 +62,7 @@ export function GuideScreen() {
           <RefinedBanner />
           <HostPicker host={host} onPick={setHost} />
           {host && <HostGuide key={host} host={host} s={s} />}
+          {host && <GuideLiveCta />}
         </div>
       )}
     </PageColumn>

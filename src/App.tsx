@@ -3,6 +3,7 @@ import { CommunityPage } from './components/pages/CommunityPage'
 import { HomePage } from './components/pages/HomePage'
 import { HowItWorksPage } from './components/pages/HowItWorksPage'
 import { PrivacyPage } from './components/pages/PrivacyPage'
+import { LiveScreen } from './components/live/LiveScreen'
 import { ProfilesPage } from './components/profiles/ProfilesPage'
 import { ResultsScreen } from './components/results/ResultsScreen'
 import { SetupScreen } from './components/setup/SetupScreen'
@@ -33,6 +34,7 @@ export default function App() {
         {screen === 'results' && <ResultsScreen />}
         {screen === 'guide' && <GuideScreen />}
         {screen === 'profiles' && <ProfilesPage />}
+        {screen === 'live' && <LiveScreen />}
       </main>
       <Footer />
       <StatusSnackbar />

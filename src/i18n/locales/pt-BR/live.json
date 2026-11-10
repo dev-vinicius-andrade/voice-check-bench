@@ -1,0 +1,104 @@
+{
+  "live": {
+    "nav": "Ajuste ao vivo",
+    "head": {
+      "first": "Ajuste",
+      "second": "ao vivo",
+      "lead": "Ouça seu microfone cru e o Wave Link ao mesmo tempo enquanto muda os ajustes, e veja na hora o que cada mudança faz. Nada é gravado.",
+      "note": "Se o microfone cru não abrir enquanto o Wave Link estiver rodando, use só a saída do Wave Link: você ainda vê volume, pausas e timbre."
+    },
+    "entry": {
+      "button": "Ajuste ao vivo",
+      "guideText": "Mudou os ajustes? Refine enquanto fala e veja seu volume e seu timbre mudarem."
+    },
+    "devices": {
+      "raw": "Microfone cru",
+      "fx": "Com efeitos (Wave Link)",
+      "none": "Nenhum — só a saída do Wave Link",
+      "enable": "Ligue o microfone para listar suas entradas."
+    },
+    "controls": {
+      "start": "Começar a ouvir",
+      "stop": "Parar",
+      "starting": "Abrindo as entradas…"
+    },
+    "status": {
+      "sync": "Ouvindo · em sincronia ({{ms}} ms)",
+      "lining": "Ouvindo · alinhando…",
+      "fxOnly": "Ouvindo · só a saída do Wave Link"
+    },
+    "error": {
+      "unsupported": "Este navegador não consegue ouvir duas entradas ao vivo. Use um Chrome, Edge ou Firefox recente.",
+      "permission": "O navegador não liberou o microfone. Libere o acesso para esta página e tente de novo.",
+      "rawUnavailable": "Não deu para abrir seu microfone cru. Confira se ele está conectado ou use só a saída do Wave Link.",
+      "fxUnavailable": "Não deu para abrir a saída do Wave Link. Confira se o Wave Link está aberto e escolha a saída dele de novo.",
+      "sameDevice": "As duas escolhas são a mesma entrada. Escolha o microfone cru em uma e a saída do Wave Link na outra.",
+      "other": "A escuta ao vivo parou por um erro inesperado. Tente começar de novo.",
+      "useFxOnly": "Usar só a saída do Wave Link"
+    },
+    "read": {
+      "title": "Leia o texto em voz alta",
+      "text": "Fale normalmente, como se estivesse em uma live. Os painéis aparecem depois de um ou dois segundos."
+    },
+    "loudness": {
+      "title": "Volume",
+      "word": {
+        "quiet": "Baixo demais",
+        "good": "Bom",
+        "loud": "Alto demais",
+        "none": "Continue falando"
+      },
+      "meter": "Medidor de nível de -60 a 0 dBFS. Faixa ideal de {{min}} a {{max}} dBFS.",
+      "raw": "Microfone cru {{v}}",
+      "fx": "Wave Link {{v}}",
+      "clip_one": "Clipando em {{count}} momento nos últimos 4 s",
+      "clip_many": "Clipando em {{count}} momentos nos últimos 4 s",
+      "clip_other": "Clipando em {{count}} momentos nos últimos 4 s"
+    },
+    "pauses": {
+      "title": "Pausas",
+      "lead": "Ruído da sala entre as palavras",
+      "values": "{{raw}} → {{fx}} dB",
+      "fxValue": "{{fx}} dB",
+      "quieter": "{{db}} dB mais baixo que o cru",
+      "louder": "{{db}} dB mais alto que o cru",
+      "none": "Faça uma pausa curta para medir o ruído da sala.",
+      "dead": "{{pct}}% de silêncio total: remoção de ruído forte demais"
+    },
+    "tone": {
+      "title": "Timbre",
+      "lead": "Linha do meio = sua meta. Bolinha vazia = microfone cru, bolinha cheia = Wave Link.",
+      "keepTalking": "Continue falando para ver seu timbre",
+      "row": "{{band}}: Wave Link {{fx}} dB da sua meta",
+      "rowRaw": "{{band}}: microfone cru {{raw}} dB, Wave Link {{fx}} dB da sua meta"
+    },
+    "hints": {
+      "title": "Tente agora",
+      "empty": "Nada para mudar agora. Continue falando."
+    },
+    "hint": {
+      "talkMore": "Continue lendo em voz alta: precisamos de mais ou menos um segundo da sua voz antes de sugerir alguma coisa.",
+      "noRawSync": "Não conseguimos alinhar as duas entradas: confira se o microfone cru é o mesmo microfone que o Wave Link usa.",
+      "tooLoud": "Sua voz está alta demais e pode distorcer: abaixe o Wet do ReaComp mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+      "tooQuiet": "Sua voz está baixa demais: aumente o Wet do ReaComp mais ou menos {{db, number(maximumFractionDigits: 1)}} dB. Se ele já estiver alto, aumente o ganho do microfone.",
+      "deadSilence": "Suas pausas caem para silêncio total, então os efeitos estão cortando sua voz: diminua um nível da remoção de ruído ou abaixe o Threshold do ReaGate. As pausas devem soar baixinhas, não mortas.",
+      "noiseNotReduced": "O ambiente entre suas palavras está quase tão alto quanto no microfone cru, então a remoção de ruído quase não está agindo: confira se ela está ligada no Wave Link e aumente um nível.",
+      "stillNoisy": "Ainda dá para ouvir o ambiente entre suas palavras: aumente um nível da remoção de ruído ou chegue um pouco mais perto do microfone.",
+      "toneHigh": {
+        "boom": "Grave demais: abaixe o Low Shelf de 150 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "warmth": "Sua voz está encorpada demais: abaixe a Band de 250 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "mud": "Sua voz está abafada ou com som de caixa: abaixe a Band de 450 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "presence": "Sua voz está áspera: abaixe a Band de 3500 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "sibilance": "Seus sons de S estão cortantes: abaixe o High Shelf de 10 kHz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB."
+      },
+      "toneLow": {
+        "boom": "Falta grave na sua voz: aumente o Low Shelf de 150 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "warmth": "Sua voz está fina: aumente a Band de 250 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "mud": "Sua voz está oca: aumente a Band de 450 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "presence": "Sua voz está apagada ou distante: aumente a Band de 3500 Hz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB.",
+        "sibilance": "Falta brilho na sua voz: aumente o High Shelf de 10 kHz do ReaEQ mais ou menos {{db, number(maximumFractionDigits: 1)}} dB."
+      },
+      "rawSilent": "Seu microfone cru está em silêncio enquanto você fala: escolha o próprio microfone (por exemplo Wave XLR) como microfone cru, ou escolha Nenhum."
+    }
+  }
+}

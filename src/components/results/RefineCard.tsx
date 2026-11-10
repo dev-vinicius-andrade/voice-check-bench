@@ -10,6 +10,7 @@ import { MsgText } from '../common/MsgText'
 import { useGuideOverride } from '../guide/guideOverride'
 import { WaveLinkApplyDialog } from '../wavelink/WaveLinkApplyDialog'
 import { refinedPlan } from '../wavelink/wlPlan'
+import { TuneLiveButton } from '../live/TuneLiveButton'
 import { distLabel, RecordAgainButton } from './RecordAgainButton'
 
 /** "Let's fix this": what changes for the next attempt, applied to Wave Link, by hand (guide) or straight to recording. */
@@ -46,6 +47,7 @@ export function RefineCard({ refinement: r, applied }: { refinement: Refinement;
         <Button size="small" variant="contained" onClick={() => setOpen(true)}>{t('results.refine.apply')}</Button>
         <Button size="small" variant="outlined" onClick={byHand}>{t('results.refine.byHand')}</Button>
         <RecordAgainButton dist={r.dist} />
+        <TuneLiveButton />
       </div>
       <WaveLinkApplyDialog open={open} onClose={() => setOpen(false)} buildPlan={buildPlan} onApplied={onApplied} title={t('results.refine.dialogTitle')} />
     </Paper>

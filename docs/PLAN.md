@@ -57,3 +57,6 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 
 ## v1.3 — Refinement fixes (SPEC "Refinement loop (v1.1)": too loud, chopped advice, real processed distance)
 35. `[x]` **Too loud, chopped advice, processed-take distance** — Careful. `tooLoud` regression (peak ≥ −1 dBFS or speech above the good level range) → Wet down to −21 dBFS and "harsh from clipping" instead of EQ cuts; quieter capped at −21 dBFS; chopped with the gate already off → AI remover lower / another effect; "Where are you recording?" picker on the processed step; distance mismatch vs `applied.dist`; "Make settings for {{actual}}"; tests, en+pt-BR.
+
+## v1.3 — Live tuning (SPEC "Live tuning (v1.3)")
+36. `[x]` **Live tuning screen** — Medium. Route `#/live` (Screen 'live', nav "Tune live", entries in the guide and the refine / change-approach cards), `src/components/live/*` (pickers, Start/Stop, status chip, LiveError alerts, Loudness / Pauses / Tone / Try now panels, reading text), `useLiveSession` over `createLiveSession`, localStorage `vcb-live-devices`, `live.json` en + pt-BR, tests with a fake session.

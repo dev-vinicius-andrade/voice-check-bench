@@ -169,7 +169,7 @@
 - `src/components/common/MsgText.tsx` — `<MsgText msg>` renders a plain-language Msg through i18n; `useMsg()` translator
 - `src/components/common/Term.tsx` — `<Term id>`: glossary term with an info button whose tooltip (hover, focus, click/tap) shows the meaning and analogy
 - `src/components/layout/TopBar.tsx` — brand (→ home) + site nav; progress stepper as a second row on setup/step/results
-- `src/components/layout/SiteNav.tsx` — How it works · Community · Profiles · Privacy links (active in primary; menu button < 600 px) + language choice (inside the menu on mobile) + Start/Continue pill (→ #/check)
+- `src/components/layout/SiteNav.tsx` — How it works · Community · Profiles · Tune live · Privacy links (active in primary; menu button < 600 px) + language choice (inside the menu on mobile) + Start/Continue pill (→ #/check)
 - `src/components/layout/Footer.tsx` — "Made by", GitHub/LinkedIn/Stack Overflow/email icon links, email text, Source on GitHub · Report an issue
 - `src/components/layout/ProgressStepper.tsx` — Setup · 2 cm · 8 cm · 15 cm · Effects · Results stepper (clickable)
 - `src/components/layout/LanguageMenu.tsx` — top-bar language button (current LOCALE_NAMES entry) + menu
@@ -258,7 +258,7 @@
 - `src/components/guide/nrChoice.ts` — `NrChoice` ('ai-elgato' | 'ai-nvidia' | 'reafir'), `loadNrChoice`/`saveNrChoice` (localStorage `vcb-nr-choice`, fails soft), `useNrChoice()`
 - `src/components/guide/waveLinkSteps.test.ts` · `GuidePaths.test.tsx` · `HostPicker.test.tsx` · `guideKeys.test.ts` — step lists from fixture suggestions (noisy/quiet, EQ bands), OBS mapping, rendered paths, host persistence, guide keys exist
 - `src/i18n/locales/{en,pt-BR}/guide.json` — `guide.*` strings (guide screen, host picker, Wave Link/OBS/NVIDIA/app paths, entry buttons)
-- `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide · #/profiles): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
+- `src/hooks/useHashRoute.ts` — hash routing (#/ · #/how-it-works · #/community · #/privacy · #/check · #/results · #/guide · #/profiles · #/live): `hashToRoute`, `screenToHash`, `routeToScreen`, `hashToScreen` (pure) and `useHashRoute()` (hash wins once the store is ready, empty hash keeps the saved screen, hashchange/popstate → goTo, screen change → pushState)
 - `src/hooks/useHashRoute.test.ts` — hash ↔ screen mapping, #/check resolution, #/guide, #/profiles, hook sync with history
 - `src/demo/demoSignals.ts` — `demoSamples()`: seeded synthetic voice (per-partial levels) + room noise + steady tones
 - `src/demo/demoTakes.ts` — `DEMO_SESSION`, `DEMO_MIC`, `buildDemoTakes()`: boomy 2 cm, balanced 8 cm, thin/noisy 15 cm, cleaner processed, fan tones 780/1560 Hz, analyzed
@@ -303,3 +303,32 @@
 - `src/components/profiles/profileFormat.ts` — validation/host/style/mic labels, `exportFileName()`, `hasCapturedStates()`
 - `src/components/profiles/profiles.test.tsx` — profiles page CRUD with the memory store, save-as-profile gating
 - `src/i18n/locales/{en,pt-BR}/profiles.json` — `profiles.*` strings (nav link, Wave Link dialog, profiles page, save as profile)
+- `src/components/live/LiveScreen.tsx` — route #/live "Tune live": intro + note, input pickers, Start/Stop + status chip, error alert, reading text, panels while running (takes an injectable session factory for tests)
+- `src/components/live/useLiveSession.ts` — one LiveSessionApi per visit (goal read from the store), start/stop, latest metrics, status + LiveError; stops on unmount
+- `src/components/live/useLiveDevices.ts` — the two live inputs derived from the store's device list; the pick is saved on change
+- `src/components/live/liveDevices.ts` — `pickLiveDevices()` (saved pick → check choice → Wave Link name), localStorage `vcb-live-devices`
+- `src/components/live/LiveDevicePickers.tsx` — "Raw mic" (with "None — only the Wave Link output") and "With effects (Wave Link)" selects; mic button while no input is listed
+- `src/components/live/LiveControls.tsx` — Start/Stop button, status chip (in sync / lining up / only Wave Link), one alert per LiveError (rawUnavailable → "Use only the Wave Link output")
+- `src/components/live/LivePanel.tsx` — titled card shared by the live panels (optional dim)
+- `src/components/live/liveScale.ts` — level word/color (LEVEL_GOOD_MIN/MAX, PEAK_WARN_DB), meter and tone positions, tone color (3/6 dB)
+- `src/components/live/LoudnessCard.tsx` — Wave Link speech level, plain word, −60..0 dBFS meter with target band and raw/fx markers, clipping line
+- `src/components/live/PausesCard.tsx` — room noise between words raw → fx, dB quieter than raw, dead-silence warning (> 5 %)
+- `src/components/live/ToneCard.tsx` — one row per band boom…air: goal centre line, hollow raw dot, filled fx dot (±12 dB), value, aria-label per row; dimmed under 1 s of speech
+- `src/components/live/HintsCard.tsx` — "Try now": the engine's hint Msgs
+- `src/components/live/TuneLiveButton.tsx` — secondary "Tune live" button (refine / change-approach cards) and the guide's closing `GuideLiveCta`
+- `src/components/live/live.test.tsx` — LiveScreen with a fake session (start → metrics → panels, errors, fx-only retry, stop on unmount), Loudness/Tone cards, `pickLiveDevices`
+- `src/components/live/liveKeys.test.ts` — live.* keys used exist; en/pt-BR live.* parity
+- `src/i18n/locales/{en,pt-BR}/live.json` — `live.*` strings (screen, panels, errors, hints)
+- `public/worklets/tap-worklet.js` — AudioWorkletProcessor `tap` (live tuning): always posts mono `{ frame, samples }` chunks of 1024 frames stamped with the context frame
+- `src/live/types.ts` — live tuning contract: LiveMetrics, LiveSide, LiveConfig, LiveError, LiveStartError, LiveSessionApi, window/update/buffer/lag constants (orchestrator-owned)
+- `src/live/ring.ts` — `FloatRing`: fixed-size float ring addressed by absolute frame (`readLast`, `readEnding`; a gap empties it)
+- `src/live/align.ts` — `estimateLag()` (10 ms dB envelopes, Pearson cross-correlation over −20..500 ms, parabolic refinement → lagMs + sync), `LagTracker` (median of the last 5 confident estimates)
+- `src/live/metrics.ts` — `computeLiveMetrics()`: 50 ms frames, talk/pause from the raw mic (fx alone without one), per-input speech/peak/clip/pause/dead silence/tone (2048-pt spectra of ≤ 24 talk frames → targetDeviations)
+- `src/live/hints.ts` — `liveHints()`: ≤ 4 Msg keys under live.hint.* (sync, level, dead silence, pause noise, ReaEQ tone bands)
+- `src/live/hintStrings.ts` — en + pt-BR source strings for live.hint.* and live.error.* (merged into the live.json locales by the UI)
+- `src/live/smooth.ts` — `smoothMetrics()`: EMA (α 0.4) of speech level, pause level and tone
+- `src/live/analyzer.ts` — `LiveAnalyzer.update()`: reads both rings over the same frames, aligns (last 6 s), measures the 4 s window, smooths, adds hints
+- `src/live/capture.ts` — live getUserMedia constraints, support check, getUserMedia error → LiveError, `openTap()` (stream → tap worklet → ring)
+- `src/live/LiveSession.ts` — `createLiveSession(getGoal)`: LiveSessionApi (one 48 kHz context, raw + fx inputs, 500 ms timer, errors logged once, idempotent stop)
+- `src/live/liveTestSignals.ts` — test-only voice-like bursts and delayed/gained/filtered/gated fx copies
+- `src/live/{ring,align,metrics,hints,analyzer,LiveSession}.test.ts` — ring addressing, lag estimation, metrics on synthetic voice (+ timing), each hint rule + strings, analyzer/smoothing, session errors and stop with mocked browser audio

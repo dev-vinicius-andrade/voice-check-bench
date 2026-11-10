@@ -33,7 +33,7 @@ describe('hash ↔ screen mapping', () => {
     expect(screenToHash('results')).toBe('#/results')
     expect(screenToHash('guide')).toBe('#/guide')
     expect(screenToHash('profiles')).toBe('#/profiles')
-    for (const s of ['home', 'how', 'community', 'privacy', 'results', 'guide', 'profiles'] as const) expect(hashToRoute(screenToHash(s))).toBe(s)
+    for (const s of ['home', 'how', 'community', 'privacy', 'results', 'guide', 'profiles', 'live'] as const) expect(hashToRoute(screenToHash(s))).toBe(s)
   })
 
   it('resolves #/check to setup, or to the store step once the session has takes', () => {

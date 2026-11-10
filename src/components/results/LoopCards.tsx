@@ -11,6 +11,7 @@ import { useBench } from '../../store/benchStore'
 import type { Take } from '../../types'
 import { MsgText } from '../common/MsgText'
 import { useGuideOverride } from '../guide/guideOverride'
+import { TuneLiveButton } from '../live/TuneLiveButton'
 import { SaveProfile } from '../profiles/SaveProfile'
 import { distLabel, RecordAgainButton } from './RecordAgainButton'
 
@@ -60,6 +61,7 @@ export function ChangeApproachCard({ attempts, dist }: { attempts: number; dist:
       <div className="flex flex-wrap gap-2">
         <Button size="small" variant="contained" onClick={() => goTo('guide')}>{t('results.approach.guide')}</Button>
         <RecordAgainButton dist={dist} />
+        <TuneLiveButton />
       </div>
     </Paper>
   )

@@ -1,0 +1,103 @@
+{
+  "live": {
+    "nav": "Tune live",
+    "head": {
+      "first": "Tune",
+      "second": "live",
+      "lead": "Listen to your raw mic and to Wave Link at the same time while you change your settings, and see right away what each change does. Nothing is recorded.",
+      "note": "If the raw mic can't be opened while Wave Link is running, use only the Wave Link output: you still see level, pauses and tone."
+    },
+    "entry": {
+      "button": "Tune live",
+      "guideText": "Changed your settings? Fine-tune them while you talk and watch your level and tone move."
+    },
+    "devices": {
+      "raw": "Raw mic",
+      "fx": "With effects (Wave Link)",
+      "none": "None — only the Wave Link output",
+      "enable": "Turn on the microphone to list your inputs."
+    },
+    "controls": {
+      "start": "Start listening",
+      "stop": "Stop",
+      "starting": "Opening the inputs…"
+    },
+    "status": {
+      "sync": "Listening · in sync ({{ms}} ms)",
+      "lining": "Listening · lining up…",
+      "fxOnly": "Listening · only Wave Link output"
+    },
+    "error": {
+      "unsupported": "This browser can't listen to two inputs live. Use a recent Chrome, Edge or Firefox.",
+      "permission": "The browser didn't allow the microphone. Allow it for this page and try again.",
+      "rawUnavailable": "Your raw mic couldn't be opened. Check that it is plugged in, or use only the Wave Link output.",
+      "fxUnavailable": "The Wave Link output couldn't be opened. Check that Wave Link is running and pick its output again.",
+      "sameDevice": "Both choices are the same input. Pick your raw mic in one and the Wave Link output in the other.",
+      "other": "Live listening stopped because of an unexpected error. Try starting again.",
+      "useFxOnly": "Use only the Wave Link output"
+    },
+    "read": {
+      "title": "Read the text out loud",
+      "text": "Talk normally, as if you were streaming. The panels fill in after a second or two."
+    },
+    "loudness": {
+      "title": "Loudness",
+      "word": {
+        "quiet": "Too quiet",
+        "good": "Good",
+        "loud": "Too loud",
+        "none": "Keep talking"
+      },
+      "meter": "Level meter from -60 to 0 dBFS. Target range {{min}} to {{max}} dBFS.",
+      "raw": "Raw mic {{v}}",
+      "fx": "Wave Link {{v}}",
+      "clip_one": "Clipping in {{count}} moment in the last 4 s",
+      "clip_other": "Clipping in {{count}} moments in the last 4 s"
+    },
+    "pauses": {
+      "title": "Pauses",
+      "lead": "Room noise between words",
+      "values": "{{raw}} → {{fx}} dB",
+      "fxValue": "{{fx}} dB",
+      "quieter": "{{db}} dB quieter than raw",
+      "louder": "{{db}} dB louder than raw",
+      "none": "Pause for a moment to measure the room noise.",
+      "dead": "{{pct}}% dead silence: noise removal too strong"
+    },
+    "tone": {
+      "title": "Tone",
+      "lead": "Centre line = your goal. Hollow dot = raw mic, filled dot = Wave Link.",
+      "keepTalking": "Keep talking to see your tone",
+      "row": "{{band}}: Wave Link {{fx}} dB from your goal",
+      "rowRaw": "{{band}}: raw mic {{raw}} dB, Wave Link {{fx}} dB from your goal"
+    },
+    "hints": {
+      "title": "Try now",
+      "empty": "Nothing to change right now. Keep talking."
+    },
+    "hint": {
+      "talkMore": "Keep reading out loud: we need about a second of your voice before we can suggest anything.",
+      "noRawSync": "We can't line up the two inputs: check that the raw mic is the same microphone Wave Link uses.",
+      "tooLoud": "Your voice is too loud and can distort: turn ReaComp Wet down about {{db, number(maximumFractionDigits: 1)}} dB.",
+      "tooQuiet": "Your voice is too quiet: turn ReaComp Wet up about {{db, number(maximumFractionDigits: 1)}} dB. If it is already high, raise your mic gain instead.",
+      "deadSilence": "Your pauses drop to dead silence, so the effects are cutting into your voice: turn the noise removal down a step, or lower the ReaGate Threshold. Pauses should sound quiet, not dead.",
+      "noiseNotReduced": "The room between your words is about as loud as on the raw mic, so the noise removal is barely working: check that it is on in Wave Link, then turn it up a step.",
+      "stillNoisy": "You can still hear the room between your words: turn the noise removal up a step, or move a little closer to the mic.",
+      "toneHigh": {
+        "boom": "Too much boom: lower the ReaEQ Low Shelf at 150 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "warmth": "Your voice sounds thick: lower the ReaEQ Band at 250 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "mud": "Your voice sounds muddy or boxy: lower the ReaEQ Band at 450 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "presence": "Your voice sounds harsh: lower the ReaEQ Band at 3500 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "sibilance": "Your S sounds are sharp: lower the ReaEQ High Shelf at 10 kHz by about {{db, number(maximumFractionDigits: 1)}} dB."
+      },
+      "toneLow": {
+        "boom": "Your voice lacks bass: raise the ReaEQ Low Shelf at 150 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "warmth": "Your voice sounds thin: raise the ReaEQ Band at 250 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "mud": "Your voice sounds hollow: raise the ReaEQ Band at 450 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "presence": "Your voice sounds dull or far away: raise the ReaEQ Band at 3500 Hz by about {{db, number(maximumFractionDigits: 1)}} dB.",
+        "sibilance": "Your voice lacks crispness: raise the ReaEQ High Shelf at 10 kHz by about {{db, number(maximumFractionDigits: 1)}} dB."
+      },
+      "rawSilent": "Your raw mic is silent while you talk: pick the microphone itself (for example Wave XLR) as the raw mic, or choose None."
+    }
+  }
+}

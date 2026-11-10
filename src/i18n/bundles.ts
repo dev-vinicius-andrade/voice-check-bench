@@ -1,8 +1,9 @@
 // Merges the per-area locale files into one bundle per locale. Each area file has its own top-level key
-// (plain, engine, common, results, wizard, pages, guide, replicas, suggestx, profiles) so tasks can edit different files without conflicts.
+// (plain, engine, common, results, wizard, pages, guide, replicas, suggestx, profiles, live) so tasks can edit different files without conflicts.
 import enCommon from './locales/en/common.json'
 import enEngine from './locales/en/engine.json'
 import enGuide from './locales/en/guide.json'
+import enLive from './locales/en/live.json'
 import enPages from './locales/en/pages.json'
 import enPlain from './locales/en/plain.json'
 import enProfiles from './locales/en/profiles.json'
@@ -13,6 +14,7 @@ import enWizard from './locales/en/wizard.json'
 import ptCommon from './locales/pt-BR/common.json'
 import ptEngine from './locales/pt-BR/engine.json'
 import ptGuide from './locales/pt-BR/guide.json'
+import ptLive from './locales/pt-BR/live.json'
 import ptPages from './locales/pt-BR/pages.json'
 import ptPlain from './locales/pt-BR/plain.json'
 import ptProfiles from './locales/pt-BR/profiles.json'
@@ -22,6 +24,6 @@ import ptSuggest from './locales/pt-BR/suggest.json'
 import ptWizard from './locales/pt-BR/wizard.json'
 
 export const BUNDLES = {
-  en: { ...enPlain, ...enEngine, ...enCommon, ...enResults, ...enWizard, ...enPages, ...enGuide, ...enReplicas, ...enSuggest, ...enProfiles },
-  'pt-BR': { ...ptPlain, ...ptEngine, ...ptCommon, ...ptResults, ...ptWizard, ...ptPages, ...ptGuide, ...ptReplicas, ...ptSuggest, ...ptProfiles },
+  en: { ...enPlain, ...enEngine, ...enCommon, ...enResults, ...enWizard, ...enPages, ...enGuide, ...enReplicas, ...enSuggest, ...enProfiles, ...enLive },
+  'pt-BR': { ...ptPlain, ...ptEngine, ...ptCommon, ...ptResults, ...ptWizard, ...ptPages, ...ptGuide, ...ptReplicas, ...ptSuggest, ...ptProfiles, ...ptLive },
 } as const
