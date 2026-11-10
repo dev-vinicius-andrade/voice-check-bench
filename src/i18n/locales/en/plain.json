@@ -211,6 +211,35 @@
         "sharpS": "You hear sharp S sounds. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings.",
         "dull": "You hear your voice as dull. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings."
       }
+    },
+    "refine": {
+      "wrongDistance": "This take was recorded at {{actual}}, but the settings were made for {{dist}}. Record again at {{dist}} before changing anything: the settings were made for that distance.",
+      "gateTooHigh": "The gate was closing on your voice: its Threshold goes down {{db, number(maximumFractionDigits: 1)}} dB, to {{to, number(maximumFractionDigits: 1)}} dB.",
+      "chopped": {
+        "reafirHalf": "Noise removal is cutting your voice: lower the ReaFIR reduction to about half of what you set.",
+        "toAi": "ReaFIR keeps cutting your voice: turn it off and use AI noise removal instead (Elgato Noise Removal).",
+        "gateOff": "The gate still cuts your voice: set its Dry to 0 dB so it stops cutting."
+      },
+      "quieter": "Your voice dropped {{drop, number(maximumFractionDigits: 1)}} dB, so the compressor's Wet goes up {{db, number(maximumFractionDigits: 1)}} dB, to {{to, number(maximumFractionDigits: 1)}} dB.",
+      "thin": {
+        "boom": "Your voice lost bass: the 150 Hz low shelf goes from {{from, number(maximumFractionDigits: 1)}} dB to {{to, number(maximumFractionDigits: 1)}} dB.",
+        "warmth": "Your voice lost warmth: the 250 Hz band goes from {{from, number(maximumFractionDigits: 1)}} dB to {{to, number(maximumFractionDigits: 1)}} dB."
+      },
+      "harsh": {
+        "presence": "Your voice got harsh: the 3.5 kHz band goes from {{from, number(maximumFractionDigits: 1)}} dB to {{to, number(maximumFractionDigits: 1)}} dB.",
+        "top": "Your voice got harsh: the 10 kHz high shelf goes from {{from, number(maximumFractionDigits: 1)}} dB to {{to, number(maximumFractionDigits: 1)}} dB."
+      },
+      "stillNoisy": {
+        "reafirMore": "The room is still almost as loud as before: drag the ReaFIR curve down about 3 dB more, then listen.",
+        "toAi": "ReaFIR isn't removing enough of the room: switch to AI noise removal (Elgato Noise Removal).",
+        "addAi": "The room is still almost as loud as before: add AI noise removal (Elgato Noise Removal) at the top of your effects.",
+        "aiStronger": "The room is still almost as loud as before: turn your AI noise removal up one step."
+      },
+      "changeApproach": {
+        "ai": "Changing numbers isn't helping. Use AI noise removal (Elgato Noise Removal or NVIDIA Broadcast) instead of ReaFIR.",
+        "placement": "Point the mic at your mouth and away from fans, the PC and windows.",
+        "closer": "Move closer to the mic: the closer you are, the less of the room it hears."
+      }
     }
   }
 }

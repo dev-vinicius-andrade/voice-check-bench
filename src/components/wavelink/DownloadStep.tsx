@@ -23,7 +23,7 @@ function SwapSteps({ backup }: { backup: string }) {
 }
 
 /** Step 3: one click downloads the new Settings.json and the dated backup, then the swap instructions. */
-export function DownloadStep({ text, original, handle }: { text: string; original: string; handle: WlFileHandle | null }) {
+export function DownloadStep({ text, original, handle, onDone }: { text: string; original: string; handle: WlFileHandle | null; onDone?(): void }) {
   const { t } = useTranslation()
   const [backup, setBackup] = useState<string | null>(null)
   const [direct, setDirect] = useState<Direct>('idle')
@@ -31,8 +31,13 @@ export function DownloadStep({ text, original, handle }: { text: string; origina
     const now = new Date()
     downloadPair(text, original, now)
     setBackup(backupName(now))
+    onDone?.()
   }
-  const save = async (): Promise<void> => setDirect((await saveDirectly(handle!, text)) ? 'saved' : 'failed')
+  const save = async (): Promise<void> => {
+    const ok = await saveDirectly(handle!, text)
+    setDirect(ok ? 'saved' : 'failed')
+    if (ok) onDone?.()
+  }
   return (
     <div className="grid gap-3">
       <Typography variant="body2">{t('profiles.wl.download.lead')}</Typography>

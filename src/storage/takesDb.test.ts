@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DB_VERSION, PROFILES_STORE, normalizeRecord, openAppDb, openTakesDb } from './takesDb'
 import type { StoredTake } from '../types'
+import { realSession } from '../plain/testFixtures'
 
 const take = (id: number): StoredTake => ({
   id,
@@ -57,6 +58,28 @@ describe('mic profile on takes', () => {
     expect(normalizeRecord({ ...base, mic: { model: 'Any Mic', kind: 'dynamic', pattern: 'cardioid', address: 'end' } })?.mic).toEqual({ model: 'Any Mic', kind: 'dynamic', pattern: 'cardioid', address: 'end' })
     expect(normalizeRecord({ ...base, mic: { model: 'X', kind: 'laser', pattern: 1 } })?.mic).toEqual({ model: 'X', kind: 'unknown', pattern: 'unknown', address: 'unknown' })
     expect(normalizeRecord(base)?.mic).toBeUndefined()
+  })
+})
+
+describe('applied settings on processed takes (v1.1)', () => {
+  const base = { id: 1, name: 'Processed · 2 cm · Record Mix', session: 's1', step: 'fx', device: 'd', sampleRate: 48000, samples: new Float32Array(4), created: 'x' }
+  it('keeps valid applied settings and drops malformed ones', () => {
+    const { applied } = realSession()
+    expect(normalizeRecord({ ...base, applied })?.applied).toEqual(applied)
+    expect(normalizeRecord({ ...base, applied: { ...applied, attempt: -1 } })).not.toHaveProperty('applied')
+    expect(normalizeRecord({ ...base, applied: 'yes' })).not.toHaveProperty('applied')
+    expect(normalizeRecord(base)).not.toHaveProperty('applied')
+  })
+
+  it('persists applied with the take (memory fallback)', async () => {
+    vi.stubGlobal('indexedDB', undefined)
+    const db = await openTakesDb()
+    const { applied } = realSession()
+    await db.put({ ...take(3), step: 'fx', applied })
+    await db.put(take(4))
+    const [withApplied, without] = await db.all()
+    expect(withApplied.applied).toEqual(applied)
+    expect(without).not.toHaveProperty('applied')
   })
 })
 

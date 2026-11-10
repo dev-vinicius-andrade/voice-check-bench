@@ -237,6 +237,46 @@
       "change": "Change goal",
       "dialogTitle": "Change your goal",
       "done": "Done"
+    },
+    "attempts": {
+      "title": "Your attempts",
+      "item": "Attempt {{n}} · {{raw}} → {{fx}}",
+      "better": "better",
+      "notYet": "not better yet",
+      "otherDist": "different distance"
+    },
+    "refine": {
+      "title": "Let's fix this",
+      "lead": "Your effects didn't make your voice better yet. For the next try, we changed these settings:",
+      "changes": "What changes",
+      "nextDist": "Record at {{dist}}",
+      "route": {
+        "reafir": "Use ReaFIR to remove the room noise.",
+        "ai-elgato": "Remove the room noise with Elgato Noise Removal (AI) instead of ReaFIR.",
+        "ai-nvidia": "Remove the room noise with NVIDIA Broadcast (AI) instead of ReaFIR.",
+        "none": "Turn noise removal off."
+      },
+      "apply": "Apply the refined settings to Wave Link",
+      "dialogTitle": "Apply the refined settings",
+      "byHand": "I'll change them by hand",
+      "recordAgain": "Record again with effects",
+      "markApplied": "I applied these settings",
+      "markedApplied": "Got it. Now record again with effects so we can check these settings.",
+      "byHandNote": "Set these values up by hand? Tell us, so your next take with effects is checked against them."
+    },
+    "mismatch": {
+      "title": "Record at the right distance first",
+      "text": "This take was recorded at {{recorded}}, but your settings were made for {{dist}} — record again at {{dist}}.",
+      "button": "Record again at {{dist}}"
+    },
+    "approach": {
+      "title": "Time to try something different",
+      "lead": "We adjusted the settings {{n}} times and your voice still isn't better. More small changes won't fix it. These will help more:",
+      "guide": "Open the step-by-step guide"
+    },
+    "worked": {
+      "title": "It worked",
+      "text": "With your effects your voice scores {{fx}}, up from {{raw}} without them. Save these settings as a profile to use them again."
     }
   }
 }

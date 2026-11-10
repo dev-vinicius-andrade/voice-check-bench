@@ -47,7 +47,7 @@ describe('settings sheet export', () => {
     expect(pt).toContain('Ordem dos efeitos: ReaFIR → ReaEQ → ReaComp → ReaGate')
     expect(pt).toContain('  Band 1: Type High Shelf · Frequency 10000 Hz · Gain -2,0 dB · Bandwidth 2,00 oct   (O ruído do ambiente domina acima de 5 kHz)')
     expect(pt).toMatch(/Type Band \(corte estreito\) · Frequency 6200 Hz · Gain -12,0 dB · Bandwidth 0,10 oct {3}\(Tom de ventilador\/máquina \+30,0 dB\)/)
-    expect(pt).toContain('  Threshold: -44 dB')
+    expect(pt).toContain('  Threshold: -52 dB')
     expect(pt).not.toMatch(/engine\./)
   })
 })

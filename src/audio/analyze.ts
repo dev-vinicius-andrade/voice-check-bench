@@ -1,6 +1,6 @@
 // Take analysis ported 1:1 from the prototype analyze() (docs/prototype/voice-check.html). Pure.
 import type { AnalysisResult, HumPeak, NoiseKind, NoiseTone } from '../types'
-import { adb, db, median, pct, powerSpec } from './dsp'
+import { adb, db, hann, median, pct, powerSpec } from './dsp'
 import { humFrequencies, type Mains } from './mains'
 import { BANDS, QUIET_SEC } from './reference'
 
@@ -11,6 +11,8 @@ export const NOT_ENOUGH_SPEECH =
   'Not enough speech detected. Speak louder or closer, or check the selected input.'
 /** Frame levels and the noise floor never go below this, dBFS (digital silence would read -240 and make SNR meaningless). */
 export const FLOOR_DB = -100
+/** Per-band voice-over-room SNR never reads above this, dB (a digital-silence noise band would otherwise read 200+). */
+export const BAND_SNR_CAP = 60
 /** Over-processing: exact-zero runs this long (s) count as digital silence (zeroRatio)... */
 export const ZERO_RUN_SEC = 0.01
 /** ...and runs this long (s) count as the processing cutting out (gateSwitches). */
@@ -154,8 +156,10 @@ export function analyze(x: Float32Array, sampleRate: number, opts: AnalyzeOption
   const avgBands = (spec: Float64Array, count: number): number[] =>
     count > 0 ? BANDS.map((b) => bandSum(spec, b.lo, b.hi, binHz) / count).map(db) : BANDS.map(() => NaN)
   const speechBands = avgBands(specS, cS)
-  const noiseBands = avgBands(specN, cN)
-  const bandSnr = speechBands.map((v, i) => v - noiseBands[i])
+  // a band of digital silence reads db(0) = -200: floor it like the frame levels (FLOOR_DB, on this spectrum's scale)
+  const noiseFloor = bandFloorDb(N)
+  const noiseBands = avgBands(specN, cN).map((v) => Math.max(noiseFloor, v))
+  const bandSnr = speechBands.map((v, i) => Math.min(BAND_SNR_CAP, v - noiseBands[i]))
   const tones = cN > 0 ? findTones(specN.map((v) => v / cN), binHz) : []
   const speechMed = median(sp)
   const snr = speechMed - noise
@@ -231,6 +235,17 @@ export function digitalSilence(x: Float32Array, sampleRate: number): { zeroRatio
 }
 
 /** Sum of spectrum bins in [lo, hi) Hz, with the same bin range as the band energies above. */
+/**
+ * FLOOR_DB on the scale of the long-term band powers (summed Hann-windowed |X|² of an n-point FFT): a full-scale
+ * signal (RMS 1) sums to about n·Σw²/2 over the one-sided spectrum, so −100 dBFS sits FLOOR_DB below that.
+ */
+export function bandFloorDb(n: number): number {
+  const w = hann(n)
+  let s = 0
+  for (let i = 0; i < n; i++) s += w[i] * w[i]
+  return FLOOR_DB + db((n * s) / 2)
+}
+
 function bandSum(spec: Float64Array, lo: number, hi: number, binHz: number): number {
   let s = 0
   for (let i = Math.ceil(lo / binHz); i < hi / binHz && i < spec.length; i++) s += spec[i]

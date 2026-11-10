@@ -59,10 +59,11 @@ export function useSaveProfile(A: Take): SaveProfile {
       name,
       mic: A.mic ?? st.mic,
       host,
-      dist: s.dist,
+      // closed loop: keep the settings that were actually applied for the processed take, when known
+      dist: pair?.fx.applied?.dist ?? s.dist,
       goal: st.goal,
       mains: st.mains,
-      suggestion: suggestionToJson(s),
+      suggestion: pair?.fx.applied?.settings ?? suggestionToJson(s),
       devices: st.devices,
       // validation is kept only when the gate passes; otherwise the profile is a "not validated" draft
       raw,

@@ -76,7 +76,7 @@ describe('loadDemoSession', () => {
     expect(ids).toHaveLength(4)
     expect(st().takes.some((t) => t.id === 1)).toBe(true)
     expect(st().session).toBe('s1')
-    expect(st()).toMatchObject({ screen: 'results', A: ids[3], B: ids[1], view: 'diff' })
+    expect(st()).toMatchObject({ screen: 'results', A: ids[3], B: ids[0], view: 'diff' }) // noisy demo room: SNR now dominates, so the 2 cm take is the best control
     expect(useDemo.getState().active).toBe(true)
     expect(db.put).not.toHaveBeenCalled()
     const saved = JSON.parse(localStorage.getItem('vcb-ui') ?? '{}')

@@ -1,5 +1,11 @@
 {
   "guide": {
+    "refined": {
+      "title": "Your refined settings (attempt {{n}})",
+      "text": "These values were adjusted after your last take. When you're done, record again at {{dist}}.",
+      "original": "Show the original settings",
+      "eqWhy": "Adjusted after your last take."
+    },
     "entry": {
       "valuesOnly": "See the values only",
       "stepByStep": "Set it up step by step"
@@ -60,6 +66,7 @@
       "button": "Record the take with effects"
     },
     "wl": {
+      "markApplied": "Finished setting everything up? Tell us, so we can check your next take against these settings.",
       "effects": {
         "title": "Open your mic's effects",
         "lead": "Only the effects we picked should be on. Other effects would fight with them.",

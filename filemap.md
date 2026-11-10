@@ -31,7 +31,7 @@
 - `src/audio/reference.test.ts` — STYLE_OFFSETS shape/values, natural target = deviations, diagnose band checks against the goal's target
 - `src/audio/quickStats.ts` — duration/peak/silence/reading levels of a raw take; `failureId`/`FAILURE_IDS` + `failureHint` (Msg `engine.failure.*`) for failed analyses
 - `src/audio/wav.ts` — 16-bit mono WAV encoder + safe file names (Download WAV)
-- `src/audio/analyze.ts` — `analyze(samples, sampleRate, { mains? })`: levels, noise, speech mask, spectra, hum (local mains family first), sibilance, per-band speech/noise SNR, `findTones`, `classifyNoise` (noiseKind); frame levels/noise clamped at `FLOOR_DB` (−100), `digitalSilence()` → `zeroRatio` / `gateSwitches` from exact-zero runs (v0.8); `NOT_ENOUGH_SPEECH_KEY`
+- `src/audio/analyze.ts` — `analyze(samples, sampleRate, { mains? })`: levels, noise, speech mask, spectra, hum (local mains family first), sibilance, per-band speech/noise SNR, `findTones`, `classifyNoise` (noiseKind); frame levels/noise clamped at `FLOOR_DB` (−100), noise bands floored at `bandFloorDb(n)` (−100 dBFS on the long-term spectrum scale) and bandSnr capped at `BAND_SNR_CAP` (60 dB) (v1.1), `digitalSilence()` → `zeroRatio` / `gateSwitches` from exact-zero runs (v0.8); `NOT_ENOUGH_SPEECH_KEY`
 - `src/audio/mains.ts` — mains frequency: `MainsSetting` (50 | 60 | 'auto'), 60 Hz regions, `regionOf`, `mainsForLocale`, `resolveMains`, `humFrequencies`
 - `src/audio/mains.test.ts` — locale region → 50/60 Hz, auto resolution, hum family order and preference
 - `src/audio/eqCurve.ts` — `eqResponseDb(bands, freqs)`: summed RBJ biquad magnitude (dB) of ReaEQ Low Shelf / Band / High Shelf bands (bandwidth in octaves) at 48 kHz, `biquad`, `logFreqs(n, lo, hi)`
@@ -43,9 +43,10 @@
 - `src/audio/analyze.wav.test.ts` — spot checks against `_test/no-filters.wav` and `_test/control-2-cm-raw.wav` (each skips when absent)
 - `src/audio/diagnose.test.ts` — check ids/order, thresholds, English texts, verdict helpers
 - `src/session/steps.ts` — `STEPS` wizard definition (English data; title names stored takes), `DEV_MATCH`, `DEV_NAME`, `fillDistance`; UI copy keys `stepKey`/`stepText` (`wizard.steps.<key>.*`); `stepOf`, `takeDist` (distance of a guided take, for its on-screen name)
-- `src/session/bestControl.ts` — `sessionSlots()` and `bestControl(slots, goal?)` control-take picker (deviations vs the goal's target; SNR penalty doubles in a noisy room)
-- `src/session/bestControl.test.ts` — slots, best control scoring, steps helpers
-- `src/settings/suggest.ts` — `suggest(base, dist, mic?, goal?)` (EQ toward the goal's target; perceived issues: nasal band −2..−4 dB when confirmed, else a 1.5 dB `byEar` tweak with `suggestx.why.byEar.*`, "(by ear)" in the sheet; quiet room; noisy room: ReaFIR plan starting at about 6 dB + ReaComp Wet note, `preferAi` when SNR < 15, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase(slots, fxDist, goal?)`, `isNotch()`, `BY_EAR_DB`; hints/steps/EQ reasons as Msg (`engine.suggest.*`, ReaFIR steps `suggestx.reafir.*`); `suggestionToText(s, t?, baseName?)` (English without `t`, `engine.sheet.*`; preferAi: "Try first" AI options, ReaFIR optional) / `suggestionToJson` (English), `joinMsgs`
+- `src/session/bestControl.ts` — `sessionSlots()` and `bestControl(slots, goal?)` control-take picker via `controlScore` (deviations vs the goal's target + (40 − snr)/2; noisy room, any control SNR < 25: 0.5 × tone + 1.5 × (40 − snr), v1.1)
+- `src/session/distance.ts` — `distanceMismatch(fxTake, applied | suggestion base | dist)` (expected/actual + `plain.refine.wrongDistance` Msg), `refDistance`
+- `src/session/bestControl.test.ts` — slots, best control scoring (real noisy session picks 2 cm), distance mismatch, steps helpers
+- `src/settings/suggest.ts` — `suggest(base, dist, mic?, goal?)` (EQ toward the goal's target; perceived issues: nasal band −2..−4 dB when confirmed, else a 1.5 dB `byEar` tweak with `suggestx.why.byEar.*`, "(by ear)" in the sheet; quiet room; noisy room: gate with noise removal at speechMed − 30 (−72..−45, dry −10, v1.1), ReaFIR plan starting at about 6 dB + ReaComp Wet note, `preferAi` when SNR < 15, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase(slots, fxDist, goal?)`, `isNotch()`, `BY_EAR_DB`; hints/steps/EQ reasons as Msg (`engine.suggest.*`, ReaFIR steps `suggestx.reafir.*`); `suggestionToText(s, t?, baseName?)` (English without `t`, `engine.sheet.*`; preferAi: "Try first" AI options, ReaFIR optional) / `suggestionToJson` (English), `joinMsgs`
 - `src/settings/english.ts` — `englishText(msg)`: English text of engine messages (engine.json + suggest.json) for exports (byte-identical to the pre-i18n sheet), `MsgTranslator`
 - `src/settings/sheet.test.ts` — sheet/JSON byte-identical to `golden/sheets.json`, i18next en renders the same, localized pt-BR copy
 - `src/settings/sheetFixtures.ts` · `src/settings/golden/sheets.json` — test-only suggestion fixtures and their pre-i18n sheet/JSON output
@@ -65,30 +66,33 @@
 - `public/worklets/` — AudioWorklet scripts served as static files
 - `public/worklets/recorder-worklet.js` — AudioWorkletProcessor `recorder`: mono-averaged 4096-frame chunks while recording
 - `src/audio/AudioEngine.ts` — AudioContext, input open/list, RMS level, worklet recording, playback (no React)
-- `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records; `openAppDb()` opens DB `voice-check-bench` v2 (`DB_VERSION`), the upgrade only creates missing stores (`takes`, `profiles` = `PROFILES_STORE`), closes on versionchange
-- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages and guide; new visitor → home), `vcb-devs` device choice, `vcb-mic` mic profile with shape validation (legacy model 'Other' → ''), `vcb-mains` mains setting, `vcb-goal` voice goal (`loadGoal`/`saveGoal`, shape-validated, `perceivedList`)
+- `src/storage/takesDb.ts` — IndexedDB takes store (fails soft to memory), `normalizeRecord` for prototype records (keeps a validated `applied` on processed takes); `openAppDb()` opens DB `voice-check-bench` v2 (`DB_VERSION`), the upgrade only creates missing stores (`takes`, `profiles` = `PROFILES_STORE`), closes on versionchange
+- `src/storage/prefs.ts` — localStorage helpers, `vcb-ui` UI prefs (all screens incl. site pages and guide; new visitor → home), `vcb-devs` device choice, `vcb-mic` mic profile with shape validation (legacy model 'Other' → ''), `vcb-mains` mains setting, `vcb-goal` voice goal (`loadGoal`/`saveGoal`, shape-validated, `perceivedList`), `vcb-applied` applied settings (`loadApplied`/`saveApplied`)
+- `src/storage/applied.ts` — `parseApplied()`: strict rebuild of AppliedSettings (settings via `parseSuggestion`) for localStorage and processed takes
 - `src/mics/catalog.ts` — `MIC_CATALOG` known models (kind/pattern/address), `DEFAULT_MIC`, `findMic`, `addressTip`/`placementTip` (Msg `engine.mic.*`), `MIC_OTHER_LABEL`
 - `src/mics/catalog.test.ts` — catalog lookup and tip keys/texts
 - `src/plain/types.ts` — plain-language contract: `Msg` (key + params), `ClarityScore`, `Rating`, `Action` (cost, impact, how)
 - `src/plain/score.ts` — `clarityScore(a, { raw?, goal? })` (tone vs the goal's target) (noise/level/tone/consistency/over-processing penalties, main issue, headline/explain keys), `penalties`, `overprocessingPenalty`, `mainIssue`, `scoreBand`
+- `src/plain/refine.ts` — closed loop (v1.1): `evaluateProcessed(raw, fx, applied, goal)` (scores, regressions, level drop, distance mismatch, improved = +5 and no regressions), `refine(...)` → `Refinement` (wrong distance, change approach after 3 attempts, chopped → ReaFIR half / AI + gate −10 / off, quieter → Wet, thin → bass cuts toward 0, harsh → 3.5 kHz + high shelf, still noisy), `changeApproachAdvice()`, `baseDistance`, `REFINED_WHY`
+- `src/plain/refine.test.ts` — real session (wrong distance → 2 cm; matching distance: ReaFIR half, gate −10, Wet +12, bass toward 0, harsh band), each rule, change approach, en/pt-BR copy
 - `src/plain/compare.ts` — `compareProcessed(raw, fx)`: regressions of a processed take (quieter, thin, harsh, chopped) and the level drop (v0.8)
 - `src/plain/ratings.ts` — `plainRatings(a, { raw?, goal? })` background noise (incl. cut to silence) / your volume / sound of your voice (incl. regressions), `voiceState`, `volumeState`, `noiseWording`, `ratingTitle`
 - `src/plain/actions.ts` — `nextActions()` up to 3 "what to do next" actions (goal-aware; confirmed perceived issues boost their placement/EQ action by `PERCEIVED_BOOST`, unconfirmed → `eqByEar` last; mic-aware placement/address, impact order, free before paid; over-processed → "turn noise removal down" / compressor Wet first), `rankActions`
 - `src/plain/glossary.ts` — `GLOSSARY` term/meaning/analogy keys, `glossaryEntry(id)`
 - `src/plain/distances.ts` — `everydayDistance()` (finger / fist / open hand), `distanceCm()`
-- `src/plain/testFixtures.ts` — test-only analyses (exact band deviations, noisy room, fixture set) and mic builder
+- `src/plain/testFixtures.ts` — test-only analyses (exact band deviations, noisy room, fixture set), mic builder, `sessionTake`, `realSession()` (the v1.1 real session: c2/c8/c15/fx and the applied settings)
 - `src/plain/perceived.ts` — `fusePerceived(a, goal)` (perceived issue + measured confirmation > 1.5 dB vs target + delta), `perceivedNotes()` (`plain.perceived.{confirmed,byEar}.*`), `PERCEIVED_ISSUES`
 - `src/plain/perceived.test.ts` — natural goal = no goal (score/ratings/actions), warm/clear targets, regressions unaffected, fusion rules, action priority for confirmed vs by-ear issues
 - `src/plain/score.test.ts` · `ratings.test.ts` · `actions.test.ts` · `compare.test.ts` · `distances.test.ts` — formulas, label mapping, action order/limits, distances and glossary
 - `src/plain/keys.test.ts` — every key the plain engine returns exists in en.json with its `{{params}}`; banned words
-- `src/i18n/locales/en.json` — English source strings; `plain` namespace (score, rating, action, distance, glossary)
+- `src/i18n/locales/en.json` — English source strings; `plain` namespace (score, rating, action, distance, glossary, refine)
 - `src/i18n/locales/en/results.json` — English results-screen strings (`results.*`: plain layout, technical details, settings, takes)
 - `src/i18n/locales/{en,pt-BR}/engine.json` — `engine.*` strings for the framework-free modules: checks, suggestion hints/steps/reasons, settings sheet, failure hints, mic tips + mains select, take groups, status lines (numbers formatted in-string with `{{v, number(…)}}`)
-- `src/i18n/locales/{en,pt-BR}/suggest.json` — `suggestx.*` suggestion strings (ReaFIR plan steps, preferAi sheet lines); also read by `englishText`
+- `src/i18n/locales/{en,pt-BR}/suggest.json` — `suggestx.*` suggestion strings (ReaFIR plan steps, preferAi sheet lines, refined EQ reasons `why.refined.*`); also read by `englishText`
 - `src/i18n/locales/pt-BR/{plain,common,results,wizard,pages}.json` — Brazilian Portuguese translations, same keys and `{{params}}` as en (pt plural forms `_one/_many/_other`, ordinal `_ordinal_other`)
 - `src/i18n/localeParity.test.ts` — every en/<area>.json key exists in pt-BR/<area>.json and vice versa, identical `{{params}}`, all plural forms each locale needs for `{{count}}` keys, no empty strings
-- `src/storage/prefs.test.ts` — prefs round trip (incl. mic profile, voice goal), corrupt JSON, blocked storage
-- `src/storage/takesDb.test.ts` — in-memory fallback, prototype record normalization, v1 → v2 upgrade keeps takes and adds profiles
+- `src/storage/prefs.test.ts` — prefs round trip (incl. mic profile, voice goal, applied settings), corrupt JSON, blocked storage
+- `src/storage/takesDb.test.ts` — in-memory fallback, prototype record normalization, applied settings on processed takes, v1 → v2 upgrade keeps takes and adds profiles
 - `src/wavelink/types.ts` — Wave Link codec contract: `WlFile`, `WlInput`, `WlPlugin`, `WlPluginState`, `WlApplyPlan`, `WlApplyResult`, `WlChange`, `WAVELINK_SETTINGS_PATH`
 - `src/wavelink/codec.ts` — Settings.json codec (TS port of `tools/apply-reaplugs.py`): `parseSettings(text)` (inputs with effects, mic first; ReaGate/ReaComp/ReaEQ decoded, the rest opaque; `WlParseError` codes `notJson`/`notWaveLink`), `micInputKey`, `applyPlan(file, plan)` (suggestion values, restoreStates verbatim, switchOff/On, De-Esser from `deess`; `missing`; human `changes`), `serialize(file, tree)`
 - `src/wavelink/json.ts` — lossless JSON tree (`parseTree`: key order, number literals) and the formatting-preserving writer `dumpTree` (CRLF, indent, .NET escaping via `dotnetString`, BOM, final newline; `detectFormat`), `prop`/`setProp`
@@ -100,13 +104,21 @@
 - `src/wavelink/codec.real.test.ts` — `_test/wavelink-settings.json` (skips when absent, read-only): stored values, byte-identical file and per-plugin round trip, example settings applied and read back
 - `src/profiles/types.ts` — profile contract: `Profile`, `ProfileHost`, `ProfileValidation`, `PROFILE_MIN_GAIN`
 - `src/profiles/build.ts` — `suggestProfileName`, `newProfileId`, `sessionValidation(raw, fx, goal)` (clarity scores, SNR gain, regressions), `canValidate`, `profileFromSession` (validation only when it passes), `duplicateProfile`, `exportProfile`/`importProfile`, `captureStates(file, inputKey)`, `profilePlan(p, file, inputKey?)`
-- `src/profiles/validate.ts` — `parseProfile(v, keepActive?)` strict rebuild from known keys (suggestion ranges, ReaPlugs states must be FXP and round-trip), `MAX_PROFILE_TEXT`
+- `src/profiles/validate.ts` — `parseProfile(v, keepActive?)` and `parseSuggestion(v)` (throws) strict rebuild from known keys (suggestion ranges, ReaPlugs states must be FXP and round-trip), `MAX_PROFILE_TEXT`
 - `src/profiles/store.ts` — `openProfilesStore()`: IndexedDB `profiles` store (rows re-validated on read, put validates) or a page-wide memory fallback; list/get/put/delete/setActive
 - `src/profiles/build.test.ts` · `store.test.ts` — validation rule, export/import round trip and rejections, plan restores states, captureStates (synthetic + real file), memory CRUD and active flag
 - `src/components/results/ResultsScreen.tsx` — results page: demo banner, heading, plain results (or the analysis error) + takes grid (two columns ≥ 980 px), empty state
 - `src/components/results/ResultsScreen.test.tsx` — render test on the demo session: score ring, three ratings, ≤ 3 actions, details collapsed, details open state remembered
 - `src/components/results/resultsKeys.test.ts` — every `t('results.…')` / `<Trans i18nKey>` key in the results components exists in en/results.json (plus dynamic key families)
-- `src/components/results/PlainResults.tsx` — plain-first layout for take A: score → ratings → next actions → plain summaries → technical details; "Show me how" (settings) opens the details and scrolls to the suggested settings
+- `src/components/results/PlainResults.tsx` — plain-first layout for take A: score → [refinement loop, processed take with applied settings] → ratings → next actions → plain summaries → technical details; "Show me how" (settings) opens the details and scrolls to the suggested settings
+- `src/components/results/useRefineLoop.ts` — `refineLoop()` (pure) / `useRefineLoop(A)`: the session's processed takes with `applied` as attempts (evaluateProcessed vs the raw reference), A's refinement (refine) unless improved or recorded at another distance
+- `src/components/results/RefineLoopPanel.tsx` — attempts timeline, then one outcome: wrong distance · it worked · change approach · let's fix this
+- `src/components/results/AttemptsTimeline.tsx` — "Attempt N · raw → fx" list with ✓/✗ chips (current attempt marked)
+- `src/components/results/RefineCard.tsx` — "Let's fix this": refinement changes, route change, next distance; Apply the refined settings (WaveLinkApplyDialog + refinedPlan, marks attempt + 1 applied), by hand (guide override), record again
+- `src/components/results/LoopCards.tsx` — `MismatchCard` (record at the settings' distance), `ChangeApproachCard` (changeApproachAdvice), `WorkedCard` (It worked + Save as profile)
+- `src/components/results/RecordAgainButton.tsx` — "Record again with effects" (setFxDist + fx step), `distLabel()`
+- `src/components/results/MarkAppliedButton.tsx` — "I applied these settings" (markApplied) with confirmation
+- `src/components/results/refineLoop.test.tsx` — timeline ✓/✗, RefineCard changes + markApplied(attempt + 1) after a mocked download, by-hand override, mismatch hides refine, change-approach card, refineLoop with mocked engine, loop locale keys
 - `src/components/results/GoalLine.tsx` — "Your goal: … · you hear: …" line + "Change goal" dialog (GoalPicker; results re-score from the store)
 - `src/components/results/GoalLine.test.tsx` — goal line text, Change goal dialog edits the goal and closes
 - `src/components/results/usePlainResults.ts` — clarity score, ratings and next actions (+ ActionContext: take/profile mic, best and current distance, suggestion, raw reference when A is processed) for A; `stepDist()`
@@ -136,7 +148,7 @@
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart against the goal's target (A, A + B, A − B) with ±3/±6 zones, zero line labelled "your target" / "reference voice", legend with "Target: <style>"
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
 - `src/components/results/ChecksList.tsx` — problem checks, passing checks in a collapsed accordion
-- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel (`#suggested-settings`): effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON, "Set it up step by step" → #/guide, "Apply to Wave Link" dialog
+- `src/components/results/SuggestedSettings.tsx` — suggested ReaPlugs settings panel (`#suggested-settings`): effects order, ReaFIR card, plugin cards in chain order (notch EQ bands labelled), copy/download as text or JSON, "Set it up step by step" → #/guide, "Apply to Wave Link" dialog, "I applied these settings"
 - `src/components/results/PluginCard.tsx` — one plugin's key/value settings card
 - `src/components/results/NoiseReductionCard.tsx` — ReaFIR (noise reduction) numbered setup steps and alternatives
 - `src/components/results/TakesPanel.tsx` — takes grouped by session, Delete all with second-click confirm, New session / free take
@@ -197,23 +209,26 @@
 - `src/components/step/StepNav.tsx` — Back / Skip / Next navigation
 - `src/store/api.ts` — store contract: `BenchState` (incl. `mains`), `BenchActions`, `BenchSelectors`, `StatusMessage` (Msg), `TakeGroup`
 - `src/store/engine.ts` — lazily created `AudioEngine` singleton `getEngine()` (mocked in tests)
-- `src/store/benchStore.ts` — zustand `useBench` store: bootstrap, mic/devices, recording, navigation, A/B, deletes, mic profile (`patchMicProfile`, copied onto new takes); persists UI prefs (demo A/B saved as none); site-page `goTo` leaves wizard state alone; never saves session 'demo' takes; status lines as Msg (`engine.status.*`); `setMains` (re-analyzes all takes); `goal` + `setGoal` (`patchGoal`; saved, derived views only, never re-analyzes); `initialBenchState()` (screen 'home'), `prepareResults()`, `reconcileFxDist()` (fxDist dropped when it no longer matches the best control distance unless chosen with `setFxDist`)
+- `src/store/benchStore.ts` — zustand `useBench` store: bootstrap, mic/devices, recording, navigation, A/B, deletes, mic profile (`patchMicProfile`, copied onto new takes); persists UI prefs (demo A/B saved as none); site-page `goTo` leaves wizard state alone; never saves session 'demo' takes; status lines as Msg (`engine.status.*`); `setMains` (re-analyzes all takes); `goal` + `setGoal` (`patchGoal`; saved, derived views only, never re-analyzes); `applied` + `markApplied` (`nextApplied`: new id/date, attempt given or previous + 1 when the settings changed; saved to `vcb-applied`, copied onto each new processed take); `initialBenchState()` (screen 'home'), `prepareResults()`, `reconcileFxDist()` (fxDist dropped when it no longer matches the best control distance unless chosen with `setFxDist`)
 - `src/store/selectors.ts` — pure selectors: slots, best control, fxDist, step take, A/B, suggestion, take groups, canGoNext (goal-aware; missing goal = DEFAULT_GOAL)
 - `src/store/hooks.ts` — render-safe selector hooks (`useSlots`, `useBestControl`, `useSuggestion`, `useTakeGroups`, `useMicProfile`, `useGoal`, …)
-- `src/store/benchStore.test.ts` — navigation, A/B, delete, recording, enableMic, bootstrap, mic profile, mains setting, voice goal (fake engine)
+- `src/store/benchStore.test.ts` — navigation, A/B, delete, recording, enableMic, bootstrap, mic profile, mains setting, voice goal, applied settings (markApplied, copy onto processed takes) (fake engine)
 - `src/store/engineKeys.test.ts` — every engine Msg key (diagnose, suggest + sheet, quickStats, catalog, store status) exists in en and pt-BR engine.json with the same `{{params}}`; no unused en keys
 - `src/store/selectors.test.ts` — slots latest-wins, fxDist, suggestion fallback order, groups, canGoNext
 - `src/hooks/useLevel.ts` — rAF input level in dBFS while the mic is on (~30 fps state updates)
 - `src/hooks/useBootstrap.ts` — runs `bootstrap()` once on mount
 - `src/hooks/useRecordingShortcuts.ts` — step screen keys: Space toggles recording, Enter = Next
-- `src/components/guide/GuideScreen.tsx` — route #/guide: page head, empty state (start/finish the check) without a suggestion, host picker, path for the picked host
+- `src/components/guide/GuideScreen.tsx` — route #/guide: page head, empty state (start/finish the check) without a suggestion, refined-settings banner, host picker, path for the picked host (with the guide override applied)
+- `src/components/guide/guideOverride.ts` — guide override (v1.1): in-memory zustand `useGuideOverride` (refined settings + route + dist + attempt, set by RefineCard "I'll change them by hand"; an AI route also saves the nrChoice), `overrideSuggestion(s, refined)`
+- `src/components/guide/guideOverride.test.ts` — override values/EQ reasons, AI route skips ReaFIR
+- `src/components/guide/RefinedBanner.tsx` — "Your refined settings (attempt N)" banner with "Show the original settings" (clears the override)
 - `src/components/guide/hostPref.ts` — `Host` (wavelink/obs/apps/nvidia/unsure), `loadHost`/`saveHost` (localStorage `vcb-host`, fails soft), `useHost()`
 - `src/components/guide/HostPicker.tsx` — "What do you use for your mic?" cards, "Not sure" chooser with recommendations, compact "You picked" line with Change
 - `src/components/guide/GuideStepper.tsx` — vertical progress checklist (MUI Stepper): "Done, next" / "Back", jump to any step, all-done message
 - `src/components/guide/StepText.tsx` — step lead + numbered actions (numbers match replica callouts) + `StepNote`
 - `src/components/guide/guideFormat.ts` — `StepAction`, `calloutsOf`, value formatters for typed plugin values (dB, ms, Hz without separator, oct)
 - `src/components/guide/waveLinkSteps.ts` — `waveLinkSteps(s)` ordered Wave Link steps (effects → add + panel steps per chain plugin: ReaFIR setup/profile/reduce, one ReaEQ step per band or "flat", ReaComp, ReaGate → low cut → listen check (noisy) → test; AI step before ReaFIR when preferAi), `guideChain(s, choice)`, `offEffects(s, choice)` (Elgato Noise Removal kept on when picked)
-- `src/components/guide/WaveLinkGuide.tsx` — Wave Link + ReaPlugs path: step titles/bodies with the WaveLinkEffects replica, "Apply automatically instead" aside
+- `src/components/guide/WaveLinkGuide.tsx` — Wave Link + ReaPlugs path: step titles/bodies with the WaveLinkEffects replica, "Apply automatically instead" aside, "I applied these settings" at the test step (refined values + attempt while overridden)
 - `src/components/guide/WaveLinkPanels.tsx` — ReaFIR / ReaEQ band / ReaComp / ReaGate steps: instructions with the person's values + replica panels with callouts
 - `src/components/guide/ApplyAutomatically.tsx` — "Apply automatically instead" aside: "Apply to Wave Link" (browser file round trip) first, `tools/apply-reaplugs.py` as the terminal alternative (Wave Link closed, backup, ReaFIR by hand)
 - `src/components/guide/obsValues.ts` — `obsValues(s)`: OBS filter values from the suggestion (RNNoise when noisy, Expander or Noise Gate, 3-Band EQ averages, Compressor, Limiter −1 dB)
@@ -249,23 +264,23 @@
 - `src/components/guide/replicas/replicaStyle.ts` — theme CSS variables for replicas (`RC`), `srOnly`, `highlightRing`
 - `src/components/guide/replicas/replicas.test.tsx` — each replica renders fixture values, callout markers for known targets (unknown ignored), EQ tab count, pt-BR formatting, ReaFIR phases, Wave Link rows
 - `src/i18n/locales/{en,pt-BR}/replicas.json` — `replicas.*`: replica summaries and helper hints (field and plugin names stay English)
-- `src/components/wavelink/WaveLinkApplyDialog.tsx` — reusable "Apply to Wave Link" dialog: Upload → Check (changes + missing plugins) → Download, `buildPlan(inputKey)` prop
+- `src/components/wavelink/WaveLinkApplyDialog.tsx` — reusable "Apply to Wave Link" dialog: Upload → Check (changes + missing plugins) → Download, `buildPlan(inputKey)` prop, `onApplied(plan)` once after download/direct save
 - `src/components/wavelink/UploadStep.tsx` — step 1: plain explanation, Settings.json path + Copy, file input, "Pick the file directly" (File System Access), mic input select, errors
 - `src/components/wavelink/PreviewStep.tsx` — step 2: list of changes in plain words with values, "add <plugin> in Wave Link first" warnings
 - `src/components/wavelink/DownloadStep.tsx` — step 3: one click downloads Settings.json + `Settings.before-<date>.json`, swap/undo steps, optional "Save directly" after the backup
 - `src/components/wavelink/useWaveLinkFile.ts` — uploaded file state (parse via codec, chosen input, direct-save handle, error), `readSettings()`
 - `src/components/wavelink/wlFiles.ts` — `backupName()`, `downloadPair()`, File System Access helpers (`canPickDirectly`, `pickDirectly`, `saveDirectly`, fail soft)
-- `src/components/wavelink/wlPlan.ts` — `suggestionPlan()` (suggestion values + Elgato effects to switch off), `changeText()` plain-language change line
-- `src/components/wavelink/ApplyToWaveLinkButton.tsx` — "Apply to Wave Link" button + dialog for the current suggestion (results settings, guide aside)
+- `src/components/wavelink/wlPlan.ts` — `suggestionPlan()` (suggestion values + Elgato effects to switch off), `refinedPlan()` (refinement + its noise-removal route), `noiseRemovalOf`/`appliedFromPlan`/`appliedFromSuggestion` (markApplied inputs), `changeText()` plain-language change line
+- `src/components/wavelink/ApplyToWaveLinkButton.tsx` — "Apply to Wave Link" button + dialog for the current suggestion (results settings, guide aside); marks the downloaded settings applied
 - `src/components/wavelink/WaveLinkApplyDialog.test.tsx` — upload → preview lists changes and missing plugins → download produces two files; invalid file error
 - `src/components/profiles/ProfilesPage.tsx` — route #/profiles: head, Import (file input), profile cards, empty state with Start a check
 - `src/components/profiles/ProfileCard.tsx` — profile card: name, Active / validation / captured chips, mic · style · host · distance
-- `src/components/profiles/ProfileActions.tsx` — Apply to Wave Link (profilePlan), Capture from Wave Link, Re-test, Export, Duplicate, Rename, Set active, Delete (second click)
+- `src/components/profiles/ProfileActions.tsx` — Apply to Wave Link (profilePlan; marks the profile applied on download), Capture from Wave Link, Re-test, Export, Duplicate, Rename, Set active, Delete (second click)
 - `src/components/profiles/CaptureDialog.tsx` — upload the current Wave Link file and store `captureStates` in the profile
 - `src/components/profiles/NameDialog.tsx` — one-field name dialog (rename, save as profile)
 - `src/components/profiles/SaveProfile.tsx` — results entry (in SummaryActions): useSaveProfile + SaveProfileButton, hidden without a suggestion
 - `src/components/profiles/SaveProfileButton.tsx` — results "Save as profile": validated (raw → fx) or explains why not + "Save anyway as not validated"
-- `src/components/profiles/useSaveProfile.ts` — save gate (canValidate on A's session), suggested name, `profileFromSession` + put
+- `src/components/profiles/useSaveProfile.ts` — save gate (canValidate on A's session), suggested name, `profileFromSession` + put (the processed take's applied settings when known, else the suggestion)
 - `src/components/profiles/useProfiles.ts` — profiles list from the store, reloads after put/remove/setActive
 - `src/components/profiles/profileFormat.ts` — validation/host/style/mic labels, `exportFileName()`, `hasCapturedStates()`
 - `src/components/profiles/profiles.test.tsx` — profiles page CRUD with the memory store, save-as-profile gating

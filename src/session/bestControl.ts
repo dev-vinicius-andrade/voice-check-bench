@@ -1,4 +1,4 @@
-// Best control take selection ported 1:1 from the prototype (docs/prototype/voice-check.html). Pure.
+// Best control take selection ported from the prototype (docs/prototype/voice-check.html); noisy-room weighting per SPEC v1.1. Pure.
 import { targetDeviations } from '../audio/reference'
 import { DEFAULT_GOAL, isAnalysisError, type Analysis, type Take, type VoiceGoal } from '../types'
 import { STEPS } from './steps'
@@ -10,16 +10,27 @@ export function sessionSlots(takes: readonly Take[], session: string): (Take | n
   )
 }
 
-/** Noisy room (any control take with SNR < 25): the SNR penalty counts double. */
-const score = (a: Analysis, noisy: boolean, goal: VoiceGoal): number => {
+/** Below this control-take SNR (dB) the room is noisy and SNR dominates the choice (SPEC "Refinement loop (v1.1)"). */
+export const NOISY_CONTROL_SNR = 25
+
+/** |boom| + |warmth| + |mud| + |body| deviation from the goal's target, dB. */
+const toneExcess = (a: Analysis, goal: VoiceGoal): number => {
   const d = targetDeviations(a.rel, goal)
-  const snrPenalty = Math.max(0, 40 - a.snr) / (noisy ? 1 : 2)
-  return Math.abs(d[1]) + Math.abs(d[2]) + Math.abs(d[3]) + Math.abs(d[4]) + snrPenalty
+  return Math.abs(d[1]) + Math.abs(d[2]) + Math.abs(d[3]) + Math.abs(d[4])
 }
 
 /**
- * The control take (first 3 slots) with the lowest |boom|+|warmth|+|mud|+|body| deviation plus
- * an SNR penalty: max(0, 40 - snr) / 2, or max(0, 40 - snr) when any control take has SNR < 25.
+ * Quiet room: tone excess + max(0, 40 - snr) / 2 (prototype). Noisy room (any control take with SNR < 25): SNR
+ * dominates, 0.5 x tone excess + 1.5 x max(0, 40 - snr), so a boomy close take beats a far take buried in the room.
+ */
+export const controlScore = (a: Analysis, noisy: boolean, goal: VoiceGoal): number => {
+  const gap = Math.max(0, 40 - a.snr)
+  return noisy ? 0.5 * toneExcess(a, goal) + 1.5 * gap : toneExcess(a, goal) + gap / 2
+}
+
+/**
+ * The control take (first 3 slots) with the lowest controlScore: |boom|+|warmth|+|mud|+|body| deviation plus
+ * max(0, 40 - snr) / 2; when any control take has SNR < 25, 0.5 x that deviation + 1.5 x max(0, 40 - snr).
  * Needs at least 2 analyzed control takes. Deviations are measured against the goal's target curve.
  */
 export function bestControl(
@@ -33,7 +44,7 @@ export function bestControl(
     ts.push({ a: t.analysis, dist: st.dist, cm: st.cm, take: t })
   })
   if (ts.length < 2) return null
-  const noisy = ts.some((t) => t.a.snr < 25)
-  ts.sort((x, y) => score(x.a, noisy, goal) - score(y.a, noisy, goal))
+  const noisy = ts.some((t) => t.a.snr < NOISY_CONTROL_SNR)
+  ts.sort((x, y) => controlScore(x.a, noisy, goal) - controlScore(y.a, noisy, goal))
   return { dist: ts[0].dist, cm: ts[0].cm, take: ts[0].take }
 }

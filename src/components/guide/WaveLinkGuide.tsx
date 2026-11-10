@@ -4,9 +4,12 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import type { Suggestion } from '../../types'
+import { MarkAppliedButton } from '../results/MarkAppliedButton'
+import { appliedFromSuggestion } from '../wavelink/wlPlan'
 import { AiNoiseStep } from './AiNoiseStep'
 import { ApplyAutomatically } from './ApplyAutomatically'
 import { GuideStepper, type GuideStep } from './GuideStepper'
+import { useGuideOverride } from './guideOverride'
 import { calloutsOf, hz, type StepAction } from './guideFormat'
 import { useNrChoice, type NrChoice } from './nrChoice'
 import { WaveLinkEffects } from './replicas/WaveLinkEffects'
@@ -92,8 +95,27 @@ function Body({ s, x, choice, onChoose }: BodyProps) {
     case 'listen':
       return <StepText lead={t('guide.wl.listen.lead')} actions={[]} />
     case 'test':
-      return <TestStep />
+      return (
+        <>
+          <MarkApplied s={s} />
+          <TestStep />
+        </>
+      )
   }
+}
+
+/** End of the path: "I applied these settings" (the refined ones, with their attempt number, while the guide shows them). */
+function MarkApplied({ s }: { s: Suggestion }) {
+  const { t } = useTranslation()
+  const refined = useGuideOverride((x) => x.refined)
+  const applied = () =>
+    refined ? { settings: refined.settings, noiseRemoval: refined.noiseRemoval, dist: refined.dist, attempt: refined.attempt } : appliedFromSuggestion(s)
+  return (
+    <div className="grid gap-1">
+      <StepNote>{t('guide.wl.markApplied')}</StepNote>
+      <MarkAppliedButton applied={applied} />
+    </div>
+  )
 }
 
 export function WaveLinkGuide({ s }: { s: Suggestion }) {

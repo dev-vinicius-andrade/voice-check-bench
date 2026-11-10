@@ -23,6 +23,12 @@
         "harsh": "De ouvido (estridente): não medimos isso, mas você ouve — aqui vai um ajuste suave",
         "sharpS": "De ouvido (S chiado): não medimos isso, mas você ouve — aqui vai um ajuste suave",
         "dull": "De ouvido (sem brilho): não medimos isso, mas você ouve — aqui vai um ajuste suave"
+      },
+      "refined": {
+        "boom": "Refinado: sua voz processada perdeu grave, então este corte vai em direção a 0",
+        "warmth": "Refinado: sua voz processada perdeu calor, então este corte vai em direção a 0",
+        "presence": "Refinado: sua voz processada ficou áspera, então a presença desce",
+        "top": "Refinado: sua voz processada ficou áspera, então os agudos descem"
       }
     }
   }

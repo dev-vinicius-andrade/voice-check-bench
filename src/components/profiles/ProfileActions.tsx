@@ -7,6 +7,7 @@ import type { WlFile } from '../../wavelink/types'
 import { useBench } from '../../store/benchStore'
 import { downloadFile } from '../results/download'
 import { WaveLinkApplyDialog } from '../wavelink/WaveLinkApplyDialog'
+import { noiseRemovalOf } from '../wavelink/wlPlan'
 import { CaptureDialog } from './CaptureDialog'
 import { NameDialog } from './NameDialog'
 import { exportFileName } from './profileFormat'
@@ -22,6 +23,8 @@ export function ProfileActions({ p, api }: { p: Profile; api: ProfilesApi }) {
   const close = (): void => setOpen(null)
   const buildPlan = useCallback((file: WlFile, key: string) => profilePlan(p, file, key), [p])
   const stamp = (): string => new Date().toISOString()
+  // closed loop: a downloaded profile file means these settings are now applied
+  const onApplied = (): void => useBench.getState().markApplied({ settings: p.suggestion, noiseRemoval: noiseRemovalOf(p.suggestion, null), dist: p.dist })
 
   const retest = (): void => {
     const st = useBench.getState()
@@ -54,7 +57,7 @@ export function ProfileActions({ p, api }: { p: Profile; api: ProfilesApi }) {
       <Button size="small" variant={confirmDelete ? 'contained' : 'outlined'} color="error" onClick={remove} onBlur={() => setConfirmDelete(false)}>
         {confirmDelete ? t('profiles.actions.confirmDelete') : t('profiles.actions.delete')}
       </Button>
-      <WaveLinkApplyDialog open={open === 'apply'} onClose={close} buildPlan={buildPlan} title={`${t('profiles.wl.title')} · ${p.name}`} />
+      <WaveLinkApplyDialog open={open === 'apply'} onClose={close} buildPlan={buildPlan} title={`${t('profiles.wl.title')} · ${p.name}`} onApplied={onApplied} />
       <CaptureDialog open={open === 'capture'} onClose={close} p={p} onSave={(states) => api.put({ ...p, wavelinkStates: states, updated: stamp() })} />
       <NameDialog
         open={open === 'rename'}

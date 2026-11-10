@@ -13,7 +13,9 @@ import { useSuggestion } from '../../store/hooks'
 import { isAnalysisError, type Suggestion } from '../../types'
 import { useMsg } from '../common/MsgText'
 import { ApplyToWaveLinkButton } from '../wavelink/ApplyToWaveLinkButton'
+import { appliedFromSuggestion } from '../wavelink/wlPlan'
 import { downloadFile } from './download'
+import { MarkAppliedButton } from './MarkAppliedButton'
 import { NoiseReductionCard } from './NoiseReductionCard'
 import { PluginCard } from './PluginCard'
 import { pluginCards, tagOf } from './pluginCards'
@@ -109,6 +111,8 @@ function SettingsPanel({ s }: { s: Suggestion }) {
         <Box component="code" sx={{ color: 'text.primary', overflowWrap: 'anywhere' }}>python tools/apply-reaplugs.py reaplugs-settings.json --write</Box>{' '}
         {t('results.settings.applyAfter')}
       </Typography>
+      <Typography variant="body2" color="text.secondary">{t('results.refine.byHandNote')}</Typography>
+      <MarkAppliedButton applied={() => appliedFromSuggestion(s)} />
     </Paper>
   )
 }

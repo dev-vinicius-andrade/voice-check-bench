@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -24,25 +24,36 @@ export interface WaveLinkApplyDialogProps {
   buildPlan(file: WlFile, inputKey: string): WlApplyPlan
   /** Dialog title; defaults to "Apply to Wave Link". */
   title?: string
+  /** Called once per opening, when the adjusted file is downloaded or saved directly (closed loop: markApplied). */
+  onApplied?(plan: WlApplyPlan): void
 }
 
 /** Upload Settings.json → preview the changes → download the adjusted file and a dated backup. */
-export function WaveLinkApplyDialog({ open, onClose, buildPlan, title }: WaveLinkApplyDialogProps) {
+export function WaveLinkApplyDialog({ open, onClose, buildPlan, title, onApplied }: WaveLinkApplyDialogProps) {
   const { t } = useTranslation()
   const titleId = useId()
   const wl = useWaveLinkFile()
   const [step, setStep] = useState(0)
-  const result = useMemo<WlApplyResult | null>(() => {
+  const reported = useRef(false)
+  const built = useMemo<{ plan: WlApplyPlan; result: WlApplyResult } | null>(() => {
     if (!wl.file || !wl.inputKey) return null
     try {
-      return applyPlan(wl.file, buildPlan(wl.file, wl.inputKey))
+      const plan = buildPlan(wl.file, wl.inputKey)
+      return { plan, result: applyPlan(wl.file, plan) }
     } catch {
       return null
     }
   }, [wl.file, wl.inputKey, buildPlan])
+  const result = built?.result ?? null
+  const done = (): void => {
+    if (reported.current || !built) return
+    reported.current = true
+    onApplied?.(built.plan)
+  }
   const close = (): void => {
     wl.reset()
     setStep(0)
+    reported.current = false
     onClose()
   }
   const canNext = step === 0 ? result !== null : step === 1 && result !== null && result.changes.some((c) => c.kind !== 'missing')
@@ -59,7 +70,7 @@ export function WaveLinkApplyDialog({ open, onClose, buildPlan, title }: WaveLin
         </Stepper>
         {step === 0 && <UploadStep wl={wl} />}
         {step === 1 && result && <PreviewStep result={result} />}
-        {step === 2 && result && wl.file && <DownloadStep text={result.text} original={wl.file.text} handle={wl.handle} />}
+        {step === 2 && result && wl.file && <DownloadStep text={result.text} original={wl.file.text} handle={wl.handle} onDone={done} />}
       </DialogContent>
       <DialogActions>
         {step > 0 && <Button onClick={() => setStep(step - 1)}>{t('profiles.wl.back')}</Button>}

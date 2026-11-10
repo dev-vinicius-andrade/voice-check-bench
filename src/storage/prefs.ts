@@ -1,8 +1,10 @@
 // localStorage JSON helpers. Every access is wrapped; bad or missing data yields defaults.
 import { isMainsSetting, type MainsSetting } from '../audio/mains'
 import { DEFAULT_MIC } from '../mics/catalog'
+import { parseApplied } from './applied'
 import {
   DEFAULT_GOAL,
+  type AppliedSettings,
   type ChartView,
   type DeviceChoice,
   type MicProfile,
@@ -28,6 +30,7 @@ const DEVS_KEY = 'vcb-devs'
 const MIC_KEY = 'vcb-mic'
 const MAINS_KEY = 'vcb-mains'
 const GOAL_KEY = 'vcb-goal'
+const APPLIED_KEY = 'vcb-applied'
 const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'setup', 'step', 'results', 'guide', 'profiles']
 const VIEWS: readonly ChartView[] = ['a', 'ab', 'diff']
 const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
@@ -144,4 +147,20 @@ export function perceivedList(v: unknown): PerceivedIssue[] {
 
 export function saveGoal(g: VoiceGoal): void {
   writePref(GOAL_KEY, g)
+}
+
+/** Settings currently applied ('vcb-applied'); null when none or the stored data is malformed. */
+export function loadApplied(): AppliedSettings | null {
+  return parseApplied(readPref<unknown>(APPLIED_KEY, null))
+}
+
+/** Saves the applied settings; null removes them. */
+export function saveApplied(a: AppliedSettings | null): void {
+  if (a) writePref(APPLIED_KEY, a)
+  else
+    try {
+      localStorage.removeItem(APPLIED_KEY)
+    } catch {
+      // storage blocked: ignore
+    }
 }

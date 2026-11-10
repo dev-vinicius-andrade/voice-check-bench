@@ -23,6 +23,12 @@
         "harsh": "By ear (harsh): we didn't measure this, but you hear it — here's a gentle tweak",
         "sharpS": "By ear (sharp S): we didn't measure this, but you hear it — here's a gentle tweak",
         "dull": "By ear (dull): we didn't measure this, but you hear it — here's a gentle tweak"
+      },
+      "refined": {
+        "boom": "Refined: your processed voice lost bass, so this cut moves toward 0",
+        "warmth": "Refined: your processed voice lost warmth, so this cut moves toward 0",
+        "presence": "Refined: your processed voice got harsh, so the presence comes down",
+        "top": "Refined: your processed voice got harsh, so the top end comes down"
       }
     }
   }

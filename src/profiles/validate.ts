@@ -76,7 +76,8 @@ function parseEq(v: unknown): EqBand {
   return e.byEar === undefined ? band : { ...band, byEar: bool(e.byEar, 'eq.byEar') }
 }
 
-function parseSuggestion(v: unknown): SuggestionJson {
+/** Strict rebuild of a settings JSON (throws on bad data); also validates applied settings (src/storage/applied.ts). */
+export function parseSuggestion(v: unknown): SuggestionJson {
   const s = obj(v, 'suggestion')
   const g = obj(s.gate, 'gate')
   const c = obj(s.comp, 'comp')

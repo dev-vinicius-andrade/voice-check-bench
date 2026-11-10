@@ -1,5 +1,11 @@
 {
   "guide": {
+    "refined": {
+      "title": "Seus ajustes refinados (tentativa {{n}})",
+      "text": "Estes valores foram ajustados depois da sua última gravação. Quando terminar, grave de novo a {{dist}}.",
+      "original": "Mostrar os ajustes originais",
+      "eqWhy": "Ajustado depois da sua última gravação."
+    },
     "entry": {
       "valuesOnly": "Ver só os valores",
       "stepByStep": "Configurar passo a passo"
@@ -60,6 +66,7 @@
       "button": "Gravar o take com efeitos"
     },
     "wl": {
+      "markApplied": "Terminou de configurar tudo? Avise a gente, para conferirmos sua próxima gravação com estes ajustes.",
       "effects": {
         "title": "Abra os efeitos do seu microfone",
         "lead": "Só os efeitos que escolhemos devem ficar ligados. Outros efeitos brigariam com eles.",

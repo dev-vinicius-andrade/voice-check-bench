@@ -236,6 +236,46 @@
       "change": "Mudar objetivo",
       "dialogTitle": "Mude seu objetivo",
       "done": "Pronto"
+    },
+    "attempts": {
+      "title": "Suas tentativas",
+      "item": "Tentativa {{n}} · {{raw}} → {{fx}}",
+      "better": "melhorou",
+      "notYet": "ainda não melhorou",
+      "otherDist": "outra distância"
+    },
+    "refine": {
+      "title": "Vamos corrigir isso",
+      "lead": "Seus efeitos ainda não melhoraram sua voz. Para a próxima tentativa, mudamos estes ajustes:",
+      "changes": "O que muda",
+      "nextDist": "Grave a {{dist}}",
+      "route": {
+        "reafir": "Use o ReaFIR para tirar o ruído do ambiente.",
+        "ai-elgato": "Tire o ruído do ambiente com o Elgato Noise Removal (IA) em vez do ReaFIR.",
+        "ai-nvidia": "Tire o ruído do ambiente com o NVIDIA Broadcast (IA) em vez do ReaFIR.",
+        "none": "Desligue a remoção de ruído."
+      },
+      "apply": "Aplicar os ajustes refinados no Wave Link",
+      "dialogTitle": "Aplicar os ajustes refinados",
+      "byHand": "Vou mudar à mão",
+      "recordAgain": "Gravar de novo com efeitos",
+      "markApplied": "Apliquei estes ajustes",
+      "markedApplied": "Certo. Agora grave de novo com efeitos para conferirmos estes ajustes.",
+      "byHandNote": "Configurou estes valores à mão? Avise a gente, para sua próxima gravação com efeitos ser conferida com eles."
+    },
+    "mismatch": {
+      "title": "Primeiro grave na distância certa",
+      "text": "Esta gravação foi feita a {{recorded}}, mas seus ajustes foram feitos para {{dist}} — grave de novo a {{dist}}.",
+      "button": "Gravar de novo a {{dist}}"
+    },
+    "approach": {
+      "title": "Hora de tentar algo diferente",
+      "lead": "Ajustamos os valores {{n}} vezes e sua voz ainda não melhorou. Mais ajustes pequenos não vão resolver. Isto ajuda mais:",
+      "guide": "Abrir o passo a passo"
+    },
+    "worked": {
+      "title": "Funcionou",
+      "text": "Com seus efeitos, sua voz marca {{fx}}, contra {{raw}} sem eles. Salve estes ajustes como perfil para usar de novo."
     }
   }
 }

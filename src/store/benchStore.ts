@@ -8,12 +8,14 @@ import { bestControl, sessionSlots } from '../session/bestControl'
 import { DEFAULT_MIC, findMic } from '../mics/catalog'
 import type { Msg } from '../plain/types'
 import {
+  loadApplied,
   loadDeviceChoice,
   loadGoal,
   loadMains,
   loadMicProfile,
   loadUiPrefs,
   perceivedList,
+  saveApplied,
   saveDeviceChoice,
   saveGoal,
   saveMains,
@@ -25,6 +27,7 @@ import { openTakesDb, type TakesDb } from '../storage/takesDb'
 import {
   DEFAULT_GOAL,
   isAnalysisError,
+  type AppliedSettings,
   type DeviceChoice,
   type DeviceKind,
   type MicProfile,
@@ -65,8 +68,29 @@ export function initialBenchState(): BenchState {
     micProfile: { ...DEFAULT_MIC },
     mains: 'auto',
     goal: { ...DEFAULT_GOAL, perceived: [] },
+    applied: null,
     status: null,
   }
+}
+
+/** Deep copy of applied settings (a take or the store never shares the object with the caller). */
+const cloneApplied = (a: AppliedSettings): AppliedSettings => JSON.parse(JSON.stringify(a)) as AppliedSettings
+const newAppliedId = (): string => 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+
+/**
+ * The next applied settings: a new id and date; the attempt is the given one, else the previous attempt + 1 when the
+ * settings changed (the same settings confirmed again keep it), else 1.
+ */
+export function nextApplied(
+  prev: AppliedSettings | null,
+  input: Omit<AppliedSettings, 'id' | 'date' | 'attempt'> & { attempt?: number },
+  now: Date = new Date(),
+): AppliedSettings {
+  const same = !!prev && JSON.stringify(prev.settings) === JSON.stringify(input.settings)
+  const auto = prev ? (same ? prev.attempt : prev.attempt + 1) : 1
+  const given = input.attempt
+  const attempt = given !== undefined && Number.isInteger(given) && given >= 1 ? given : auto
+  return cloneApplied({ id: newAppliedId(), date: now.toISOString(), settings: input.settings, noiseRemoval: input.noiseRemoval, dist: input.dist, attempt })
 }
 
 // ---------- module state (not rendered) ----------
@@ -209,6 +233,8 @@ export const useBench = create<BenchStore>()((set, get) => {
         samples,
         created: new Date().toISOString(),
         mic: { ...s.micProfile },
+        // closed loop (v1.1): a processed take remembers the settings it was recorded with
+        ...(step?.key === 'fx' && s.applied ? { applied: cloneApplied(s.applied) } : {}),
         analysis,
       }
       set({
@@ -244,6 +270,7 @@ export const useBench = create<BenchStore>()((set, get) => {
           micProfile: loadMicProfile(),
           mains: loadMains(),
           goal: loadGoal(),
+          applied: loadApplied(),
         })
         const db = await getDb()
         const takes: Take[] = []
@@ -450,6 +477,11 @@ export const useBench = create<BenchStore>()((set, get) => {
       const goal = patchGoal(get().goal, patch)
       saveGoal(goal)
       set({ goal })
+    },
+    markApplied(input) {
+      const applied = nextApplied(get().applied, input)
+      saveApplied(applied)
+      set({ applied })
     },
     setMains(mains) {
       if (mains === get().mains) return

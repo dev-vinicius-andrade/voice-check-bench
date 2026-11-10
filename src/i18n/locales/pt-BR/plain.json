@@ -211,6 +211,35 @@
         "sharpS": "Você ouve os sons de S chiados. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ.",
         "dull": "Você ouve sua voz sem brilho. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ."
       }
+    },
+    "refine": {
+      "wrongDistance": "Esta gravação foi feita a {{actual}}, mas as configurações foram feitas para {{dist}}. Grave de novo a {{dist}} antes de mudar qualquer coisa: as configurações foram feitas para essa distância.",
+      "gateTooHigh": "O gate estava fechando em cima da sua voz: o Threshold dele desce {{db, number(maximumFractionDigits: 1)}} dB, para {{to, number(maximumFractionDigits: 1)}} dB.",
+      "chopped": {
+        "reafirHalf": "A remoção de ruído está cortando sua voz: diminua a redução do ReaFIR para mais ou menos metade do que você configurou.",
+        "toAi": "O ReaFIR continua cortando sua voz: desligue o ReaFIR e use uma remoção de ruído com IA (Elgato Noise Removal).",
+        "gateOff": "O gate ainda corta sua voz: coloque o Dry dele em 0 dB para ele parar de cortar."
+      },
+      "quieter": "Sua voz caiu {{drop, number(maximumFractionDigits: 1)}} dB, então o Wet do compressor sobe {{db, number(maximumFractionDigits: 1)}} dB, para {{to, number(maximumFractionDigits: 1)}} dB.",
+      "thin": {
+        "boom": "Sua voz perdeu grave: o low shelf de 150 Hz vai de {{from, number(maximumFractionDigits: 1)}} dB para {{to, number(maximumFractionDigits: 1)}} dB.",
+        "warmth": "Sua voz perdeu calor: a banda de 250 Hz vai de {{from, number(maximumFractionDigits: 1)}} dB para {{to, number(maximumFractionDigits: 1)}} dB."
+      },
+      "harsh": {
+        "presence": "Sua voz ficou áspera: a banda de 3,5 kHz vai de {{from, number(maximumFractionDigits: 1)}} dB para {{to, number(maximumFractionDigits: 1)}} dB.",
+        "top": "Sua voz ficou áspera: o high shelf de 10 kHz vai de {{from, number(maximumFractionDigits: 1)}} dB para {{to, number(maximumFractionDigits: 1)}} dB."
+      },
+      "stillNoisy": {
+        "reafirMore": "O ambiente continua quase tão alto quanto antes: arraste a curva do ReaFIR uns 3 dB a mais para baixo e escute.",
+        "toAi": "O ReaFIR não está tirando ruído suficiente do ambiente: troque por uma remoção de ruído com IA (Elgato Noise Removal).",
+        "addAi": "O ambiente continua quase tão alto quanto antes: adicione uma remoção de ruído com IA (Elgato Noise Removal) no topo dos seus efeitos.",
+        "aiStronger": "O ambiente continua quase tão alto quanto antes: aumente um nível da sua remoção de ruído com IA."
+      },
+      "changeApproach": {
+        "ai": "Mudar números não está ajudando. Use uma remoção de ruído com IA (Elgato Noise Removal ou NVIDIA Broadcast) no lugar do ReaFIR.",
+        "placement": "Aponte o microfone para a sua boca e para longe de ventiladores, do PC e de janelas.",
+        "closer": "Chegue mais perto do microfone: quanto mais perto você estiver, menos do ambiente ele capta."
+      }
     }
   }
 }

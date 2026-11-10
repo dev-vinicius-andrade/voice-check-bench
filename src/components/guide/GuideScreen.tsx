@@ -1,4 +1,5 @@
 // Route #/guide: "Set it up step by step" with the person's suggested settings, for the app they use (SPEC v0.7).
+import { useMemo } from 'react'
 import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
@@ -14,6 +15,8 @@ import { useHost, type Host } from './hostPref'
 import { NvidiaGuide } from './NvidiaGuide'
 import { ObsGuide } from './ObsGuide'
 import { WaveLinkGuide } from './WaveLinkGuide'
+import { overrideSuggestion, useGuideOverride } from './guideOverride'
+import { RefinedBanner } from './RefinedBanner'
 
 /** No suggestion yet: send people to the check (setup, or back to their step when the session has takes). */
 function GuideEmpty() {
@@ -44,7 +47,10 @@ function HostGuide({ host, s }: { host: Host; s: Suggestion }) {
 export function GuideScreen() {
   const { t } = useTranslation()
   const ready = useBench((s) => s.ready)
-  const s = useSuggestion()
+  const suggestion = useSuggestion()
+  const refined = useGuideOverride((x) => x.refined)
+  // refined settings from the results ("I'll change them by hand") replace the suggestion's values
+  const s = useMemo(() => (suggestion && refined ? overrideSuggestion(suggestion, refined) : suggestion), [suggestion, refined])
   const [host, setHost] = useHost()
   return (
     <PageColumn>
@@ -52,6 +58,7 @@ export function GuideScreen() {
       {ready && !s && <GuideEmpty />}
       {s && (
         <div className="grid min-w-0 gap-6">
+          <RefinedBanner />
           <HostPicker host={host} onPick={setHost} />
           {host && <HostGuide key={host} host={host} s={s} />}
         </div>

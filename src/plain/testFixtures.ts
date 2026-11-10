@@ -1,7 +1,8 @@
 // Test-only analyses for the plain-language engine.
 import { BANDS } from '../audio/reference'
 import { fakeAnalysis } from '../audio/testSignals'
-import type { Analysis, MicProfile } from '../types'
+import type { SuggestionJson } from '../settings/suggest'
+import type { Analysis, AppliedSettings, MicProfile, StepKey, Take } from '../types'
 
 /**
  * Reference `rel` with band i deviating by exactly d dB after level matching.
@@ -72,4 +73,50 @@ export function fixtureAnalyses(): Analysis[] {
   list.push(fakeAnalysis({ gateSwitches: 8 }))
   list.push(processedPair().fx)
   return list
+}
+
+/** A guided take around an analysis (test-only). */
+export const sessionTake = (id: number, step: StepKey, name: string, analysis: Analysis): Take => ({
+  id, name, session: 's1', step, device: 'Mic', sampleRate: 48000, samples: new Float32Array(0), created: '2026-11-01T00:00:00.000Z', analysis,
+})
+
+/**
+ * The real session behind the refinement loop (SPEC "Refinement loop (v1.1)", numbers from a shared summary): a noisy
+ * room where 2 cm is boomy but loudest, 15 cm was picked as "best" by the old rule, and the processed take (at 15 cm)
+ * came out 12 dB quieter, thin, harsh and chopped (38 % digital silence).
+ */
+export function realSession(): { c2: Take; c8: Take; c15: Take; fx: Take; settings: SuggestionJson; applied: AppliedSettings } {
+  const raw = (speechMed: number, noise: number, snr: number, rel: number[]): Analysis =>
+    fakeAnalysis({ speechMed, noise, snr, rel, noiseKind: 'broadband', tones: [{ hz: 1617, db: 18 }, { hz: 1559, db: 16 }, { hz: 768, db: 13 }] })
+  const c2 = sessionTake(1, 'c2', 'Control · 2 cm · raw', raw(-20.8, -37, 16.3, [-10.6, 12.4, 16, 9.5, 0, -0.7, -5.4, -12.8, -26.4]))
+  const c8 = sessionTake(2, 'c8', 'Control · 8 cm · raw', raw(-25.7, -37.1, 11.4, [-21.3, 5.7, 13.9, 5, 0, -0.1, -2, -13.6, -24.8]))
+  const c15 = sessionTake(3, 'c15', 'Control · 15 cm · raw', raw(-29.2, -37.1, 7.9, [-11.4, 5.4, 9.9, 5.8, 0, 0.6, -4.6, -14.4, -29.3]))
+  const fx = sessionTake(4, 'fx', 'Processed · 15 cm · Record Mix', fakeAnalysis({
+    speechMed: -40.8, noise: -100, snr: 59.2, rel: [-39.8, -15.3, 15.5, 17.2, 0, 9.3, 13.8, 8.2, -4.7], zeroRatio: 0.38, gateSwitches: 23,
+  }))
+  const settings: SuggestionJson = {
+    basedOn: 'Control · 15 cm · raw',
+    speechDbfs: -29.2,
+    noiseDbfs: -37.1,
+    gainHint: '',
+    noiseHint: 'The input is noisy.',
+    dist: '15 cm',
+    lowcut: 80,
+    gate: { threshold: -41, attack: 1, hold: 200, release: 300, hysteresis: -6, wet: 0, dry: -10 },
+    eq: [
+      { type: 'Low Shelf', freq: 150, gain: -3.5, bw: 2, why: 'Boom' },
+      { type: 'Band', freq: 250, gain: -4.5, bw: 1.5, why: 'Warmth' },
+      { type: 'High Shelf', freq: 10000, gain: -4, bw: 2, why: 'Room above 5 kHz' },
+      { type: 'Band', freq: 1617, gain: -9, bw: 0.1, why: 'Fan tone' },
+      { type: 'Band', freq: 1559, gain: -8, bw: 0.1, why: 'Fan tone' },
+      { type: 'Band', freq: 768, gain: -6.5, bw: 0.1, why: 'Fan tone' },
+    ],
+    comp: { threshold: -33, ratio: 2.5, attack: 5, release: 100, knee: 6, wet: 2, limit: true },
+    deess: true,
+    noisyRoom: true,
+    noiseReduction: { plugin: 'ReaFIR', steps: ['Add ReaFIR'], alternatives: ['Elgato Noise Removal'], preferAi: true },
+    chain: ['ReaFIR', 'ReaEQ', 'ReaComp', 'ReaGate'],
+  }
+  const applied: AppliedSettings = { id: 'a1', date: '2026-11-01T00:00:00.000Z', settings, noiseRemoval: 'reafir', dist: '15 cm', attempt: 1 }
+  return { c2, c8, c15, fx, settings, applied }
 }

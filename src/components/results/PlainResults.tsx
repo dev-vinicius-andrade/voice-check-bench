@@ -5,10 +5,12 @@ import { NextActions } from './NextActions'
 import { PlainSummaries } from './PlainSummaries'
 import { SaveProfile } from '../profiles/SaveProfile'
 import { RatingCards } from './RatingCards'
+import { RefineLoopPanel } from './RefineLoopPanel'
 import { ScoreHero } from './ScoreHero'
 import { TechnicalDetails } from './TechnicalDetails'
 import { useDetailsOpen } from './useDetailsOpen'
 import { usePlainResults } from './usePlainResults'
+import { useRefineLoop } from './useRefineLoop'
 
 /** Id of the suggested-settings section inside the technical details. */
 const SETTINGS_ID = 'suggested-settings'
@@ -19,6 +21,7 @@ const scrollToSettings = (): void =>
 /** Plain-first results for take A: score → ratings → next actions → summaries → collapsed technical details. */
 export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
   const { score, ratings, actions, ctx, before } = usePlainResults(A, a)
+  const loop = useRefineLoop(A)
   const [open, setOpen] = useDetailsOpen()
   const pendingScroll = useRef(false)
 
@@ -40,10 +43,12 @@ export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
     <div className="grid min-w-0 gap-4">
       <GoalLine analysis={a} />
       <ScoreHero score={score} before={before} />
+      {loop && <RefineLoopPanel A={A} loop={loop} />}
       <RatingCards ratings={ratings} />
       <NextActions actions={actions} ctx={ctx} onShowSettings={showSettings} />
       <PlainSummaries A={A} />
-      <SaveProfile A={A} />
+      {/* when the attempt worked, "Save as profile" sits in the "It worked" card */}
+      {!(loop?.current.improved && !loop.current.mismatch) && <SaveProfile A={A} />}
       <TechnicalDetails A={A} open={open} onOpenChange={setOpen} onEntered={onEntered} />
     </div>
   )

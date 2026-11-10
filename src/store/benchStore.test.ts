@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
 import type { AnalysisResult, StepKey, Take } from '../types'
 import type { BenchState } from './api'
-import { initialBenchState, patchGoal, patchMicProfile, reconcileFxDist, useBench } from './benchStore'
+import { initialBenchState, nextApplied, patchGoal, patchMicProfile, reconcileFxDist, useBench } from './benchStore'
+import { realSession } from '../plain/testFixtures'
 import { selectBestControl, selectSuggestion } from './selectors'
 import { DEFAULT_MIC } from '../mics/catalog'
 import { analyze } from '../audio/analyze'
@@ -425,5 +426,73 @@ describe('voice goal', () => {
     localStorage.setItem('vcb-goal', JSON.stringify({ style: 'bright', perceived: ['harsh', 'x'] }))
     await mod.useBench.getState().bootstrap()
     expect(mod.useBench.getState().goal).toEqual({ style: 'bright', perceived: ['harsh'] })
+  })
+})
+
+describe('applied settings (closed loop, v1.1)', () => {
+  afterEach(() => localStorage.clear())
+  const { applied: a0, settings } = realSession()
+  const input = { settings, noiseRemoval: 'reafir' as const, dist: '2 cm' }
+
+  it('starts with nothing applied', () => {
+    expect(initialBenchState().applied).toBeNull()
+  })
+
+  it('nextApplied: new id and date; attempt given, else previous + 1 when the settings changed, else kept', () => {
+    const now = new Date('2026-11-09T10:00:00.000Z')
+    const first = nextApplied(null, input, now)
+    expect(first).toMatchObject({ date: '2026-11-09T10:00:00.000Z', settings, noiseRemoval: 'reafir', dist: '2 cm', attempt: 1 })
+    expect(first.settings).not.toBe(settings)
+    const again = nextApplied(first, input)
+    expect(again.attempt).toBe(1)
+    expect(again.id).not.toBe(first.id)
+    const changed = { ...settings, comp: { ...settings.comp, wet: 14 } }
+    expect(nextApplied(first, { ...input, settings: changed }).attempt).toBe(2)
+    expect(nextApplied({ ...first, attempt: 2 }, { ...input, settings: changed }).attempt).toBe(3)
+    expect(nextApplied(first, { ...input, settings: changed, attempt: 1 }).attempt).toBe(1)
+    expect(nextApplied(first, { ...input, attempt: 5 }).attempt).toBe(5)
+    expect(nextApplied(first, { ...input, settings: changed, attempt: 0 }).attempt).toBe(2)
+  })
+
+  it('markApplied sets the state and saves it to vcb-applied', () => {
+    st().markApplied(input)
+    const a = st().applied
+    expect(a).toMatchObject({ settings, noiseRemoval: 'reafir', dist: '2 cm', attempt: 1 })
+    expect(JSON.parse(localStorage.getItem('vcb-applied') ?? 'null')).toEqual(a)
+    st().markApplied({ ...input, settings: { ...settings, gate: { ...settings.gate, threshold: -51 } } })
+    expect(st().applied?.attempt).toBe(2)
+    expect(JSON.parse(localStorage.getItem('vcb-applied') ?? 'null').attempt).toBe(2)
+  })
+
+  it('copies applied onto each new processed take only', async () => {
+    vi.useFakeTimers()
+    const takes = [mkTake(1, 's1', 'c2', fakeAnalysis({ rel: BOOMY_REL })), mkTake(2, 's1', 'c15')]
+    reset({ screen: 'step', step: 3, takes, mic: micOn, deviceChoice: { raw: 'raw1', fx: 'fx1' }, applied: a0 })
+    fake.samples = new Float32Array(48000 * 10)
+    await st().startRecording()
+    fake.recordingTime = 10
+    st().stopRecording()
+    vi.advanceTimersByTime(30)
+    const fx = st().takes.at(-1)
+    expect(fx?.step).toBe('fx')
+    expect(fx?.applied).toEqual(a0)
+    expect(fx?.applied).not.toBe(a0)
+    // a raw control take does not carry it
+    useBench.setState({ step: 0 })
+    await st().startRecording()
+    fake.recordingTime = 10
+    st().stopRecording()
+    vi.advanceTimersByTime(30)
+    const raw = st().takes.at(-1)
+    expect(raw?.step).toBe('c2')
+    expect(raw).not.toHaveProperty('applied')
+  })
+
+  it('is restored on bootstrap', async () => {
+    vi.resetModules()
+    const mod = await import('./benchStore')
+    localStorage.setItem('vcb-applied', JSON.stringify(a0))
+    await mod.useBench.getState().bootstrap()
+    expect(mod.useBench.getState().applied).toEqual(a0)
   })
 })

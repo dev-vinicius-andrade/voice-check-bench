@@ -105,10 +105,10 @@ describe('suggest', () => {
     const hot = suggest(mkTake(an({ speechMed: -10 })), '8 cm')
     expect(en(hot?.gainHint)).toBe('The raw take is hot (-10 dBFS). Lower the Wave XLR gain about 10 dB and record the control takes again.')
   })
-  it('on a noisy input keeps the gate above the reduced noise, caps the high shelf and explains why', () => {
+  it('on a noisy input keeps the gate well under the processed voice, caps the high shelf and explains why', () => {
     const s = suggest(mkTake(an({ noise: -37, speechMed: -25, snr: 12 })), '8 cm')
-    // the gate runs after ReaFIR: it opens above the estimated noise after reduction (noise - 10)
-    expect(s?.gate.threshold).toBeGreaterThan(-37 - 10)
+    // the gate runs after noise removal and sees the quieter processed voice: speech - 30, at most -45 (v1.1)
+    expect(s?.gate.threshold).toBe(-55)
     expect(en(s?.noiseHint)).toMatch(/only 12 dB under your voice/)
     const hs = s?.eq.find((e) => e.type === 'High Shelf')
     if (hs) expect(hs.gain).toBeLessThanOrEqual(2)
@@ -263,9 +263,8 @@ describe('suggest in a noisy room (SNR < 25)', () => {
 
   it('soft-expander gate and gentler compressor that does not pump the room up', () => {
     const s = suggest(mkTake(noisyRoom()), '8 cm')
-    // gate: noise - 4 = -44 (6 dB over the noise after ~10 dB reduction)
-    expect(s?.gate).toEqual({ threshold: -44, attack: 1, hold: 200, release: 300, hysteresis: -6, wet: 0, dry: -10 })
-    expect(s?.gate.threshold).toBeGreaterThan(-40 - 10)
+    // gate with noise removal in the chain (v1.1): speech - 30 = -52, clamped to [-72, -45]
+    expect(s?.gate).toEqual({ threshold: -52, attack: 1, hold: 200, release: 300, hysteresis: -6, wet: 0, dry: -10 })
     // comp: speech - 4 = -26, out = -26 + 4/2.5 = -24.4, aim 4.4; cap -(-50) - 45 = 5 -> 4
     expect(s?.comp).toEqual({ threshold: -26, ratio: 2.5, attack: 5, release: 100, knee: 6, wet: 4, limit: true })
     // makeup capped by the room: noise -37 -> cap 2 even though -20 dBFS needs 12
@@ -275,7 +274,9 @@ describe('suggest in a noisy room (SNR < 25)', () => {
     for (let n = 0; n < 200; n++) {
       const s2 = suggest(mkTake(noisyRoom({ noise: -100 + rnd() * 95, speechMed: -70 + rnd() * 68 })), '8 cm')
       expect(s2?.gate.threshold).toBeGreaterThanOrEqual(-72)
-      expect(s2?.gate.threshold).toBeLessThanOrEqual(-30)
+      expect(s2?.gate.threshold).toBeLessThanOrEqual(-45)
+      expect(s2?.gate.dry).toBe(-10)
+      expect(s2?.gate.hysteresis).toBe(-6)
       expect(s2?.comp.threshold).toBeGreaterThanOrEqual(-45)
       expect(s2?.comp.threshold).toBeLessThanOrEqual(-12)
       expect(s2?.comp.wet).toBeGreaterThanOrEqual(0)

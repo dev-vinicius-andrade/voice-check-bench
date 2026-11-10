@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { isAnalysisError, type Analysis } from '../types'
-import { FLOOR_DB, analyze, digitalSilence } from './analyze'
+import { BAND_SNR_CAP, FLOOR_DB, analyze, bandFloorDb, digitalSilence } from './analyze'
 import { diagnose } from './diagnose'
 import { BANDS } from './reference'
 import { prng, syntheticTake } from './testSignals'
@@ -124,7 +124,7 @@ describe('analyze noisy-room diagnosis', () => {
     expect(a.noiseBands).toHaveLength(9)
     expect(a.bandSnr).toHaveLength(9)
     expect([...a.speechBands, ...a.noiseBands, ...a.bandSnr].every(Number.isFinite)).toBe(true)
-    a.bandSnr.forEach((v, i) => expect(v).toBeCloseTo(a.speechBands[i] - a.noiseBands[i], 9))
+    a.bandSnr.forEach((v, i) => expect(v).toBeCloseTo(Math.min(BAND_SNR_CAP, a.speechBands[i] - a.noiseBands[i]), 9))
     // same scale: the body band of a -25 dBFS voice over -80 dBFS white noise is far above the room
     expect(a.bandSnr[4]).toBeGreaterThan(30)
     expect(a.tones.every((t) => t.db < 12)).toBe(true)
@@ -189,6 +189,15 @@ describe('over-processing signals (v0.8)', () => {
     expect(a.snr).toBeCloseTo(a.speechMed - FLOOR_DB, 6)
     expect(a.zeroRatio).toBeGreaterThan(0.3)
     expect(a.gateSwitches).toBeGreaterThan(12)
+    // digital silence in the noise bands reads at the floor, and the per-band SNR is capped (v1.1)
+    expect(a.noiseBands.every((v) => v === bandFloorDb(8192))).toBe(true)
+    expect(a.bandSnr.every((v) => Number.isFinite(v) && v <= BAND_SNR_CAP)).toBe(true)
+    expect(Math.max(...a.bandSnr)).toBe(BAND_SNR_CAP)
+  })
+
+  it('puts the band noise floor at -100 dBFS on the long-term spectrum scale', () => {
+    // a full-scale white noise (RMS 1) sums to about n * sum(w^2) / 2 over the one-sided spectrum
+    expect(bandFloorDb(8192)).toBeCloseTo(FLOOR_DB + 71.0, 1)
   })
 
   it('counts exact-zero runs: >= 10 ms for zeroRatio, starts of >= 20 ms runs per 10 s for gateSwitches', () => {

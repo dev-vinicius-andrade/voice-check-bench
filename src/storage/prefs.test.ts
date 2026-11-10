@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  loadApplied,
   loadDeviceChoice,
   loadGoal,
   loadMains,
   loadMicProfile,
   loadUiPrefs,
   readPref,
+  saveApplied,
   saveDeviceChoice,
   saveGoal,
   saveMains,
@@ -15,6 +17,7 @@ import {
   type UiPrefs,
 } from './prefs'
 import { DEFAULT_MIC } from '../mics/catalog'
+import { realSession } from '../plain/testFixtures'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -120,5 +123,54 @@ describe('voice goal pref', () => {
     })
     expect(() => saveGoal({ style: 'warm', perceived: [] })).not.toThrow()
     expect(loadGoal()).toEqual({ style: 'natural', perceived: [] })
+  })
+})
+
+describe('applied settings pref', () => {
+  it('round-trips, removes on null and validates its shape', () => {
+    const { applied } = realSession()
+    expect(loadApplied()).toBeNull()
+    saveApplied(applied)
+    expect(JSON.parse(localStorage.getItem('vcb-applied') ?? 'null')).toEqual(applied)
+    expect(loadApplied()).toEqual(applied)
+    saveApplied(null)
+    expect(localStorage.getItem('vcb-applied')).toBeNull()
+    const bad = [
+      { ...applied, attempt: 0 },
+      { ...applied, attempt: 1.5 },
+      { ...applied, noiseRemoval: 'magic' },
+      { ...applied, dist: '' },
+      { ...applied, date: 'yesterday' },
+      { ...applied, id: 7 },
+      { ...applied, settings: { ...applied.settings, gate: { ...applied.settings.gate, threshold: 20 } } },
+      { ...applied, settings: { ...applied.settings, eq: 'none' } },
+      { ...applied, settings: undefined },
+    ]
+    for (const v of bad) {
+      localStorage.setItem('vcb-applied', JSON.stringify(v))
+      expect(loadApplied(), JSON.stringify(v).slice(0, 60)).toBeNull()
+    }
+    for (const v of ['{bad', '[]', '"x"', 'null']) {
+      localStorage.setItem('vcb-applied', v)
+      expect(loadApplied()).toBeNull()
+    }
+    // unknown keys are dropped
+    localStorage.setItem('vcb-applied', JSON.stringify({ ...applied, extra: 1 }))
+    expect(loadApplied()).toEqual(applied)
+  })
+
+  it('reads nothing applied when localStorage throws', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    expect(() => saveApplied(realSession().applied)).not.toThrow()
+    expect(() => saveApplied(null)).not.toThrow()
+    expect(loadApplied()).toBeNull()
   })
 })

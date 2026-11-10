@@ -17,6 +17,7 @@ import { englishText } from '../settings/english'
 import { SHEET_FIXTURES } from '../settings/sheetFixtures'
 import { suggest, suggestionToText } from '../settings/suggest'
 import { PERCEIVED_ISSUES } from '../plain/perceived'
+import { REFINED_WHY } from '../plain/refine'
 import type { Analysis, MicAddress, MicPattern, Take } from '../types'
 import storeSource from './benchStore.ts?raw'
 
@@ -110,6 +111,8 @@ function collect(): Msg[] {
     { key: 'engine.mic.mains.auto' },
     { key: 'engine.mic.mains.hz', params: { hz: 60 } },
   )
+  // EQ reasons of bands changed by the refinement loop (v1.1), written as English text into the refined settings
+  out.push(...REFINED_WHY.map((k) => ({ key: `suggestx.why.refined.${k}` })))
   return out
 }
 

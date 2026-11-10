@@ -49,5 +49,5 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 31. `[x]` **Wave Link + profiles UI** — Medium. Upload/preview/download flow (+ Chrome/Edge direct save), #/profiles page, Save as profile, Apply/Re-test/Export/Import/Duplicate/Rename/Delete, en+pt-BR.
 
 ## v1.1 — Refinement loop (SPEC "Refinement loop")
-32. `[ ]` **Engine fixes + refine()** — Careful.
-33. `[ ]` **Loop UI + applied tracking** — Medium.
+32. `[x]` **Engine fixes + refine()** — Careful.
+33. `[x]` **Loop UI + applied tracking** — Medium.

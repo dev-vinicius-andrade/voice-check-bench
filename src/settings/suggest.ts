@@ -208,8 +208,9 @@ export function suggest(base: Take, dist: string, mic: MicProfile | undefined = 
   if (noisy) eq.push(...notches(a.tones))
   const lowcut: 80 | 120 = d[0] > 3 ? 120 : 80
   const gate: Suggestion['gate'] = noisy
-    ? // Soft expander after noise reduction: opens 6 dB over the reduced room (estimate: noise - 10 dB).
-      { threshold: Math.round(clamp(a.noise - 4, -72, -30)), attack: 1, hold: 200, release: 300, hysteresis: -6, wet: 0, dry: -10 }
+    ? // Soft expander after noise reduction: it sees the processed, quieter voice, so it sits 30 dB under the speech
+      // level (SPEC "Refinement loop (v1.1)"); a threshold near the raw room level closed on the voice.
+      { threshold: Math.round(clamp(a.speechMed - 30, -72, -45)), attack: 1, hold: 200, release: 300, hysteresis: -6, wet: 0, dry: -10 }
     : // The gate must open above the noise floor or it never closes.
       { threshold: Math.round(clamp(Math.max(Math.min(a.noise + 12, a.speechMed - 25), a.noise + 6), -72, -30)), attack: 1, hold: 150, release: 200, hysteresis: -6, wet: 0, dry: -20 }
   const cThr = Math.round(clamp(a.speechMed - (noisy ? 4 : 6), -45, -12))

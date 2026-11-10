@@ -1,8 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { fakeAnalysis } from '../audio/testSignals'
-import type { AnalysisResult, StepKey, Take } from '../types'
-import { bestControl, sessionSlots } from './bestControl'
+import { DEFAULT_GOAL, type Analysis, type AnalysisResult, type StepKey, type Take } from '../types'
+import { realSession } from '../plain/testFixtures'
+import { bestControl, controlScore, sessionSlots } from './bestControl'
+import { distanceMismatch } from './distance'
 import { DEV_MATCH, STEPS, fillDistance } from './steps'
 
 const mkTake = (id: number, step: StepKey | null, analysis: AnalysisResult = fakeAnalysis(), session = 's1'): Take => ({
@@ -35,16 +37,51 @@ describe('bestControl', () => {
     expect(bestControl(slots)?.take.id).toBe(2)
   })
 
-  it('doubles the SNR penalty to (40 - snr) when any control take has SNR < 25', () => {
-    // ref at SNR 20: penalty 20 > boomy's 12.9 (it would win with the halved penalty of 10)
+  it('lets SNR dominate when any control take has SNR < 25: 0.5 x tone + 1.5 x (40 - snr)', () => {
+    // ref at SNR 20: 1.5 x 20 = 30 > boomy's 0.5 x 12.9 (it would win with the quiet-room penalty of 10)
     const slots = [mkTake(1, 'c2', fakeAnalysis({ rel: boomy })), mkTake(2, 'c8', fakeAnalysis({ rel: ref, snr: 20 })), null, null]
     expect(bestControl(slots)?.take.id).toBe(1)
-    // another noisy control take switches the weighting for all: ref at SNR 25 now scores 15 > boomy's 12.9
+    // another noisy control take switches the weighting for all: ref at SNR 25 now scores 22.5 > boomy's 6.4
     const three = [mkTake(1, 'c2', fakeAnalysis({ rel: boomy })), mkTake(2, 'c8', fakeAnalysis({ rel: ref, snr: 25 })), mkTake(3, 'c15', fakeAnalysis({ rel: ref, snr: 10 })), null]
     expect(bestControl(three)?.take.id).toBe(1)
     // a noisy fx take does not switch the weighting
     const quiet = [mkTake(1, 'c2', fakeAnalysis({ rel: boomy })), mkTake(2, 'c8', fakeAnalysis({ rel: ref, snr: 26 })), null, mkTake(4, 'fx', fakeAnalysis({ snr: 5 }))]
     expect(bestControl(quiet)?.take.id).toBe(2)
+  })
+
+  it('picks 2 cm in the real noisy session (boomy but 8 dB over the room; 15 cm is buried at SNR 7.9)', () => {
+    const { c2, c8, c15, fx } = realSession()
+    const slots = [c2, c8, c15, fx]
+    expect(bestControl(slots)).toEqual({ dist: '2 cm', cm: 2, take: c2 })
+    const an = (t: Take): Analysis => t.analysis as Analysis
+    const scores = [c2, c8, c15].map((t) => controlScore(an(t), true, DEFAULT_GOAL))
+    expect(scores[0]).toBeCloseTo(49.4, 1)
+    expect(scores[1]).toBeCloseTo(53.7, 1)
+    expect(scores[2]).toBeCloseTo(56.4, 1)
+    // the old noisy weighting (tone + (40 - snr)) picked 15 cm
+    const old = [c2, c8, c15].map((t) => controlScore(an(t), false, DEFAULT_GOAL) + Math.max(0, 40 - an(t).snr) / 2)
+    expect(old.indexOf(Math.min(...old))).toBe(2)
+    // a quiet room keeps the prototype weighting
+    const quiet = slots.map((t) => ({ ...t, analysis: { ...an(t), snr: an(t).snr + 30 } }))
+    expect(bestControl(quiet)?.dist).toBe('15 cm')
+  })
+})
+
+describe('distanceMismatch', () => {
+  const { c2, c15, fx, applied } = realSession()
+  it('flags a processed take recorded at another distance than the settings were made for', () => {
+    expect(distanceMismatch(fx, c2)).toEqual({ expected: '2 cm', actual: '15 cm', msg: { key: 'plain.refine.wrongDistance', params: { dist: '2 cm', actual: '15 cm' } } })
+    expect(distanceMismatch(fx, { ...applied, dist: '8 cm' })?.expected).toBe('8 cm')
+    expect(distanceMismatch(fx, '2 cm')?.actual).toBe('15 cm')
+  })
+  it('is null when the distances match or one is unknown', () => {
+    expect(distanceMismatch(fx, applied)).toBeNull()
+    expect(distanceMismatch(fx, c15)).toBeNull()
+    expect(distanceMismatch(fx, ' 15  CM ')).toBeNull()
+    expect(distanceMismatch({ step: null, name: 'Free take' }, c2)).toBeNull()
+    expect(distanceMismatch({ step: 'fx', name: 'renamed' }, c2)).toBeNull()
+    expect(distanceMismatch(fx, null)).toBeNull()
+    expect(distanceMismatch(fx, '')).toBeNull()
   })
 })
 
