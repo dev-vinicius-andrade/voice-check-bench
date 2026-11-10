@@ -131,6 +131,7 @@
     },
     "regressions": {
       "title": "Seus efeitos estão piorando sua voz",
+      "tooLoud": "Sua voz ficou alta demais e bate no limite, então distorce",
       "quieter": "Sua voz ficou bem mais baixa ({{db}} dB)",
       "thin": "Os graves sumiram, então sua voz ficou fina",
       "harsh": "Os agudos ficaram ásperos e cansativos",
@@ -265,8 +266,9 @@
     },
     "mismatch": {
       "title": "Primeiro grave na distância certa",
-      "text": "Esta gravação foi feita a {{recorded}}, mas seus ajustes foram feitos para {{dist}} — grave de novo a {{dist}}.",
-      "button": "Gravar de novo a {{dist}}"
+      "text": "Esta gravação foi feita a {{recorded}}, mas seus ajustes foram feitos para {{dist}}, então ela não mostra se eles funcionam. Grave de novo a {{dist}} ou peça ajustes novos feitos para {{recorded}}.",
+      "button": "Gravar de novo a {{dist}}",
+      "makeNew": "Fazer ajustes para {{recorded}}"
     },
     "approach": {
       "title": "Hora de tentar algo diferente",

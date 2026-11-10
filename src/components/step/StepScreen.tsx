@@ -9,6 +9,7 @@ import { useBench } from '../../store/benchStore'
 import { useFxDist, useStepTake } from '../../store/hooks'
 import { MicTips } from '../setup/MicTips'
 import { DistanceRuler } from './DistanceRuler'
+import { FxDistancePicker } from './FxDistancePicker'
 import { InputBar } from './InputBar'
 import { ReadingText } from './ReadingText'
 import { RecordButton } from './RecordButton'
@@ -57,6 +58,7 @@ export function StepScreen() {
         )}
       </div>
       {cm !== null && <DistanceRuler cm={cm} />}
+      {st?.key === 'fx' && <FxDistancePicker />}
       {free && (
         <TextField
           size="small"

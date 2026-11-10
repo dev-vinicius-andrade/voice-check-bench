@@ -10,19 +10,33 @@ import { changeApproachAdvice } from '../../plain/refine'
 import { useBench } from '../../store/benchStore'
 import type { Take } from '../../types'
 import { MsgText } from '../common/MsgText'
+import { useGuideOverride } from '../guide/guideOverride'
 import { SaveProfile } from '../profiles/SaveProfile'
 import { distLabel, RecordAgainButton } from './RecordAgainButton'
 
-/** The take was recorded at another distance than the settings were made for: re-record first, no refinement. */
+/**
+ * The take was recorded at another distance than the settings were made for: no refinement. Either record again at
+ * the settings' distance, or make new settings for the recorded distance (the guide builds them from the raw take there).
+ */
 export function MismatchCard({ recorded, dist }: { recorded: string; dist: string }) {
   const { t } = useTranslation()
   const d = distLabel(dist)
+  const r = distLabel(recorded)
+  const makeNew = (): void => {
+    useGuideOverride.getState().clear()
+    const st = useBench.getState()
+    st.setFxDist(recorded)
+    st.goTo('guide')
+  }
   return (
     <Alert severity="warning" data-testid="mismatch-card">
       <AlertTitle>{t('results.mismatch.title')}</AlertTitle>
       <div className="grid justify-items-start gap-2">
-        <span>{t('results.mismatch.text', { recorded: distLabel(recorded), dist: d })}</span>
-        <RecordAgainButton dist={dist} label={t('results.mismatch.button', { dist: d })} />
+        <span>{t('results.mismatch.text', { recorded: r, dist: d })}</span>
+        <div className="flex flex-wrap gap-2">
+          <RecordAgainButton dist={dist} label={t('results.mismatch.button', { dist: d })} />
+          <Button size="small" variant="outlined" onClick={makeNew}>{t('results.mismatch.makeNew', { recorded: r })}</Button>
+        </div>
       </div>
     </Alert>
   )

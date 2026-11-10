@@ -2,6 +2,7 @@
 import { FLOOR_DB } from '../../audio/analyze'
 import { overprocessedStatus } from '../../audio/diagnose'
 import { bestControl, sessionSlots } from '../../session/bestControl'
+import { takeDist } from '../../session/steps'
 import { pickSuggestionBase } from '../../settings/suggest'
 import { isAnalysisError, type Analysis, type Take } from '../../types'
 
@@ -31,12 +32,14 @@ const valid = (t: Take | null | undefined): t is Take & { analysis: Analysis } =
 
 /**
  * The one raw reference of A's guided session (v0.8), used everywhere a processed take is compared: the raw control
- * at the processed distance if it exists and is analyzable, else the best control. fxDist only applies to the current
- * session; older sessions use their best control's distance.
+ * at the distance the processed take was actually recorded at (a processed A's own distance, else fxDist in the current
+ * session) if it exists and is analyzable, else the best control. Older sessions without a processed distance use their
+ * best control's distance.
  */
 export function rawReference(takes: readonly Take[], A: Take, session: string, fxDist: string | null): (Take & { analysis: Analysis }) | null {
   if (A.session === 'free') return null
-  const raw = pickSuggestionBase(sessionSlots(takes, A.session), A.session === session ? fxDist : null)
+  const dist = (A.step === 'fx' ? takeDist(A) : null) ?? (A.session === session ? fxDist : null)
+  const raw = pickSuggestionBase(sessionSlots(takes, A.session), dist)
   return valid(raw) ? raw : null
 }
 
@@ -44,7 +47,7 @@ export function rawReference(takes: readonly Take[], A: Take, session: string, f
 export function beforeAfterPair(takes: readonly Take[], A: Take, session: string, fxDist: string | null): BeforeAfter | null {
   if (A.session === 'free') return null
   const fx = sessionSlots(takes, A.session)[3]
-  const raw = rawReference(takes, A, session, fxDist)
+  const raw = valid(fx) ? rawReference(takes, fx, session, fxDist) : null
   return valid(fx) && raw ? { raw, fx } : null
 }
 

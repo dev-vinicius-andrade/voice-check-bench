@@ -143,6 +143,10 @@
       "everyday": "{{everyday}} away · {{dist}}",
       "plain": "{{dist}} away"
     },
+    "fxDist": {
+      "label": "Where are you recording?",
+      "mismatch": "Your settings were made for {{dist}}. At {{actual}} they will sound different. You can record anyway: the results will offer settings made for {{actual}}."
+    },
     "input": {
       "label": "Input:",
       "notConnected": "not connected",

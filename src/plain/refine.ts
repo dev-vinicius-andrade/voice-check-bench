@@ -1,6 +1,7 @@
 // Closed-loop refinement of applied settings (SPEC "Refinement loop (v1.1)"). Pure.
 // A processed take recorded with `applied` is judged against the raw reference of its session (the suggestion base);
 // when it did not improve, refine() returns the next settings to try, with one plain message per change.
+import { PEAK_WARN_DB, TARGET_SPEECH_DB } from '../audio/diagnose'
 import { deviations, STYLE_OFFSETS } from '../audio/reference'
 import { distanceMismatch, refDistance, type DistanceMismatch } from '../session/distance'
 import { takeDist } from '../session/steps'
@@ -28,6 +29,8 @@ export const CHOPPED_ZERO = 0.05
 export const QUIETER_REFINE_DB = 4
 /** ReaComp Wet never goes above this, dB. */
 export const WET_CAP = 18
+/** Too loud and the peak clipped: Wet goes down at least this many dB. */
+export const CLIP_MIN_DROP_DB = 3
 /** Gate threshold step when it cuts the voice, and the lowest threshold, dB. */
 export const GATE_STEP_DB = 10
 export const GATE_MIN_DB = -72
@@ -55,11 +58,12 @@ export interface ProcessedEvaluation {
 }
 
 /**
- * Distance the settings are judged at: the raw reference's own distance (the suggestion base the processed take is
- * compared with), else the distance stored with the applied settings.
+ * Distance the settings are judged at: the one the applied settings were made for (a processed take recorded elsewhere
+ * says nothing about them, even when it is compared with the raw control at its own distance), else the raw
+ * reference's distance when the applied settings carry none.
  */
 export const baseDistance = (raw: Pick<Take, 'step' | 'name'>, applied: Pick<AppliedSettings, 'dist'>): string =>
-  takeDist(raw) ?? refDistance(applied) ?? applied.dist
+  refDistance(applied) ?? takeDist(raw) ?? applied.dist
 
 /** Scores, regressions and the distance check of a processed take; null when either take has no analysis. */
 export function evaluateProcessed(raw: JudgedTake, fx: JudgedTake, applied: AppliedSettings, goal: VoiceGoal = DEFAULT_GOAL): ProcessedEvaluation | null {
@@ -102,7 +106,8 @@ export function changeApproachAdvice(): Msg[] {
 
 /**
  * Next settings after a processed take that did not improve (SPEC rules, in this order): wrong distance (re-record
- * first, nothing else changes) · change approach after 3 attempts · chopped · quieter · thin · harsh · still noisy.
+ * first, nothing else changes) · change approach after 3 attempts · chopped · too loud or quieter · thin · harsh
+ * (or "harsh from clipping" when too loud) · still noisy.
  * `settings` is always a deep copy of `applied.settings`. Null when either take has no analysis.
  */
 export function refine(raw: JudgedTake, fx: JudgedTake, applied: AppliedSettings, goal: VoiceGoal = DEFAULT_GOAL): Refinement | null {
@@ -136,23 +141,39 @@ export function refine(raw: JudgedTake, fx: JudgedTake, applied: AppliedSettings
         route = 'ai-elgato'
         push('chopped', pm('chopped.toAi'))
       } else push('chopped', pm('chopped.reafirHalf'))
-    }
+    } else if (route === 'ai-elgato' || route === 'ai-nvidia') push('chopped', pm('chopped.aiLower'))
     const g = settings.gate
-    const lowered = Math.max(GATE_MIN_DB, g.threshold - GATE_STEP_DB)
-    if (attempt < 2 && lowered < g.threshold) {
-      push('gateTooHigh', pm('gateTooHigh', { db: g.threshold - lowered, to: lowered }))
-      g.threshold = lowered
-    } else if (g.dry !== 0) {
-      g.dry = 0
-      push('chopped', pm('chopped.gateOff'))
+    // Dry 0 dB: Wave Link's ReaGate already lets everything through, so the gate is not what cuts the voice
+    if (g.dry === 0) {
+      if (route === 'none') push('chopped', pm('chopped.other'))
+    } else {
+      const lowered = Math.max(GATE_MIN_DB, g.threshold - GATE_STEP_DB)
+      if (attempt < 2 && lowered < g.threshold) {
+        push('gateTooHigh', pm('gateTooHigh', { db: g.threshold - lowered, to: lowered }))
+        g.threshold = lowered
+      } else {
+        g.dry = 0
+        push('chopped', pm('chopped.gateOff'))
+      }
     }
   }
 
-  // quieter: the compressor makes up the level that was lost
-  if (ev.levelDrop >= QUIETER_REFINE_DB) {
-    const c = settings.comp
-    const to = Math.min(WET_CAP, c.wet + Math.round(ev.levelDrop))
-    if (to > c.wet) {
+  const tooLoud = ev.regressions.includes('tooLoud')
+  const c = settings.comp
+  if (tooLoud) {
+    // too loud: the compressor's Wet comes down so speech lands in the middle of the good range (3+ dB when it clipped)
+    const clipped = f.peak >= PEAK_WARN_DB
+    const drop = Math.max(Math.ceil(f.speechMed - TARGET_SPEECH_DB), clipped ? CLIP_MIN_DROP_DB : 0)
+    const to = Math.max(0, c.wet - drop)
+    if (to < c.wet) {
+      push('tooLoud', pm('tooLoud', { db: c.wet - to, to }))
+      c.wet = to
+    } else push('tooLoud', pm('tooLoudGain'))
+  } else if (ev.levelDrop >= QUIETER_REFINE_DB) {
+    // quieter: the compressor makes up the level that was lost, never past the middle of the good range
+    const raise = Math.min(Math.round(ev.levelDrop), Math.floor(TARGET_SPEECH_DB - f.speechMed))
+    const to = Math.min(WET_CAP, c.wet + raise)
+    if (raise > 0 && to > c.wet) {
       push('quieter', pm('quieter', { drop: Math.round(ev.levelDrop), db: to - c.wet, to }))
       c.wet = to
     }
@@ -181,8 +202,10 @@ export function refine(raw: JudgedTake, fx: JudgedTake, applied: AppliedSettings
     }
   }
 
+  // harsh from clipping: the limiter's distortion, not the EQ; the level comes down first
+  if (ev.regressions.includes('harsh') && tooLoud) push('harsh', pm('harshFromClipping'))
   // harsh: presence band and high shelf down by 0.7 x the rise, never below -4 dB
-  if (ev.regressions.includes('harsh')) {
+  else if (ev.regressions.includes('harsh')) {
     const rise = Math.max(...[6, 7].map((i) => df[i] - dr[i]).filter(Number.isFinite))
     const slots = [
       { type: 'Band', freq: 3500, bw: 1.4, key: 'presence' },

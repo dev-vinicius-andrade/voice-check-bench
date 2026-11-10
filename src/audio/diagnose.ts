@@ -17,6 +17,14 @@ export const OVER_ZERO_WARN = 0.05
 export const OVER_SWITCH_BAD = 12
 export const OVER_SWITCH_WARN = 6
 
+/** Speech level (median, dBFS) the level check calls good: from LEVEL_GOOD_MIN to LEVEL_GOOD_MAX. */
+export const LEVEL_GOOD_MIN = -26
+export const LEVEL_GOOD_MAX = -16
+/** Middle of the good level range: where refined settings aim the speech level, dBFS. */
+export const TARGET_SPEECH_DB = (LEVEL_GOOD_MIN + LEVEL_GOOD_MAX) / 2
+/** A peak above this many dBFS is too close to clipping (the peaks check warns). */
+export const PEAK_WARN_DB = -1
+
 /** Noise removal or a gate cutting the voice: bad when zeroRatio > 0.15 or gateSwitches > 12, warn above 0.05 / 6. */
 export function overprocessedStatus(a: Pick<Analysis, 'zeroRatio' | 'gateSwitches'>): Status {
   const z = a.zeroRatio ?? 0
@@ -45,12 +53,12 @@ export function diagnose(a: Analysis, goal: VoiceGoal = DEFAULT_GOAL): Check[] {
   // level
   {
     const v = a.speechMed
-    const s: Status = v >= -26 && v <= -16 ? 'good' : v >= -32 && v <= -12 ? 'warn' : 'bad'
-    const side = s === 'good' ? 'good' : v < -26 ? 'quiet' : 'hot'
+    const s: Status = v >= LEVEL_GOOD_MIN && v <= LEVEL_GOOD_MAX ? 'good' : v >= -32 && v <= -12 ? 'warn' : 'bad'
+    const side = s === 'good' ? 'good' : v < LEVEL_GOOD_MIN ? 'quiet' : 'hot'
     add('level', s, msg('engine.check.level.value', { v }), side, side === 'quiet' ? 'fixQuiet' : 'fixHot')
   }
   {
-    const s: Status = a.clip > 0 ? 'bad' : a.peak > -1 ? 'warn' : 'good'
+    const s: Status = a.clip > 0 ? 'bad' : a.peak > PEAK_WARN_DB ? 'warn' : 'good'
     add('peaks', s, msg('engine.check.peaks.value', { peak: a.peak, clip: a.clip }), s === 'good' ? 'good' : 'bad', 'fix')
   }
   {

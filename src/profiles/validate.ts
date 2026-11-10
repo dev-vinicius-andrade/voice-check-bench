@@ -15,7 +15,7 @@ const MIC_ADDRESSES: readonly MicProfile['address'][] = ['end', 'side', 'unknown
 const STYLES: readonly VoiceStyle[] = ['natural', 'warm', 'clear', 'bright']
 const PERCEIVED: readonly PerceivedIssue[] = ['nasal', 'muffled', 'boomy', 'thin', 'harsh', 'sharpS', 'dull']
 const EQ_TYPES: readonly EqBand['type'][] = ['Low Shelf', 'Band', 'High Shelf']
-const REGRESSIONS = ['quieter', 'thin', 'harsh', 'chopped'] as const
+const REGRESSIONS = ['tooLoud', 'quieter', 'thin', 'harsh', 'chopped'] as const
 
 export const MAX_PROFILE_TEXT = 1_000_000
 const MAX_NAME = 120

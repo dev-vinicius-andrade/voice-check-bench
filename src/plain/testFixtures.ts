@@ -120,3 +120,36 @@ export function realSession(): { c2: Take; c8: Take; c15: Take; fx: Take; settin
   const applied: AppliedSettings = { id: 'a1', date: '2026-11-01T00:00:00.000Z', settings, noiseRemoval: 'reafir', dist: '15 cm', attempt: 1 }
   return { c2, c8, c15, fx, settings, applied }
 }
+
+/**
+ * A shared failure (SPEC "Refinement loop (v1.1)", too loud): settings made for 2 cm, processed take recorded at 15 cm.
+ * The refine loop had pushed ReaComp Wet to the cap (18), so the processed take came out too loud (speech −13.9 dBFS,
+ * peak 0 dBFS: clipping), the AI noise remover cut the pauses to dead silence (27.8 % exact zeros; ReaGate was off,
+ * Dry 0) and the limiter's distortion lifted presence and sibilance 17 dB over the raw take at 15 cm.
+ * `applied` is made for 15 cm (so the rules run); use `{ ...applied, dist: '2 cm' }` for the real distance mismatch.
+ */
+export function clippedSession(): { c15: Take; fx: Take; applied: AppliedSettings } {
+  const { c15: real, settings } = realSession()
+  const rel = [...(real.analysis as Analysis).rel]
+  const c15 = sessionTake(3, 'c15', 'Control · 15 cm · raw', fakeAnalysis({
+    speechMed: -26.3, noise: -38.3, snr: 12, rel, noiseKind: 'broadband',
+  }))
+  const fxRel = rel.map((v, i) => (i === 6 || i === 7 ? v + 17 : v))
+  const fx = sessionTake(10, 'fx', 'Processed · 15 cm · Record Mix', fakeAnalysis({
+    speechMed: -13.9, peak: 0, noise: -100, snr: 60, rel: fxRel, zeroRatio: 0.278, gateSwitches: 0,
+  }))
+  const applied: AppliedSettings = {
+    id: 'a3',
+    date: '2026-11-09T00:00:00.000Z',
+    settings: {
+      ...settings,
+      gate: { ...settings.gate, wet: 0, dry: 0 },
+      comp: { ...settings.comp, wet: 18 },
+      chain: ['ReaEQ', 'ReaComp', 'ReaGate'],
+    },
+    noiseRemoval: 'ai-elgato',
+    dist: '15 cm',
+    attempt: 2,
+  }
+  return { c15, fx, applied }
+}

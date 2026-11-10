@@ -39,7 +39,7 @@
 - `src/audio/mains.test.ts` — locale region → 50/60 Hz, auto resolution, hum family order and preference
 - `src/audio/eqCurve.ts` — `eqResponseDb(bands, freqs)`: summed RBJ biquad magnitude (dB) of ReaEQ Low Shelf / Band / High Shelf bands (bandwidth in octaves) at 48 kHz, `biquad`, `logFreqs(n, lo, hi)`
 - `src/audio/eqCurve.test.ts` — flat without bands, +3 dB band peak, shelf plateaus, dB summing, narrow 0.1 oct notch
-- `src/audio/diagnose.ts` — `diagnose(a, goal?)` checks (band checks vs the goal's target) with ids (incl. overprocessed after noise, tones, bandsnr; generic mic copy), `overprocessedStatus` + thresholds as Msg keys `engine.check.*` (numbers as params), `countByStatus`, `topIssues`, `f1`
+- `src/audio/diagnose.ts` — `diagnose(a, goal?)` checks (band checks vs the goal's target) with ids (incl. overprocessed after noise, tones, bandsnr; generic mic copy), `overprocessedStatus` + thresholds, level constants (`LEVEL_GOOD_MIN/MAX`, `TARGET_SPEECH_DB`, `PEAK_WARN_DB`), as Msg keys `engine.check.*` (numbers as params), `countByStatus`, `topIssues`, `f1`
 - `src/audio/testSignals.ts` — test-only seeded PRNG, synthetic take (optional steady tones), `fakeAnalysis` fixture
 - `src/audio/dsp.test.ts` — FFT bin, Hann, percentile tests
 - `src/audio/analyze.test.ts` — analyze() on synthetic takes, silence-window and error paths, tones/bandSnr/noiseKind
@@ -47,7 +47,7 @@
 - `src/audio/diagnose.test.ts` — check ids/order, thresholds, English texts, verdict helpers
 - `src/session/steps.ts` — `STEPS` wizard definition (English data; title names stored takes), `DEV_MATCH`, `DEV_NAME`, `fillDistance`; UI copy keys `stepKey`/`stepText` (`wizard.steps.<key>.*`); `stepOf`, `takeDist` (distance of a guided take, for its on-screen name)
 - `src/session/bestControl.ts` — `sessionSlots()` and `bestControl(slots, goal?)` control-take picker via `controlScore` (deviations vs the goal's target + (40 − snr)/2; noisy room, any control SNR < 25: 0.5 × tone + 1.5 × (40 − snr), v1.1)
-- `src/session/distance.ts` — `distanceMismatch(fxTake, applied | suggestion base | dist)` (expected/actual + `plain.refine.wrongDistance` Msg), `refDistance`
+- `src/session/distance.ts` — `distanceMismatch(fxTake, applied | dist)` (expected/actual + `plain.refine.wrongDistance` Msg), `refDistance`, `sameDistance`
 - `src/session/bestControl.test.ts` — slots, best control scoring (real noisy session picks 2 cm), distance mismatch, steps helpers
 - `src/settings/suggest.ts` — `suggest(base, dist, mic?, goal?)` (EQ toward the goal's target; perceived issues: nasal band −2..−4 dB when confirmed, else a 1.5 dB `byEar` tweak with `suggestx.why.byEar.*`, "(by ear)" in the sheet; quiet room; noisy room: gate with noise removal at speechMed − 30 (−72..−45, dry −10, v1.1), ReaFIR plan starting at about 6 dB + ReaComp Wet note, `preferAi` when SNR < 15, notches, no boosts in noisy bands, soft-expander gate, chain), `pickSuggestionBase(slots, fxDist, goal?)`, `isNotch()`, `BY_EAR_DB`; hints/steps/EQ reasons as Msg (`engine.suggest.*`, ReaFIR steps `suggestx.reafir.*`); `suggestionToText(s, t?, baseName?)` (English without `t`, `engine.sheet.*`; preferAi: "Try first" AI options, ReaFIR optional) / `suggestionToJson` (English), `joinMsgs`
 - `src/settings/english.ts` — `englishText(msg)`: English text of engine messages (engine.json + suggest.json) for exports (byte-identical to the pre-i18n sheet), `MsgTranslator`
@@ -82,14 +82,14 @@
 - `src/mics/catalog.test.ts` — catalog lookup and tip keys/texts
 - `src/plain/types.ts` — plain-language contract: `Msg` (key + params), `ClarityScore`, `Rating`, `Action` (cost, impact, how)
 - `src/plain/score.ts` — `clarityScore(a, { raw?, goal? })` (tone vs the goal's target) (noise/level/tone/consistency/over-processing penalties, main issue, headline/explain keys), `penalties`, `overprocessingPenalty`, `mainIssue`, `scoreBand`
-- `src/plain/refine.ts` — closed loop (v1.1): `evaluateProcessed(raw, fx, applied, goal)` (scores, regressions, level drop, distance mismatch, improved = +5 and no regressions), `refine(...)` → `Refinement` (wrong distance, change approach after 3 attempts, chopped → ReaFIR half / AI + gate −10 / off, quieter → Wet, thin → bass cuts toward 0, harsh → 3.5 kHz + high shelf, still noisy), `changeApproachAdvice()`, `baseDistance`, `REFINED_WHY`
-- `src/plain/refine.test.ts` — real session (wrong distance → 2 cm; matching distance: ReaFIR half, gate −10, Wet +12, bass toward 0, harsh band), each rule, change approach, en/pt-BR copy
-- `src/plain/compare.ts` — `compareProcessed(raw, fx)`: regressions of a processed take (quieter, thin, harsh, chopped) and the level drop (v0.8)
+- `src/plain/refine.ts` — closed loop (v1.1): `evaluateProcessed(raw, fx, applied, goal)` (scores, regressions, level drop, distance mismatch, improved = +5 and no regressions), `refine(...)` → `Refinement` (wrong distance, change approach after 3 attempts, chopped → ReaFIR half / AI + gate −10 / off (gate already off: AI lower or another effect), too loud → Wet down to −21 dBFS, quieter → Wet (never past −21), thin → bass cuts toward 0, harsh → 3.5 kHz + high shelf (or "harsh from clipping" when too loud), still noisy), `changeApproachAdvice()`, `baseDistance` (applied.dist first), `REFINED_WHY`
+- `src/plain/refine.test.ts` — real session (wrong distance → 2 cm; matching distance: ReaFIR half, gate −10, Wet +12, bass toward 0, harsh band), too-loud session (Wet down, gate kept, AI lower, harsh from clipping, distance vs applied.dist), each rule, quieter cap, change approach, en/pt-BR copy
+- `src/plain/compare.ts` — `compareProcessed(raw, fx)`: regressions of a processed take (tooLoud or quieter, thin, harsh, chopped) and the level drop (v0.8), `isTooLoud`
 - `src/plain/ratings.ts` — `plainRatings(a, { raw?, goal? })` background noise (incl. cut to silence) / your volume / sound of your voice (incl. regressions), `voiceState`, `volumeState`, `noiseWording`, `ratingTitle`
 - `src/plain/actions.ts` — `nextActions()` up to 3 "what to do next" actions (goal-aware; confirmed perceived issues boost their placement/EQ action by `PERCEIVED_BOOST`, unconfirmed → `eqByEar` last; mic-aware placement/address, impact order, free before paid; over-processed → "turn noise removal down" / compressor Wet first), `rankActions`
 - `src/plain/glossary.ts` — `GLOSSARY` term/meaning/analogy keys, `glossaryEntry(id)`
 - `src/plain/distances.ts` — `everydayDistance()` (finger / fist / open hand), `distanceCm()`
-- `src/plain/testFixtures.ts` — test-only analyses (exact band deviations, noisy room, fixture set), mic builder, `sessionTake`, `realSession()` (the v1.1 real session: c2/c8/c15/fx and the applied settings)
+- `src/plain/testFixtures.ts` — test-only analyses (exact band deviations, noisy room, fixture set), mic builder, `sessionTake`, `realSession()` (the v1.1 real session: c2/c8/c15/fx and the applied settings), `clippedSession()` (too loud: Wet 18, clipping, AI remover cutting pauses)
 - `src/plain/perceived.ts` — `fusePerceived(a, goal)` (perceived issue + measured confirmation > 1.5 dB vs target + delta), `perceivedNotes()` (`plain.perceived.{confirmed,byEar}.*`), `PERCEIVED_ISSUES`
 - `src/plain/perceived.test.ts` — natural goal = no goal (score/ratings/actions), warm/clear targets, regressions unaffected, fusion rules, action priority for confirmed vs by-ear issues
 - `src/plain/score.test.ts` · `ratings.test.ts` · `actions.test.ts` · `compare.test.ts` · `distances.test.ts` — formulas, label mapping, action order/limits, distances and glossary
@@ -124,7 +124,7 @@
 - `src/components/results/RefineLoopPanel.tsx` — attempts timeline, then one outcome: wrong distance · it worked · change approach · let's fix this
 - `src/components/results/AttemptsTimeline.tsx` — "Attempt N · raw → fx" list with ✓/✗ chips (current attempt marked)
 - `src/components/results/RefineCard.tsx` — "Let's fix this": refinement changes, route change, next distance; Apply the refined settings (WaveLinkApplyDialog + refinedPlan, marks attempt + 1 applied), by hand (guide override), record again
-- `src/components/results/LoopCards.tsx` — `MismatchCard` (record at the settings' distance), `ChangeApproachCard` (changeApproachAdvice), `WorkedCard` (It worked + Save as profile)
+- `src/components/results/LoopCards.tsx` — `MismatchCard` (record at the settings' distance, or make settings for the recorded one), `ChangeApproachCard` (changeApproachAdvice), `WorkedCard` (It worked + Save as profile)
 - `src/components/results/RecordAgainButton.tsx` — "Record again with effects" (setFxDist + fx step), `distLabel()`
 - `src/components/results/MarkAppliedButton.tsx` — "I applied these settings" (markApplied) with confirmation
 - `src/components/results/refineLoop.test.tsx` — timeline ✓/✗, RefineCard changes + markApplied(attempt + 1) after a mocked download, by-hand override, mismatch hides refine, change-approach card, refineLoop with mocked engine, loop locale keys
@@ -152,7 +152,7 @@
 - `src/components/results/SummaryActions.tsx` — Save as profile, then copy + share buttons with the public-issue note and the paste note
 - `src/components/results/CommunityMicCard.tsx` — "People with this mic": your best raw control vs community SNR, best distance, deviations and typical EQ
 - `src/components/results/CommunityDeviationChart.tsx` — SVG paired per-octave deviation bars (you vs community median), drawn against the goal's target with the same zero label and legend
-- `src/components/results/roomNoise.ts` — band SNR helpers, `rawReference` (the one raw take processed takes are compared with), `beforeAfterPair`, `fakeQuiet` (digital-silence floor), `yourRawAnalysis` (best raw control for community comparisons)
+- `src/components/results/roomNoise.ts` — band SNR helpers, `rawReference` (the one raw take processed takes are compared with: the raw control at the processed take's own distance), `beforeAfterPair`, `fakeQuiet` (digital-silence floor), `yourRawAnalysis` (best raw control for community comparisons)
 - `src/components/results/roomNoise.test.ts` — band SNR helpers, before/after pairing
 - `src/components/results/BandChart.tsx` — SVG octave deviation chart against the goal's target (A, A + B, A − B) with ±3/±6 zones, zero line labelled "your target" / "reference voice", legend with "Target: <style>"
 - `src/components/results/CompareTable.tsx` — session takes (or A/B) table with status-coloured cells and best badge
@@ -217,6 +217,8 @@
 - `src/components/step/stepCopy.ts` — `stepCm`, `stepDist` (locale-formatted distance), `stepCopy` (translated step text)
 - `src/components/step/useStepCopy.ts` — hook binding `stepCopy` to the active translator
 - `src/components/step/DistanceRuler.tsx` — SVG mouth-to-mic ruler (0–16 cm) + everyday caption ("about one fist away · 8 cm")
+- `src/components/step/FxDistancePicker.tsx` — processed step: "Where are you recording?" 2/8/15 cm toggle (sets fxDist), info alert when the applied settings were made for another distance
+- `src/components/step/FxDistancePicker.test.tsx` — picker options/selection/disabled, mismatch alert, MismatchCard "Make settings for …", locale parity
 - `src/components/step/InputBar.tsx` — current input, meter, Change → device select, Enable microphone
 - `src/components/step/RecordingCue.tsx` — idle / silence countdown / reading timer / analyzing cue + progress
 - `src/components/step/ReadingText.tsx` — "read naturally" note + reading passage for the active locale (`wizard.reading.passage`), dimmed until reading

@@ -131,6 +131,7 @@
     },
     "regressions": {
       "title": "Your effects are making your voice worse",
+      "tooLoud": "Your voice got too loud and hits the limit, so it distorts",
       "quieter": "Your voice got much quieter ({{db}} dB)",
       "thin": "The bass is gone, so your voice sounds thin",
       "harsh": "The upper tones got harsh and tiring",
@@ -266,8 +267,9 @@
     },
     "mismatch": {
       "title": "Record at the right distance first",
-      "text": "This take was recorded at {{recorded}}, but your settings were made for {{dist}} — record again at {{dist}}.",
-      "button": "Record again at {{dist}}"
+      "text": "This take was recorded at {{recorded}}, but your settings were made for {{dist}}, so it can't tell whether they work. Record again at {{dist}}, or get new settings made for {{recorded}}.",
+      "button": "Record again at {{dist}}",
+      "makeNew": "Make settings for {{recorded}}"
     },
     "approach": {
       "title": "Time to try something different",

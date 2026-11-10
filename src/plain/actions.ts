@@ -72,7 +72,8 @@ export function rankActions(actions: readonly Action[], max = MAX_ACTIONS): Acti
  */
 function overprocessingActions(a: Analysis, ctx: ActionContext, overPenalty: number): Action[] {
   const cmp = ctx.raw ? compareProcessed(ctx.raw, a) : null
-  if (overprocessedStatus(a) === 'good' && !cmp?.regressions.length) return []
+  // too loud is a level problem (volume actions), not over-processing: it alone does not ask to lower noise removal
+  if (overprocessedStatus(a) === 'good' && !cmp?.regressions.some((r) => r !== 'tooLoud')) return []
   const impact = Math.max(overPenalty, MIN_IMPACT)
   const out: Action[] = [{ id: 'noiseRemovalDown', text: msg('noiseRemovalDown'), cost: 'minutes', impact, how: 'settings' }]
   if (cmp && cmp.levelDrop > WET_DROP_DB) {

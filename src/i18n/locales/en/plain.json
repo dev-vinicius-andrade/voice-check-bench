@@ -213,13 +213,17 @@
       }
     },
     "refine": {
-      "wrongDistance": "This take was recorded at {{actual}}, but the settings were made for {{dist}}. Record again at {{dist}} before changing anything: the settings were made for that distance.",
+      "wrongDistance": "This take was recorded at {{actual}}, but the settings were made for {{dist}}, so it can't tell whether they work. Record again at {{dist}}, or get new settings made for {{actual}}.",
       "gateTooHigh": "The gate was closing on your voice: its Threshold goes down {{db, number(maximumFractionDigits: 1)}} dB, to {{to, number(maximumFractionDigits: 1)}} dB.",
       "chopped": {
         "reafirHalf": "Noise removal is cutting your voice: lower the ReaFIR reduction to about half of what you set.",
         "toAi": "ReaFIR keeps cutting your voice: turn it off and use AI noise removal instead (Elgato Noise Removal).",
-        "gateOff": "The gate still cuts your voice: set its Dry to 0 dB so it stops cutting."
+        "gateOff": "The gate still cuts your voice: set its Dry to 0 dB so it stops cutting.",
+        "aiLower": "The noise remover is cutting your voice and your pauses: lower its strength, or try Voice Focus in Wave Link instead. Pauses should sound quiet, not dead silent.",
+        "other": "Something in Wave Link is cutting your sound to total silence. Switch your effects off one at a time to find which one does it."
       },
+      "tooLoud": "Your voice is too loud and hits the limit, so it distorts: the compressor's Wet goes down {{db, number(maximumFractionDigits: 1)}} dB, to {{to, number(maximumFractionDigits: 1)}} dB.",
+      "tooLoudGain": "Your voice is too loud and hits the limit, but the compressor's Wet is already at 0 dB: turn your mic gain down in Wave Link (or on your interface) until loud words stay under the limit.",
       "quieter": "Your voice dropped {{drop, number(maximumFractionDigits: 1)}} dB, so the compressor's Wet goes up {{db, number(maximumFractionDigits: 1)}} dB, to {{to, number(maximumFractionDigits: 1)}} dB.",
       "thin": {
         "boom": "Your voice lost bass: the 150 Hz low shelf goes from {{from, number(maximumFractionDigits: 1)}} dB to {{to, number(maximumFractionDigits: 1)}} dB.",
@@ -229,6 +233,7 @@
         "presence": "Your voice got harsh: the 3.5 kHz band goes from {{from, number(maximumFractionDigits: 1)}} dB to {{to, number(maximumFractionDigits: 1)}} dB.",
         "top": "Your voice got harsh: the 10 kHz high shelf goes from {{from, number(maximumFractionDigits: 1)}} dB to {{to, number(maximumFractionDigits: 1)}} dB."
       },
+      "harshFromClipping": "Your voice sounds harsh because it is too loud and distorts, not because of the EQ. Fix the loudness first; the EQ stays as it is.",
       "stillNoisy": {
         "reafirMore": "The room is still almost as loud as before: drag the ReaFIR curve down about 3 dB more, then listen.",
         "toAi": "ReaFIR isn't removing enough of the room: switch to AI noise removal (Elgato Noise Removal).",

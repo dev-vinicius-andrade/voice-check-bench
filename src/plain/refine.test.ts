@@ -4,8 +4,8 @@ import { fakeAnalysis } from '../audio/testSignals'
 import en from '../i18n/locales/en/plain.json'
 import pt from '../i18n/locales/pt-BR/plain.json'
 import { DEFAULT_GOAL, type Analysis, type AppliedSettings, type Take } from '../types'
-import { changeApproachAdvice, evaluateProcessed, refine } from './refine'
-import { realSession, sessionTake } from './testFixtures'
+import { baseDistance, changeApproachAdvice, evaluateProcessed, refine } from './refine'
+import { clippedSession, realSession, sessionTake } from './testFixtures'
 import type { Msg } from './types'
 
 type Result = ReturnType<typeof refine>
@@ -25,11 +25,21 @@ describe('evaluateProcessed', () => {
     expect(ev?.levelDrop).toBeCloseTo(11.6, 6)
   })
 
-  it('a processed take at another distance than the raw reference is not used to judge the settings', () => {
-    const { c2, fx, applied } = realSession()
-    const ev = evaluateProcessed(c2, fx, applied)
+  it('a processed take at another distance than the applied settings is not used to judge them', () => {
+    const { c15, fx, applied } = realSession()
+    // compared with the raw control at 15 cm (where it was recorded), but the settings were made for 2 cm
+    const ev = evaluateProcessed(c15, fx, { ...applied, dist: '2 cm' })
     expect(ev?.mismatch).toMatchObject({ expected: '2 cm', actual: '15 cm' })
     expect(ev?.improved).toBe(false)
+  })
+
+  it('the distance check follows the applied settings, not the raw reference', () => {
+    const { c2, c15, fx, applied } = realSession()
+    // c2 stands in as the raw reference: the settings were made for 15 cm, so the 15 cm take still judges them
+    expect(evaluateProcessed(c2, fx, applied)?.mismatch).toBeNull()
+    expect(baseDistance(c15, { dist: '2 cm' })).toBe('2 cm')
+    // applied settings without a distance: the raw reference's
+    expect(baseDistance(c15, { dist: '' })).toBe('15 cm')
   })
 
   it('improved: 5+ points over raw, no regressions, right distance', () => {
@@ -52,8 +62,8 @@ describe('evaluateProcessed', () => {
 
 describe('refine on the real session', () => {
   it('wrong distance first: record again at 2 cm, nothing else changes', () => {
-    const { c2, fx, applied } = realSession()
-    const r = refine(c2, fx, applied)
+    const { c15, fx, applied } = realSession()
+    const r = refine(c15, fx, { ...applied, dist: '2 cm' })
     expect(r).toEqual({
       settings: applied.settings,
       changes: [{ reason: 'wrongDistance', msg: { key: 'plain.refine.wrongDistance', params: { dist: '2 cm', actual: '15 cm' } } }],
@@ -109,8 +119,71 @@ describe('refine on the real session', () => {
   })
 
   it('a wrong distance wins even after 3 attempts', () => {
-    const { c2, fx, applied } = realSession()
-    expect(reasons(refine(c2, fx, withAttempt(applied, 3)))).toEqual(['wrongDistance'])
+    const { c15, fx, applied } = realSession()
+    expect(reasons(refine(c15, fx, withAttempt(applied, 3, { dist: '2 cm' })))).toEqual(['wrongDistance'])
+  })
+})
+
+describe('refine on the too-loud session (Wet at the cap, clipping, AI noise removal cutting the pauses)', () => {
+  it('settings made for 2 cm, take recorded at 15 cm: a mismatch even though the raw reference is the 15 cm take', () => {
+    const { c15, fx, applied } = clippedSession()
+    const r = refine(c15, fx, { ...applied, dist: '2 cm' })
+    expect(reasons(r)).toEqual(['wrongDistance'])
+    expect(r?.changes[0].msg.params).toEqual({ dist: '2 cm', actual: '15 cm' })
+    expect(r?.settings.comp.wet).toBe(18)
+  })
+
+  it('too loud with Wet already at 0: asks to lower the mic gain instead', () => {
+    const { c15, fx, applied } = clippedSession()
+    const r = refine(c15, fx, { ...applied, settings: { ...applied.settings, comp: { ...applied.settings.comp, wet: 0 } } })
+    expect(keys(r)).toContain('plain.refine.tooLoudGain')
+    expect(r?.settings.comp.wet).toBe(0)
+  })
+
+  it('at the right distance: too loud, so Wet comes down (not up), the gate stays, the AI remover goes down', () => {
+    const { c15, fx, applied } = clippedSession()
+    const ev = evaluateProcessed(c15, fx, applied)
+    expect(ev?.regressions).toEqual(['tooLoud', 'harsh', 'chopped'])
+    expect(ev?.improved).toBe(false)
+    const r = refine(c15, fx, applied)
+    expect(keys(r)).toEqual(['plain.refine.chopped.aiLower', 'plain.refine.tooLoud', 'plain.refine.harshFromClipping'])
+    // speech -13.9 -> target -21: ceil(7.1) = 8 dB down, 18 -> 10
+    expect(r?.changes[1].msg.params).toEqual({ db: 8, to: 10 })
+    expect(r?.settings.comp.wet).toBe(10)
+    // ReaGate is already off (Dry 0): no threshold change; the EQ is not touched (the harshness is distortion)
+    expect(r?.settings.gate).toEqual(applied.settings.gate)
+    expect(r?.settings.eq).toEqual(applied.settings.eq)
+    expect(r?.noiseRemoval).toBe('ai-elgato')
+  })
+
+  it('a clipped peak alone lowers Wet at least 3 dB, never below 0', () => {
+    const { c15, fx, applied } = clippedSession()
+    const raw = c15.analysis as Analysis
+    const peaky = sessionTake(11, 'fx', fx.name, fakeAnalysis({ ...raw, speechMed: -20, peak: -0.5, snr: raw.snr + 10, zeroRatio: 0, gateSwitches: 0 }))
+    const r = refine(c15, peaky, applied)
+    expect(keys(r)).toEqual(['plain.refine.tooLoud'])
+    expect(r?.settings.comp.wet).toBe(15)
+    const low = { ...applied, settings: { ...applied.settings, comp: { ...applied.settings.comp, wet: 2 } } }
+    expect(refine(c15, fx, low)?.settings.comp.wet).toBe(0)
+  })
+
+  it('too loud replaces quieter, even when the speech level dropped', () => {
+    const { c15, fx, applied } = clippedSession()
+    const raw = c15.analysis as Analysis
+    const dropped = sessionTake(12, 'fx', fx.name, fakeAnalysis({ ...raw, speechMed: raw.speechMed - 10, peak: 0, snr: raw.snr + 10 }))
+    const ev = evaluateProcessed(c15, dropped, applied)
+    expect(ev?.regressions).toContain('tooLoud')
+    expect(ev?.regressions).not.toContain('quieter')
+    expect(reasons(refine(c15, dropped, applied))).toEqual(['tooLoud'])
+  })
+
+  it('chopped with no noise removal and the gate off: another effect is cutting the sound', () => {
+    const { c15, applied } = clippedSession()
+    const raw = c15.analysis as Analysis
+    const fx = sessionTake(13, 'fx', 'Processed · 15 cm · Record Mix', fakeAnalysis({ ...raw, zeroRatio: 0.2, snr: raw.snr + 10 }))
+    const r = refine(c15, fx, { ...applied, noiseRemoval: 'none' })
+    expect(keys(r)).toEqual(['plain.refine.chopped.other'])
+    expect(r?.settings.gate).toEqual(applied.settings.gate)
   })
 })
 
@@ -126,6 +199,18 @@ describe('refine rules', () => {
     const r = refine(c15, fxOf({ zeroRatio: 0.06 }), withGate(applied, { threshold: -72 }, { noiseRemoval: 'none' }))
     expect(keys(r)).toEqual(['plain.refine.chopped.gateOff'])
     expect(r?.settings.gate).toMatchObject({ threshold: -72, dry: 0 })
+  })
+
+  it('quieter never pushes the speech past the middle of the good level range (-21 dBFS)', () => {
+    const loudRaw = sessionTake(20, 'c15', 'Control · 15 cm · raw', fakeAnalysis({ ...raw, speechMed: -14 }))
+    const fxAt = (speechMed: number): Take => sessionTake(21, 'fx', 'Processed · 15 cm · Record Mix', fakeAnalysis({ ...raw, speechMed, snr: raw.snr + 3 }))
+    // dropped 10 dB to -24: only 3 dB up, to land on -21
+    const r = refine(loudRaw, fxAt(-24), applied)
+    expect(r?.changes.find((c) => c.reason === 'quieter')?.msg.params).toEqual({ drop: 10, db: 3, to: 5 })
+    // dropped 7 dB to -21: already on target, no change
+    const none = refine(loudRaw, fxAt(-21), applied)
+    expect(none?.changes.some((c) => c.reason === 'quieter')).toBe(false)
+    expect(none?.settings.comp.wet).toBe(2)
   })
 
   it('quieter from 4 dB: Wet goes up by the drop, never above 18', () => {
@@ -180,6 +265,18 @@ describe('refine rules', () => {
   })
 })
 
+/** Messages of the too-loud session, plus "another effect cuts the sound" (no noise removal, gate off). */
+function clippedMsgs(): Msg[] {
+  const cs = clippedSession()
+  const choppedFx = sessionTake(13, 'fx', cs.fx.name, fakeAnalysis({ ...(cs.c15.analysis as Analysis), zeroRatio: 0.2 }))
+  const wet0 = { ...cs.applied, settings: { ...cs.applied.settings, comp: { ...cs.applied.settings.comp, wet: 0 } } }
+  return [
+    ...refine(cs.c15, cs.fx, cs.applied)!.changes,
+    ...refine(cs.c15, choppedFx, { ...cs.applied, noiseRemoval: 'none' })!.changes,
+    ...refine(cs.c15, cs.fx, wet0)!.changes,
+  ].map((c) => c.msg)
+}
+
 describe('refine copy', () => {
   const lookup = (tree: unknown, key: string): string | undefined => {
     let node = tree
@@ -189,13 +286,14 @@ describe('refine copy', () => {
   const names = (s: string): string[] => [...s.matchAll(/\{\{\s*([^,}\s]+)[^}]*\}\}/g)].map((m) => m[1]).sort()
 
   it('every message refine returns exists in en and pt-BR with the params it uses', () => {
-    const { c2, c15, fx, applied } = realSession()
+    const { c15, fx, applied } = realSession()
     const raw = c15.analysis as Analysis
     const fxOf = (over: Partial<Analysis>): Take => sessionTake(9, 'fx', 'Processed · 15 cm · Record Mix', fakeAnalysis({ ...raw, ...over }))
     const quietFx = fxOf({ snr: raw.snr })
     const msgs: Msg[] = [
       ...[1, 2].flatMap((n) => refine(c15, fx, withAttempt(applied, n))!.changes.map((c) => c.msg)),
-      ...refine(c2, fx, applied)!.changes.map((c) => c.msg),
+      ...refine(c15, fx, { ...applied, dist: '2 cm' })!.changes.map((c) => c.msg),
+      ...clippedMsgs(),
       ...refine(c15, fxOf({ rel: raw.rel.map((v, i) => (i === 6 ? v + 12 : i === 1 ? v - 30 : v)), snr: raw.snr + 10 }), applied)!.changes.map((c) => c.msg),
       ...refine(c15, fxOf({ rel: raw.rel.map((v, i) => (i === 6 ? v + 12 : v)), snr: raw.snr + 10 }), {
         ...applied, settings: { ...applied.settings, eq: applied.settings.eq.map((e) => (e.type === 'High Shelf' ? { ...e, gain: 1 } : e)) },

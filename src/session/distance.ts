@@ -20,6 +20,9 @@ export type DistanceRef = { dist: string } | GuidedTake | string | null | undefi
 
 const normalize = (d: string): string => d.trim().toLowerCase().replace(/\s+/g, ' ')
 
+/** True when two distance labels name the same distance ("15 cm" / " 15  CM"). */
+export const sameDistance = (a: string, b: string): boolean => normalize(a) === normalize(b)
+
 /** The distance a reference stands for; null when unknown (free take, empty string). */
 export function refDistance(ref: DistanceRef): string | null {
   if (ref == null) return null
@@ -29,12 +32,12 @@ export function refDistance(ref: DistanceRef): string | null {
 }
 
 /**
- * Mismatch between the processed take's distance and the reference's (applied settings or the suggestion base).
+ * Mismatch between the processed take's distance and the reference's (the distance the applied settings were made for).
  * Null when they match or either distance is unknown: such a take can still be judged.
  */
 export function distanceMismatch(fxTake: GuidedTake, ref: DistanceRef): DistanceMismatch | null {
   const actual = takeDist(fxTake)
   const expected = refDistance(ref)
-  if (!actual || !expected || normalize(actual) === normalize(expected)) return null
+  if (!actual || !expected || sameDistance(actual, expected)) return null
   return { expected, actual, msg: { key: 'plain.refine.wrongDistance', params: { dist: expected, actual } } }
 }

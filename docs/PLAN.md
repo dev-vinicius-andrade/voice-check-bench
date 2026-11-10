@@ -54,3 +54,6 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 
 ## v1.2 — Community checks and votes (SPEC "Community results via GitHub issues": Automatic checks, Votes)
 34. `[x]` **Issue checker, mic matching, votes** — Careful. `src/community/micMatch.ts`, `src/community/review.ts`, `parseSummaryDetailed` in `validate.ts`, `aggregate()` over reviewed reports + `solutions`, `tools/community/review.ts` (`npm run community:review`), `tools/community/github.ts`, `tools/community/aliases.json`, workflow jobs `review` → `aggregate`, cron every 6 hours.
+
+## v1.3 — Refinement fixes (SPEC "Refinement loop (v1.1)": too loud, chopped advice, real processed distance)
+35. `[x]` **Too loud, chopped advice, processed-take distance** — Careful. `tooLoud` regression (peak ≥ −1 dBFS or speech above the good level range) → Wet down to −21 dBFS and "harsh from clipping" instead of EQ cuts; quieter capped at −21 dBFS; chopped with the gate already off → AI remover lower / another effect; "Where are you recording?" picker on the processed step; distance mismatch vs `applied.dist`; "Make settings for {{actual}}"; tests, en+pt-BR.

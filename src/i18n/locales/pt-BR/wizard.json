@@ -144,6 +144,10 @@
       "everyday": "{{everyday}} de distância · {{dist}}",
       "plain": "{{dist}} de distância"
     },
+    "fxDist": {
+      "label": "Onde você está gravando?",
+      "mismatch": "Seus ajustes foram feitos para {{dist}}. A {{actual}} eles vão soar diferente. Você pode gravar mesmo assim: os resultados vão oferecer ajustes feitos para {{actual}}."
+    },
     "input": {
       "label": "Entrada:",
       "notConnected": "não conectada",
