@@ -25,8 +25,10 @@ const SITE_LINKS: readonly { screen: Screen; key: string }[] = [
   { screen: 'live', key: 'live.nav' },
   { screen: 'privacy', key: 'common.nav.privacy' },
 ]
-/** The Desktop link exists only inside the desktop app. */
-const LINKS = isDesktop() ? [{ screen: 'desktop' as const, key: 'desktop.nav' }, ...SITE_LINKS] : SITE_LINKS
+/** The Desktop link exists only inside the desktop app; the Download link only on the website. */
+const LINKS = isDesktop()
+  ? [{ screen: 'desktop' as const, key: 'desktop.nav' }, ...SITE_LINKS]
+  : [...SITE_LINKS.slice(0, -1), { screen: 'download' as const, key: 'common.nav.download' }, ...SITE_LINKS.slice(-1)]
 
 /** Below 600 px the page links and the language choice collapse into a menu button. */
 function NavMenu({ screen }: { screen: Screen }) {
@@ -79,7 +81,7 @@ function NavMenu({ screen }: { screen: Screen }) {
   )
 }
 
-/** (Desktop, in the app only) · How it works · Community · Profiles · Tune live · Privacy (active page in the accent color), language and the Start / Continue pill. */
+/** (Desktop, in the app only) · How it works · Community · Profiles · Tune live · (Download, on the website only) · Privacy (active page in the accent color), language and the Start / Continue pill. */
 export function SiteNav() {
   const { t } = useTranslation()
   const compact = useMediaQuery((th: Theme) => th.breakpoints.down('sm'))

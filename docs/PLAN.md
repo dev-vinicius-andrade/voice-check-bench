@@ -88,4 +88,5 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
     - Auto-update (tauri-plugin-updater, `updater` release feed) added alongside.
 44. `[~]` **Release + download page** — Medium.
     - `[x]` Tag workflow → GitHub Release (`.github/workflows/release.yml`): tag `v<package.json version>`, NSIS installer + `.sha256`, a `-` suffix publishes a pre-release. Pulled forward so each step can be tried from a real download.
-    - `[ ]` After 43: the site's "Desktop app" page, README section, first non-pre-release.
+    - `[x]` Download page `#/download` (website nav only): newest release from the GitHub Releases API (stable first, else newest pre-release), size, checksum, notes, up to 5 other versions, install/SmartScreen/update notes; falls back to the GitHub releases link when the API fails.
+    - `[ ]` README section, first non-pre-release.

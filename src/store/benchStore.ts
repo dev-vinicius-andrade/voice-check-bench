@@ -43,7 +43,7 @@ import { selectFxDist } from './selectors'
 
 const KINDS: readonly DeviceKind[] = ['raw', 'fx']
 /** Site pages: navigating to them leaves the wizard state (step, takes, A/B) untouched. */
-const CONTENT_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['home', 'how', 'community', 'privacy', 'desktop'])
+const CONTENT_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['home', 'how', 'community', 'privacy', 'download', 'desktop'])
 const MIN_SEC = QUIET_SEC + 2
 const TICK_MS = 100
 

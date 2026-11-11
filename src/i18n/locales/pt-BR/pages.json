@@ -9,10 +9,22 @@
       "compat": "Funciona melhor no Chrome ou no Edge · Configurações prontas para Wave Link + ReaPlugs · Código aberto no GitHub",
       "stepsLabel": "Como o teste funciona",
       "steps": {
-        "mic": { "title": "Conte qual é seu microfone", "sub": "Não sabe qual é? Tudo bem." },
-        "raw": { "title": "Três gravações curtas", "sub": "Só o microfone, em três distâncias" },
-        "fx": { "title": "Uma gravação com seus efeitos", "sub": "Ouça o antes e o depois" },
-        "settings": { "title": "Suas configurações", "sub": "Copie ou aplique" }
+        "mic": {
+          "title": "Conte qual é seu microfone",
+          "sub": "Não sabe qual é? Tudo bem."
+        },
+        "raw": {
+          "title": "Três gravações curtas",
+          "sub": "Só o microfone, em três distâncias"
+        },
+        "fx": {
+          "title": "Uma gravação com seus efeitos",
+          "sub": "Ouça o antes e o depois"
+        },
+        "settings": {
+          "title": "Suas configurações",
+          "sub": "Copie ou aplique"
+        }
       },
       "featuresLabel": "Recursos",
       "features": {
@@ -43,22 +55,58 @@
       },
       "measures": {
         "title": "O que a gente ouve",
-        "speech": { "term": "O quanto você está alto", "def": "O volume da sua voz enquanto você lê. Baixo demais, as pessoas aumentam seu volume, com ruído e tudo. Alto demais, estala." },
-        "noise": { "term": "O quanto o ambiente está alto", "def": "Medido nos 3 segundos de silêncio: o chiado, o zumbido e o som de fundo quando ninguém está falando." },
-        "snr": { "term": "Voz acima do ambiente", "def": "O quanto sua voz é mais alta que o ambiente. Pense em falar numa biblioteca ou numa estação de trem. Uma diferença de 30 dB ou mais soa limpa." },
-        "tone": { "term": "Som da sua voz", "def": "Sua voz, do grave ao agudo, comparada com uma voz típica, como conferir o grave e o agudo de um aparelho de som. Mostra o que está forte ou fraco demais." },
-        "tones": { "term": "Ventiladores e máquinas", "def": "Apitos ou zumbidos constantes na parte silenciosa, como um ventilador, um ar-condicionado ou um computador." },
-        "bandSnr": { "term": "Onde o ambiente cobre você", "def": "Voz acima do ambiente em cada parte da sua voz, do grave ao agudo. Aumentar uma parte em que o ambiente está mais alto que você só aumenta o ruído." },
-        "sibilance": { "term": "S chiado", "def": "O quanto seus sons de S e X chiam em comparação com o resto da sua voz." },
-        "consistency": { "term": "Constância", "def": "O quanto seu volume sobe e desce enquanto você lê." }
+        "speech": {
+          "term": "O quanto você está alto",
+          "def": "O volume da sua voz enquanto você lê. Baixo demais, as pessoas aumentam seu volume, com ruído e tudo. Alto demais, estala."
+        },
+        "noise": {
+          "term": "O quanto o ambiente está alto",
+          "def": "Medido nos 3 segundos de silêncio: o chiado, o zumbido e o som de fundo quando ninguém está falando."
+        },
+        "snr": {
+          "term": "Voz acima do ambiente",
+          "def": "O quanto sua voz é mais alta que o ambiente. Pense em falar numa biblioteca ou numa estação de trem. Uma diferença de 30 dB ou mais soa limpa."
+        },
+        "tone": {
+          "term": "Som da sua voz",
+          "def": "Sua voz, do grave ao agudo, comparada com uma voz típica, como conferir o grave e o agudo de um aparelho de som. Mostra o que está forte ou fraco demais."
+        },
+        "tones": {
+          "term": "Ventiladores e máquinas",
+          "def": "Apitos ou zumbidos constantes na parte silenciosa, como um ventilador, um ar-condicionado ou um computador."
+        },
+        "bandSnr": {
+          "term": "Onde o ambiente cobre você",
+          "def": "Voz acima do ambiente em cada parte da sua voz, do grave ao agudo. Aumentar uma parte em que o ambiente está mais alto que você só aumenta o ruído."
+        },
+        "sibilance": {
+          "term": "S chiado",
+          "def": "O quanto seus sons de S e X chiam em comparação com o resto da sua voz."
+        },
+        "consistency": {
+          "term": "Constância",
+          "def": "O quanto seu volume sobe e desce enquanto você lê."
+        }
       },
       "chain": {
         "title": "As configurações sugeridas",
         "intro": "As configurações são para os efeitos gratuitos ReaPlugs no Wave Link. Pense num lava-rápido: cada estação faz um trabalho, em ordem. Num ambiente barulhento, eles rodam na ordem abaixo. Num ambiente silencioso, o ReaFIR fica de fora e a ordem é ReaGate → ReaEQ → ReaComp.",
-        "ReaFIR": { "role": "redução de ruído", "def": "Ouve alguns segundos do seu ambiente em silêncio e depois tira esse som da sua voz, como um fone com cancelamento de ruído para seu microfone. Só é usado em ambientes barulhentos." },
-        "ReaEQ": { "role": "timbre", "def": "Equilibra o som da sua voz, como os botões de grave e agudo de um aparelho de som. Também pode cortar um apito constante de um ventilador ou máquina." },
-        "ReaComp": { "role": "nivelador de volume", "def": "Mantém seu volume estável baixando com cuidado as partes mais fortes, para as palavras mais baixas não se perderem." },
-        "ReaGate": { "role": "silêncio entre as palavras", "def": "Abaixa o microfone entre as frases para suas pausas ficarem silenciosas, como uma porta que fecha quando você para de falar. Num ambiente barulhento ele age de leve, para nunca cortar palavras." }
+        "ReaFIR": {
+          "role": "redução de ruído",
+          "def": "Ouve alguns segundos do seu ambiente em silêncio e depois tira esse som da sua voz, como um fone com cancelamento de ruído para seu microfone. Só é usado em ambientes barulhentos."
+        },
+        "ReaEQ": {
+          "role": "timbre",
+          "def": "Equilibra o som da sua voz, como os botões de grave e agudo de um aparelho de som. Também pode cortar um apito constante de um ventilador ou máquina."
+        },
+        "ReaComp": {
+          "role": "nivelador de volume",
+          "def": "Mantém seu volume estável baixando com cuidado as partes mais fortes, para as palavras mais baixas não se perderem."
+        },
+        "ReaGate": {
+          "role": "silêncio entre as palavras",
+          "def": "Abaixa o microfone entre as frases para suas pausas ficarem silenciosas, como uma porta que fecha quando você para de falar. Num ambiente barulhento ele age de leve, para nunca cortar palavras."
+        }
       },
       "apply": {
         "title": "Usando as configurações",
@@ -187,6 +235,45 @@
       "tool": {
         "title": "A ferramenta do Wave Link",
         "text": "<code>{{file}}</code> roda no seu próprio computador. Ela só lê e grava o Settings.json do Wave Link, e salva uma cópia de segurança antes de mudar o arquivo."
+      }
+    },
+    "download": {
+      "overline": "App para desktop · Windows",
+      "headFirst": "Baixe",
+      "headSecond": "o app para desktop",
+      "lead": "O app para desktop roda seus plugins reais do Wave Link ao vivo, sugere ajustes enquanto você fala e salva o resultado de volta no Wave Link.",
+      "latest": "Versão mais recente",
+      "preview": "Prévia",
+      "stable": "Estável",
+      "version": "Versão {{version}}",
+      "published": "Publicada em {{date}}",
+      "size": "{{size}} · Windows 10/11, 64 bits",
+      "button": "Baixar para Windows",
+      "checksum": "Checksum SHA-256",
+      "notes": "Notas da versão",
+      "previewNote": "Esta é uma versão prévia: funciona, mas alguns recursos ainda faltam.",
+      "loading": "Buscando a versão mais recente…",
+      "unavailable": "Não foi possível carregar a lista de versões do GitHub. Você pode baixar o instalador na página de releases.",
+      "allReleases": "Todas as versões no GitHub",
+      "older": {
+        "title": "Outras versões",
+        "download": "Baixar"
+      },
+      "install": {
+        "title": "Instalar",
+        "steps": {
+          "run": "Execute o arquivo <b>-setup.exe</b> que você baixou.",
+          "smartscreen": "O instalador ainda não tem assinatura de código, então o Windows SmartScreen pode dizer \"O Windows protegeu o computador\". Clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>.",
+          "open": "Abra o <b>Voice Check Bench</b> pelo menu Iniciar. Ele abre na tela de ajuste ao vivo."
+        }
+      },
+      "updates": {
+        "title": "Atualizações",
+        "text": "O app procura uma nova versão quando abre e oferece instalá-la. Versões anteriores à 2.0.0-alpha.2 não têm atualização automática: instale uma mais nova manualmente uma vez."
+      },
+      "web": {
+        "title": "Sem instalar nada?",
+        "text": "O teste em si também roda no navegador, sem instalar nada."
       }
     }
   }

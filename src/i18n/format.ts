@@ -46,3 +46,5 @@ export const fmtDate = (d: Date | string | number): string =>
 export const fmtInput = (v: number, digits = 1): string => (Number.isFinite(v) ? v.toFixed(digits) : '—')
 /** Same as fmtInput with an explicit "+" for positive values ("+3.0"). */
 export const fmtInputSigned = (v: number, digits = 1): string => (Number.isFinite(v) ? (v > 0 ? '+' : '') + v.toFixed(digits) : '—')
+/** File size in megabytes: "12.4 MB" / "12,4 MB". */
+export const fmtMb = (bytes: number): string => `${fmtNum(bytes / 1_000_000, 1)} MB`

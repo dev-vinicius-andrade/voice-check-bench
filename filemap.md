@@ -29,6 +29,7 @@
 - `src/main.tsx` — React root: MUI providers, CSS layers, App
 - `src/App.tsx` — app shell: mounts bootstrap + hash routing + shortcuts, TopBar, current screen (site pages or wizard), Footer, status snackbar
 - `src/site.ts` — author and project links (footer)
+- `src/downloads/releases.ts` — desktop releases from the GitHub Releases API: parse, pick the one to offer, fetch (framework-free, + test)
 - `src/index.css` — CSS layer order and Tailwind import
 - `src/theme.ts` — MUI light/dark theme and `monoFont`
 - `src/audio/dsp.ts` — FFT, Hann cache, power spectrum, `db`/`adb`, `pct`/`median`
@@ -199,6 +200,10 @@
 - `src/components/pages/solutionApply.ts` — `solutionRefinement()` (basedOn "community #N") and `applyCommunitySolution()` → guide override + guide screen
 - `src/components/pages/solutions.test.tsx` — SolutionCard render + "Use these settings", section empty states, default mic, clear filters, show more, blocked storage
 - `src/components/pages/PrivacyPage.tsx` — privacy: local storage, sharing, removal, no tracking, the Wave Link tool
+- `src/components/download/DownloadPage.tsx` — `#/download` (website only): latest desktop release card or loading/fallback, other versions, install/update notes
+- `src/components/download/LatestRelease.tsx` — the release offered first (download button, size, checksum, notes) and `ChannelChip` (Stable/Preview)
+- `src/components/download/OtherReleases.tsx` — up to 5 other versions, one row each
+- `src/components/download/useReleases.ts` — fetches desktop releases once: loading / ready / unavailable
 - `src/components/setup/SetupScreen.tsx` — setup screen: heading, take list, mic profile card, mic card, start/results buttons
 - `src/components/setup/MicProfileCard.tsx` — "Which mic do you have?": model autocomplete ("Other / not listed" stores ''), type/pattern/where-you-speak selects with plain explanations, power-grid (mains) select, tips, community line
 - `src/components/setup/GoalCard.tsx` — setup card holding the voice goal picker (after the mic profile card)

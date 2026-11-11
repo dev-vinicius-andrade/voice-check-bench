@@ -9,10 +9,22 @@
       "compat": "Works best in Chrome or Edge · Ready-made settings for Wave Link + ReaPlugs · Open source on GitHub",
       "stepsLabel": "How the check goes",
       "steps": {
-        "mic": { "title": "Tell us your mic", "sub": "Not sure which one? That's fine." },
-        "raw": { "title": "Three short takes", "sub": "Just the mic, at three distances" },
-        "fx": { "title": "One take with your effects", "sub": "Hear the before and after" },
-        "settings": { "title": "Your settings", "sub": "Copy them or apply them" }
+        "mic": {
+          "title": "Tell us your mic",
+          "sub": "Not sure which one? That's fine."
+        },
+        "raw": {
+          "title": "Three short takes",
+          "sub": "Just the mic, at three distances"
+        },
+        "fx": {
+          "title": "One take with your effects",
+          "sub": "Hear the before and after"
+        },
+        "settings": {
+          "title": "Your settings",
+          "sub": "Copy them or apply them"
+        }
       },
       "featuresLabel": "Features",
       "features": {
@@ -43,22 +55,58 @@
       },
       "measures": {
         "title": "What we listen for",
-        "speech": { "term": "How loud you are", "def": "Your voice level while you read. Too quiet, and people turn you up, room noise and all. Too loud, and it crackles." },
-        "noise": { "term": "How loud the room is", "def": "Measured in the 3 seconds of quiet: the hiss, hum and background sound when nobody is talking." },
-        "snr": { "term": "Voice over room", "def": "How much louder your voice is than the room. Think of talking in a library versus a train station. A gap of 30 dB or more sounds clean." },
-        "tone": { "term": "Sound of your voice", "def": "Your voice from deep to bright, compared with a typical voice, like checking the bass and treble on a stereo. It shows what's too strong or too weak." },
-        "tones": { "term": "Fans and machines", "def": "Steady whines or hums in the quiet part, like a fan, an air conditioner or a computer." },
-        "bandSnr": { "term": "Where the room covers you", "def": "Voice over room for each part of your voice, from deep to bright. Turning up a part where the room is louder than you only makes the noise louder." },
-        "sibilance": { "term": "Sharp S sounds", "def": "How hissy your S and SH sounds are compared with the rest of your voice." },
-        "consistency": { "term": "Steadiness", "def": "How much your volume jumps around while you read." }
+        "speech": {
+          "term": "How loud you are",
+          "def": "Your voice level while you read. Too quiet, and people turn you up, room noise and all. Too loud, and it crackles."
+        },
+        "noise": {
+          "term": "How loud the room is",
+          "def": "Measured in the 3 seconds of quiet: the hiss, hum and background sound when nobody is talking."
+        },
+        "snr": {
+          "term": "Voice over room",
+          "def": "How much louder your voice is than the room. Think of talking in a library versus a train station. A gap of 30 dB or more sounds clean."
+        },
+        "tone": {
+          "term": "Sound of your voice",
+          "def": "Your voice from deep to bright, compared with a typical voice, like checking the bass and treble on a stereo. It shows what's too strong or too weak."
+        },
+        "tones": {
+          "term": "Fans and machines",
+          "def": "Steady whines or hums in the quiet part, like a fan, an air conditioner or a computer."
+        },
+        "bandSnr": {
+          "term": "Where the room covers you",
+          "def": "Voice over room for each part of your voice, from deep to bright. Turning up a part where the room is louder than you only makes the noise louder."
+        },
+        "sibilance": {
+          "term": "Sharp S sounds",
+          "def": "How hissy your S and SH sounds are compared with the rest of your voice."
+        },
+        "consistency": {
+          "term": "Steadiness",
+          "def": "How much your volume jumps around while you read."
+        }
       },
       "chain": {
         "title": "The suggested settings",
         "intro": "The settings are for the free ReaPlugs effects in Wave Link. Think of a car wash: each station does one job, in order. In a noisy room they run in the order below. In a quiet room ReaFIR is skipped and the order is ReaGate → ReaEQ → ReaComp.",
-        "ReaFIR": { "role": "noise reduction", "def": "Listens to a few seconds of your quiet room, then takes that sound out of your voice, like noise-cancelling headphones for your mic. Only used in noisy rooms." },
-        "ReaEQ": { "role": "tone", "def": "Evens out the sound of your voice, like the bass and treble knobs on a stereo. It can also cut out a steady whine from a fan or machine." },
-        "ReaComp": { "role": "volume leveller", "def": "Keeps your volume steady by gently turning down the loud parts, so quiet words aren't lost." },
-        "ReaGate": { "role": "quiet between words", "def": "Turns the mic down between sentences so your pauses stay quiet, like a door that closes when you stop talking. In a noisy room it works gently, so it never cuts off words." }
+        "ReaFIR": {
+          "role": "noise reduction",
+          "def": "Listens to a few seconds of your quiet room, then takes that sound out of your voice, like noise-cancelling headphones for your mic. Only used in noisy rooms."
+        },
+        "ReaEQ": {
+          "role": "tone",
+          "def": "Evens out the sound of your voice, like the bass and treble knobs on a stereo. It can also cut out a steady whine from a fan or machine."
+        },
+        "ReaComp": {
+          "role": "volume leveller",
+          "def": "Keeps your volume steady by gently turning down the loud parts, so quiet words aren't lost."
+        },
+        "ReaGate": {
+          "role": "quiet between words",
+          "def": "Turns the mic down between sentences so your pauses stay quiet, like a door that closes when you stop talking. In a noisy room it works gently, so it never cuts off words."
+        }
       },
       "apply": {
         "title": "Using the settings",
@@ -185,6 +233,45 @@
       "tool": {
         "title": "The Wave Link tool",
         "text": "<code>{{file}}</code> runs on your own computer. It only reads and writes Wave Link's Settings.json, and saves a backup before changing it."
+      }
+    },
+    "download": {
+      "overline": "Desktop app · Windows",
+      "headFirst": "Download",
+      "headSecond": "the desktop app",
+      "lead": "The desktop app runs your real Wave Link plugins live, suggests changes while you talk, and saves the result back to Wave Link.",
+      "latest": "Latest version",
+      "preview": "Preview",
+      "stable": "Stable",
+      "version": "Version {{version}}",
+      "published": "Published {{date}}",
+      "size": "{{size}} · Windows 10/11, 64-bit",
+      "button": "Download for Windows",
+      "checksum": "SHA-256 checksum",
+      "notes": "Release notes",
+      "previewNote": "This is a preview build: it works, but some features are still missing.",
+      "loading": "Looking up the latest version…",
+      "unavailable": "Couldn't load the version list from GitHub. You can download the installer from the releases page.",
+      "allReleases": "All releases on GitHub",
+      "older": {
+        "title": "Other versions",
+        "download": "Download"
+      },
+      "install": {
+        "title": "Install",
+        "steps": {
+          "run": "Run the <b>-setup.exe</b> file you downloaded.",
+          "smartscreen": "The installer is not code-signed yet, so Windows SmartScreen may say \"Windows protected your PC\". Click <b>More info</b>, then <b>Run anyway</b>.",
+          "open": "Open <b>Voice Check Bench</b> from the Start menu. It opens on the live tuning screen."
+        }
+      },
+      "updates": {
+        "title": "Updates",
+        "text": "The app checks for a new version when it starts and offers to install it. Versions before 2.0.0-alpha.2 have no updater: install a newer one by hand once."
+      },
+      "web": {
+        "title": "No install needed?",
+        "text": "The check itself also runs in your browser, without installing anything."
       }
     }
   }

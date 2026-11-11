@@ -1,18 +1,19 @@
 // Hash routing without a router library (SPEC "Site pages"): the URL hash and the store's screen follow each other.
-// #/ home · #/how-it-works · #/community · #/privacy · #/check (setup or step) · #/results · #/guide · #/profiles · #/live · #/desktop (desktop app only).
+// #/ home · #/how-it-works · #/community · #/privacy · #/download · #/check (setup or step) · #/results · #/guide · #/profiles · #/live · #/desktop (desktop app only).
 import { useEffect } from 'react'
 import { isDesktop } from '../desktop/bridge'
 import type { BenchState } from '../store/api'
 import { useBench } from '../store/benchStore'
 import type { Screen, StepRef } from '../types'
 
-export type Route = 'home' | 'how' | 'community' | 'privacy' | 'check' | 'results' | 'guide' | 'profiles' | 'live' | 'desktop'
+export type Route = 'home' | 'how' | 'community' | 'privacy' | 'download' | 'check' | 'results' | 'guide' | 'profiles' | 'live' | 'desktop'
 
 const ROUTE_HASH: Record<Route, string> = {
   home: '#/',
   how: '#/how-it-works',
   community: '#/community',
   privacy: '#/privacy',
+  download: '#/download',
   check: '#/check',
   results: '#/results',
   guide: '#/guide',
@@ -67,7 +68,7 @@ export const routeContext = (s: Pick<BenchState, 'screen' | 'step' | 'takes' | '
   hasSessionTakes: s.takes.some((t) => t.session === s.session),
 })
 
-const isContentRoute = (r: Route | null): boolean => r === 'home' || r === 'how' || r === 'community' || r === 'privacy'
+const isContentRoute = (r: Route | null): boolean => r === 'home' || r === 'how' || r === 'community' || r === 'privacy' || r === 'download'
 
 /**
  * Mount once (App). Before the takes load only site-page hashes apply (they need no data); once the store is

@@ -5,6 +5,7 @@ import { CommunityPage } from './components/pages/CommunityPage'
 import { HomePage } from './components/pages/HomePage'
 import { HowItWorksPage } from './components/pages/HowItWorksPage'
 import { PrivacyPage } from './components/pages/PrivacyPage'
+import { DownloadPage } from './components/download/DownloadPage'
 import { LiveScreen } from './components/live/LiveScreen'
 import { ProfilesPage } from './components/profiles/ProfilesPage'
 import { ResultsScreen } from './components/results/ResultsScreen'
@@ -32,6 +33,7 @@ export default function App() {
         {screen === 'how' && <HowItWorksPage />}
         {screen === 'community' && <CommunityPage />}
         {screen === 'privacy' && <PrivacyPage />}
+        {screen === 'download' && <DownloadPage />}
         {screen === 'setup' && <SetupScreen />}
         {screen === 'step' && <StepScreen />}
         {screen === 'results' && <ResultsScreen />}
