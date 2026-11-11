@@ -408,16 +408,21 @@
 - `src/desktop/updater.test.ts` — web → null, up to date / failed check → null, progress + relaunch, install and relaunch failures, dismiss (mocked plugins)
 - `src/desktop/advice/types.ts` — "Try this" contract: `ChainSlot` (live chain in real units: ReaGate/ReaComp/ReaEQ `band<n>.*`/Noise Removal `strength` keys), `ValueChange` / `SwitchChange`, `Advice` (+ changeMsg), `AdviceReason`
 - `src/desktop/advice/chain.ts` — `eqKey`/`eqBands`/`eqValues` (ReaEQ bands ↔ flat values), `slotsWith`, `slotAt`, `currentOf`, `withChange`, `sameValue` (VALUE_EPS)
-- `src/desktop/advice/advise.ts` — `advise(held, chain, goal, { notBeforeMs })`: doubled gate → Dry −20 · too loud → last ReaComp Wet down to −21 dBFS (≥ 3 when clipped) · dead silence → Noise Removal −`NR_STEP`, else ReaGate Threshold −10 (≥ −72) · too quiet → Wet up (cap 18) · tone; one change per (slot, key)
-- `src/desktop/advice/tone.ts` — `toneAdvice()`: live tone bands → the guide's ReaEQ moves (`TONE_EQ` suggest ranges, −0.7 × deviation, perceived issues from 1.5 dB, nearest band within `BAND_MATCH_OCT`)
+- `src/desktop/advice/advise.ts` — `advise(held, chain, goal, { notBeforeMs, prefs, tone, evidenceSec, blocked })`: doubled gate → Dry −20 · too loud → last ReaComp Wet down to −21 dBFS (≥ 3 when clipped) · dead silence (noise natural) → Noise Removal −`NR_STEP`, else ReaGate Threshold −10 (≥ −72) · noisy pauses (noise max) → Noise Removal +`NR_STEP` (≤ 100) · too quiet → Wet up (cap 18) · tone; one change per (slot, key), blocked moves skipped; `SETTLE_MS`/`adviceNotBefore`, `blockKey`/`blockFor`
+- `src/desktop/advice/tone.ts` — `toneAdvice()`: live tone bands → the guide's ReaEQ moves, only for perceived issues the person picked, above 1.5 dB (`TONE_EQ` suggest ranges, −0.7 × deviation capped at `maxStepDb`, nearest band within `BAND_MATCH_OCT`, `evidenceSec` carried)
+- `src/desktop/advice/prefs.ts` — `TuningPrefs` (amount light/medium/strong, noise natural/max), `AMOUNT_STEP_DB` (2 / 4 / 6), load/save `vcb-tuning-prefs` (validated, defaults when blocked)
+- `src/desktop/advice/trend.ts` — tone trend over fresh windows: `pushTrend` (starts over on a new notBeforeMs, each window once, last 30 s), `trendTone` (stable when span ≥ 11 s, ≥ 8 readings, ≥ 80 % same sign → median; `evidenceSec`)
 - `src/desktop/advice/msgs.ts` — `desktop.advice.*` Msg builders (title, change lines db/eq/strength, undo), `valueAdvice`, `changeTarget`
 - `src/desktop/advice/undo.ts` — pure applied-changes stack: `emptyUndo`, `setChain`, `apply` (→ inverse), `undo(id)` in any order, conflict when the value changed since
-- `src/desktop/advice/{advise,undo,keys}.test.ts` · `testFixtures.ts` — each rule fires / does not fire, order, one change per value, nothing unheard; undo in/out of order and conflicts; every key in en + pt-BR with its params
+- `src/desktop/advice/{advise,undo,keys,prefs,trend}.test.ts` · `testFixtures.ts` — each rule fires / does not fire, order, one change per value, nothing unheard, perceived-only tone, amount caps, noise modes, blocks; undo in/out of order and conflicts; every key in en + pt-BR with its params; prefs validation and blocked storage; trend stability rules
 - `src/components/desktop/DesktopScreen.tsx` — route #/desktop (desktop app only; the app opens on it): title, the live tuning screen, engine info footer line; optional `bridge` prop (provided through BridgeContext)
 - `src/components/desktop/bridgeContext.ts` — `BridgeContext` (default `desktopBridge`), `useBridge()`
 - `src/components/desktop/EngineFooter.tsx` — one caption line: app version · Rust · system · architecture (or loading/error)
-- `src/components/desktop/tuning/LiveTuning.tsx` — live tuning screen (SPEC approved mockup, task 43), top to bottom: bar, monitor warning, metric cards, last 60 s chart, Try this, effects, before/after table, Restore backup / Save to Wave Link; the two dialogs
-- `src/components/desktop/tuning/useTuningSession.ts` — composes devices, engine, chain, save and restore; Start = audio_start (monitor Off) + wavelink_read; advice from held metrics (notBeforeMs = last change)
+- `src/components/desktop/tuning/LiveTuning.tsx` — live tuning screen (SPEC approved mockup, task 43), top to bottom: bar, monitor warning, metric cards, last 60 s chart, Try this beside Your sound, effects, before/after table, Restore backup / Save to Wave Link; the two dialogs
+- `src/components/desktop/tuning/useTuningSession.ts` — composes devices, engine, chain, save, restore, tuning prefs, tone trend and Apply feedback; Start = audio_start (monitor Off) + wavelink_read (resets trend and blocks); advice from held metrics + trend tone (notBeforeMs = last change + settle)
+- `src/components/desktop/tuning/useToneTrend.ts` · `useToneTrend.test.ts` — held windows → tone trend (once per window, starts over on a change, a new style or reset)
+- `src/components/desktop/tuning/useAdviceFeedback.ts` — latest Apply waiting for a rating (settle countdown on the stream clock), Better / Same / Worse (undo + block), session block set
+- `src/components/desktop/tuning/useTuningPrefs.ts` — "Your sound" amount and noise mode state, saved to `vcb-tuning-prefs`
 - `src/components/desktop/tuning/useAudioDevices.ts` — engine devices once per mount, defaults picked
 - `src/components/desktop/tuning/useLiveEngine.ts` — start/stop, status, monitor, frames → DesktopLiveFeed updates, latency, markChange; stops on unmount
 - `src/components/desktop/tuning/useChainState.ts` — live chain in an undo state: throttled slider previews, commit (marker + segment), switches, Apply/Undo (conflict notice), engine replies kept for the export
@@ -428,11 +433,13 @@
 - `src/components/desktop/tuning/MonitorAlert.tsx` — mute the mic in Wave Link's monitor mix, delay in ms, ReaFIR 85 ms note
 - `src/components/desktop/tuning/MetricCards.tsx` · `cardStatus.ts` — Voice level / Pauses / Tone vs your goal (processed big, mic alone + problem, status colour), "Last heard N s ago"
 - `src/components/desktop/tuning/HistoryChart.tsx` — "Last 60 seconds" SVG: processed and raw speech level, −21 dBFS target, dashed change markers with labels
-- `src/components/desktop/tuning/AdviceList.tsx` — "Try this" rows (title + exact change, Apply → Undo), notice alert
+- `src/components/desktop/tuning/AdviceList.tsx` — "Try this" rows (title + exact change, "Seen in N s of talk" on tone rows, Apply → Undo), notice alert, feedback card slot, empty state (pick what you hear)
+- `src/components/desktop/tuning/YourSoundPanel.tsx` — "Your sound" chips: Style, What you hear (+ Sounds good), How much processing, Background noise
+- `src/components/desktop/tuning/ApplyFeedback.tsx` — "Applied: …", "Listening to the change… N s", "Does it sound better?" Better / Same / Worse, undo
 - `src/components/desktop/tuning/EffectsList.tsx` · `EffectCard.tsx` · `SlotSliders.tsx` · `ParamSlider.tsx` · `useSlotSummary.ts` · `sliderFormat.ts` — effects in Wave Link order: collapsed cards with a summary (open when advised), On switch, disabled "Plugin window" (coming soon), sliders (ReaEQ per band), built-ins greyed out
 - `src/components/desktop/tuning/SegmentsTable.tsx` — "Before and after each change": voice, pauses, peaks cut, dead silence per segment
 - `src/components/desktop/tuning/SaveDialog.tsx` · `RestoreDialog.tsx` · `FlowReportView.tsx` — Save diff/confirm/force/result, Restore pick/confirm/force/result, verify report
-- `src/components/desktop/tuning/tuning.test.tsx` — fake bridge: start/stop and monitor, engine error alert, frames → cards and held caption, Apply/Undo + markers/segments, Undo conflict, sliders → normalized set_param, switch → bypass, Save with diff and force path, Restore
+- `src/components/desktop/tuning/tuning.test.tsx` — fake bridge: start/stop and monitor, engine error alert, frames → cards and held caption, Apply/Undo + markers/segments, Undo conflict, Your sound chips, Apply feedback (countdown, Better, Worse → undo + block), sliders → normalized set_param, switch → bypass, Save with diff and force path, Restore
 - `src/components/desktop/useEngineInfo.ts` — loads EngineInfo once per mount (loading/ready/error; injectable loader)
 - `src/components/desktop/UpdateNotice.tsx` — desktop app only (mounted from App): snackbar "Version … is available" with Install and restart / Later, download progress, retry when the install failed
 - `src/components/desktop/useUpdateNotice.ts` — one update check 3 s after start; idle/available/installing/failed state, install, later (dismiss)

@@ -1,7 +1,8 @@
-// Tone advice: the guide's ReaEQ moves (src/settings/suggest.ts) applied to the live tone vs the goal. Pure.
+// Tone advice: the guide's ReaEQ moves (src/settings/suggest.ts) applied to the live tone vs the goal, only for what
+// the person hears (goal.perceived). Pure.
 // The live tone (HeldSide.tone) is already targetDeviations against the goal, measured after the current EQ, so a band
 // moves from its current gain by the suggest rule (−0.7 × deviation, HARSH_K) inside the suggest ranges.
-import { TONE_BANDS, TONE_HINT_DB, TONE_MAX_DB } from '../../live/hints'
+import { TONE_BANDS, TONE_MAX_DB } from '../../live/hints'
 import { CONFIRM_DB } from '../../plain/perceived'
 import { HARSH_K } from '../../plain/refine'
 import type { PerceivedIssue, VoiceGoal } from '../../types'
@@ -45,15 +46,24 @@ function findBand(chain: readonly ChainSlot[], type: EqTypeName, freq: number): 
   return best
 }
 
+export interface ToneOptions {
+  /** Largest move per band, dB (AMOUNT_STEP_DB of the person's "How much processing"); default TONE_MAX_DB. */
+  maxStepDb?: number
+  /** Seconds of talk the tone was seen in (trendTone); carried on each advice. */
+  evidenceSec?: number
+}
+
 /**
  * EQ advice for the tone bands of live hints (boom, warmth, mud, presence, sibilance), biggest deviation first.
- * A band fires from TONE_HINT_DB (4 dB) off the goal, or above CONFIRM_DB (1.5 dB) when the person hears the matching
- * issue. The move is −dev × HARSH_K (0.7), rounded to 0.5 dB, at most TONE_MAX_DB, kept in the suggest range and only
- * in the direction that helps. `clipped`: harshness from clipping is fixed by the level first (refine's
- * "harsh from clipping"), so presence and sibilance are not cut.
+ * A band only gets advice when the person picked the issue its direction means (TONE_EQ high/low vs goal.perceived)
+ * and it is more than CONFIRM_DB (1.5 dB) off the goal that way: tone never moves toward an average curve nobody asked
+ * for. The move is −dev × HARSH_K (0.7), rounded to 0.5 dB, at most maxStepDb, kept in the suggest range and only in
+ * the direction that helps. `clipped`: harshness from clipping is fixed by the level first (refine's "harsh from
+ * clipping"), so presence and sibilance are not cut.
  */
-export function toneAdvice(tone: readonly number[], chain: readonly ChainSlot[], goal: VoiceGoal, clipped: boolean): Advice[] {
+export function toneAdvice(tone: readonly number[], chain: readonly ChainSlot[], goal: VoiceGoal, clipped: boolean, opts: ToneOptions = {}): Advice[] {
   const heard = new Set(goal.perceived ?? [])
+  const maxStep = opts.maxStepDb ?? TONE_MAX_DB
   const out: { dev: number; advice: Advice }[] = []
   for (const { band: bi, key } of TONE_BANDS) {
     const dev = tone[bi]
@@ -62,18 +72,19 @@ export function toneAdvice(tone: readonly number[], chain: readonly ChainSlot[],
     const high = dev > 0
     const issue = high ? eq.high : eq.low
     const mag = Math.abs(dev)
-    if (!(mag >= TONE_HINT_DB || (issue !== null && heard.has(issue) && mag > CONFIRM_DB))) continue
+    if (issue === null || !heard.has(issue) || !(mag > CONFIRM_DB)) continue
     if (clipped && high && (key === 'presence' || key === 'sibilance')) continue
     const found = findBand(chain, eq.type, eq.freq)
     if (!found) continue
     const from = found.band.gainDb
-    const step = Math.min(TONE_MAX_DB, r05(mag * HARSH_K))
+    const step = Math.min(maxStep, r05(mag * HARSH_K))
     const to = clamp(r05(from + (high ? -step : step)), eq.lo, eq.hi)
     if (high ? !(to < from) : !(to > from)) continue
     const n = found.band.n
     const title = titleMsg(`tone.${high ? 'high' : 'low'}.${key}`, { db: Math.abs(to - from) })
     const change = eqChangeMsg(found.slot, eq.type, Math.round(found.band.freqHz), from, to)
-    out.push({ dev, advice: valueAdvice('tone', found.slot, eqKey(n, 'gainDb'), to, title, change) })
+    const advice = valueAdvice('tone', found.slot, eqKey(n, 'gainDb'), to, title, change)
+    out.push({ dev, advice: opts.evidenceSec === undefined ? advice : { ...advice, evidenceSec: opts.evidenceSec } })
   }
   return out.sort((a, b) => Math.abs(b.dev) - Math.abs(a.dev)).map((x) => x.advice)
 }

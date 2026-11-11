@@ -35,7 +35,7 @@ export interface ChainSlot {
 }
 
 /** Why an advice is given (most important first in advise()'s output order). */
-export type AdviceReason = 'gateDoubled' | 'tooLoud' | 'deadSilence' | 'tooQuiet' | 'tone'
+export type AdviceReason = 'gateDoubled' | 'tooLoud' | 'deadSilence' | 'noisyPause' | 'tooQuiet' | 'tone'
 
 interface ChangeBase {
   /** Stable for the same advice: `<reason>:<slot>:<key>` (`<reason>:<slot>:on` for a switch). */
@@ -64,4 +64,9 @@ export interface SwitchChange extends ChangeBase {
 export type Change = ValueChange | SwitchChange
 
 /** One "Try this" row: the change plus the exact change line ("ReaGate Dry 0 → −20 dB", desktop.advice.change.*). */
-export type Advice = Change & { reason: AdviceReason; changeMsg: Msg }
+export type Advice = Change & {
+  reason: AdviceReason
+  changeMsg: Msg
+  /** Tone advice from the trend: seconds of talk the deviation was seen in, same direction every time. */
+  evidenceSec?: number
+}

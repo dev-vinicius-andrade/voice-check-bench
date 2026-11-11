@@ -289,16 +289,21 @@ A Windows app that runs the person's real Wave Link plugins live on the raw mic.
   - "Try this" advice turns live metrics into concrete changes, using the refine rules and constants (`src/plain/refine.ts`, `src/audio/diagnose.ts`):
     - too loud → Wet down until speech sits at −21 dBFS;
     - doubled gate → Dry −20;
-    - dead silence → noise removal lower, or gate threshold −10;
+    - dead silence → noise removal lower, or gate threshold −10 (noise mode "Keep it natural" only);
+    - noisy pauses (pause noise above −50 dB) → Noise Removal strength +20, capped at 100 (noise mode "Remove as much as possible" only; it replaces the dead-silence advice);
     - too quiet → Wet up (cap 18);
-    - harsh or boomy vs the goal → the guide's EQ moves.
-  - One tap applies a change live; each change has its own Undo.
+    - tone → the guide's EQ moves, only for what the person hears (below).
+  - **Your sound** (card beside "Try this", "Advice follows this"): chips for Style (natural / warm / clear / bright, the stored goal), What you hear (boomy, muffled, thin, harsh, sharp S, dull, pick any; "Sounds good" clears them; no "nasal", since no EQ band answers it), How much processing (Light / Medium / Strong) and Background noise (Keep it natural / Remove as much as possible). Style and What you hear are the shared voice goal; amount and noise are stored in `vcb-tuning-prefs`. Footnote: tone changes only for what is picked under What you hear; level and noise advice always run.
+  - **Tone advice is perceived-only:** a ReaEQ band moves only when the person picked the issue its direction means (boomy = boom/warmth high, thin = low, muffled = mud high or presence low, harsh = presence high, sharp S = sibilance high, dull = sibilance low) and it is more than 1.5 dB off the goal that way. Nothing pushes a voice toward the average curve on its own. Move = 0.7 × deviation, rounded to 0.5 dB, at most the amount's step (Light 2, Medium 4, Strong 6 dB), inside the guide's range.
+  - **Tone trend:** a single 4 s window swings 2–8 dB and can flip sign, so tone advice uses the trend of the fresh windows (last 30 s, each window once, started over after every change and on a new style). A band counts when its windows span ≥ 11 s (~15 s of talk), it has ≥ 8 readings and ≥ 80 % of them share the sign of their median; the median is the deviation. The row says "Seen in N s of talk, same direction every time".
+  - One tap applies a change live; each change has its own Undo. After a change, advice waits one live window (4 s of stream) so it never judges audio from before the change.
+  - **Did it help?** After Apply a card shows "Applied: <change>", then "Listening to the change… N s" on the stream clock until those 4 s have passed, then "Does it sound better?" with Better / Same (dismiss) and "Worse, undo" (undoes the change and blocks that move, the same value in the same direction, for the session). Only the latest Apply asks; loading a chain clears the blocks and the trend.
 - **Live tuning screen (approved mockup, task 43):** one scrolling screen, top to bottom:
   1. Bar: mic picker, headphones picker, "Hear" segmented control (With effects / Raw mic / Off), Start/Stop.
   2. Warning alert: mute the mic in Wave Link's monitor mix; current delay in ms (plus the ReaFIR 85 ms note when it is on).
   3. Three metric cards (Voice level, Pauses, Tone vs your goal): processed value big, "mic alone" value and the problem in the caption, status colour from good/warn/bad. Below them "Last heard N s ago" while held.
   4. "Last 60 seconds" chart: processed and raw speech level, the −21 dBFS target line, a dashed marker labelled with each setting change.
-  5. "Try this": one row per advice (plain title + exact change "ReaGate Dry 0 → −20 dB"), button Apply; once applied the button becomes Undo.
+  5. "Try this": one row per advice (plain title + exact change "ReaGate Dry 0 → −20 dB"), button Apply; once applied the button becomes Undo. The "Does it sound better?" card sits at its top. Beside it (two columns from md, stacked below) the "Your sound" card.
   6. "Your effects, in Wave Link order": one card per slot with name, vendor, On switch, "Plugin window" button and sliders. Cards start collapsed showing a one-line summary, except the ones an advice points at; Wave Link built-ins are greyed out with "can't preview, kept as is".
   7. "Before and after each change" table: one row per segment (Start, then each change): voice, pauses, peaks cut, dead silence.
   8. Right-aligned footer: "Restore backup", primary "Save to Wave Link".

@@ -2,8 +2,10 @@ import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Advice } from '../../../desktop/advice/types'
+import { fmtNum } from '../../../i18n/format'
 import type { Msg } from '../../../plain/types'
 import { useMsg } from '../../common/MsgText'
 import type { AppliedRow } from './useChainState'
@@ -16,6 +18,11 @@ function Row({ advice, action, onClick }: { advice: Advice; action: 'apply' | 'u
       <div className="grid min-w-0 flex-1 gap-0.5">
         <Typography variant="body2">{tm(advice.titleMsg)}</Typography>
         <Typography variant="body2" sx={{ fontWeight: 700 }}>{tm(advice.changeMsg)}</Typography>
+        {advice.evidenceSec !== undefined && (
+          <Typography variant="caption" color="text.secondary" data-testid="tune-advice-evidence">
+            {t('desktop.tune.try.evidence', { sec: fmtNum(advice.evidenceSec, 0) })}
+          </Typography>
+        )}
       </div>
       <Button size="small" variant={action === 'apply' ? 'contained' : 'outlined'} onClick={onClick}>
         {t(action === 'apply' ? 'desktop.tune.try.apply' : 'desktop.tune.try.undo')}
@@ -28,13 +35,17 @@ interface AdviceListProps {
   advice: readonly Advice[]
   applied: readonly AppliedRow[]
   notice: Msg | null
+  /** Nothing picked under "What you hear": tone advice is off, the empty state says how to get it. */
+  hearsNothing: boolean
+  /** The "Does it sound better?" card of the latest Apply. */
+  feedback?: ReactNode
   onApply: (a: Advice) => void
   onUndo: (appliedId: string) => void
   onCloseNotice: () => void
 }
 
 /** "Try this": one row per advice with Apply; applied changes stay with their own Undo. */
-export function AdviceList({ advice, applied, notice, onApply, onUndo, onCloseNotice }: AdviceListProps) {
+export function AdviceList({ advice, applied, notice, hearsNothing, feedback, onApply, onUndo, onCloseNotice }: AdviceListProps) {
   const { t } = useTranslation()
   const tm = useMsg()
   const empty = advice.length === 0 && applied.length === 0
@@ -44,8 +55,12 @@ export function AdviceList({ advice, applied, notice, onApply, onUndo, onCloseNo
       {notice && (
         <Alert severity="info" onClose={onCloseNotice} data-testid="tune-notice">{tm(notice)}</Alert>
       )}
+      {feedback}
       {empty ? (
-        <Typography variant="body2" color="text.secondary">{t('desktop.tune.try.empty')}</Typography>
+        <div className="grid gap-1" data-testid="tune-try-empty">
+          <Typography variant="body2" color="text.secondary">{t('desktop.tune.try.empty')}</Typography>
+          {hearsNothing && <Typography variant="body2" color="text.secondary">{t('desktop.tune.try.pickHear')}</Typography>}
+        </div>
       ) : (
         <ul className="m-0 grid list-none gap-1 p-0">
           {applied.map((a) => (

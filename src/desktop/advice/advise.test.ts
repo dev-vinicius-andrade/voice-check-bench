@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import type { ValueChange } from './types'
-import { advise, NR_STEP } from './advise'
+import { advise, adviceNotBefore, blockFor, blockKey, NR_STEP, SETTLE_MS } from './advise'
+import { LIVE_WINDOW_SEC } from '../../live/types'
 import { eqKey } from './chain'
 import { chain, comp, eq, gate, GUIDE_BANDS, held, noiseRemoval, tone } from './testFixtures'
 import type { Advice } from './types'
+import type { PerceivedIssue, VoiceGoal } from '../../types'
+import type { TuningPrefs } from './prefs'
 
 const value = (a: Advice | undefined): ValueChange => {
   if (!a || a.kind !== 'value') throw new Error('expected a value change')
   return a
 }
+const hears = (...perceived: PerceivedIssue[]): VoiceGoal => ({ style: 'natural', perceived })
+const ALL: PerceivedIssue[] = ['boomy', 'muffled', 'thin', 'harsh', 'sharpS', 'dull']
 const summary = (list: Advice[]): string[] => list.map((a) => `${a.reason} ${a.slot}:${a.kind === 'value' ? `${a.key} ${a.from}→${a.to}` : a.on}`)
 
 describe('advise: when to say anything', () => {
@@ -21,6 +26,15 @@ describe('advise: when to say anything', () => {
     const c = [gate({ dryDb: 0 })]
     expect(advise(held({ heardAtMs: 1000 }), c, undefined, { notBeforeMs: 1500 })).toEqual([])
     expect(advise(held({ heardAtMs: 1500 }), c, undefined, { notBeforeMs: 1500 })).toHaveLength(1)
+  })
+
+  it('after a change, waits a whole live window so no audio from before the change is advised on again', () => {
+    const c = [gate({ dryDb: 0 })]
+    expect(SETTLE_MS).toBe(LIVE_WINDOW_SEC * 1000)
+    expect(adviceNotBefore(undefined)).toBeUndefined()
+    const nb = adviceNotBefore(10_000)
+    expect(advise(held({ heardAtMs: 10_000 + SETTLE_MS - 500 }), c, undefined, { notBeforeMs: nb })).toEqual([])
+    expect(advise(held({ heardAtMs: 10_000 + SETTLE_MS }), c, undefined, { notBeforeMs: nb })).toHaveLength(1)
   })
 
   it('good voice on the guide chain → no advice', () => {
@@ -124,55 +138,133 @@ describe('advise: too quiet', () => {
   })
 })
 
-describe('advise: tone vs the goal (ReaEQ)', () => {
-  it('harsh → 3.5 kHz band down 0.7 × the deviation, inside the guide range', () => {
-    const a = advise(held({ tone: tone({ 6: 6 }) }), [eq()])
+describe('advise: tone, only for what the person hears (ReaEQ)', () => {
+  it('harsh heard → 3.5 kHz band down 0.7 × the deviation, at most the medium step', () => {
+    const a = advise(held({ tone: tone({ 6: 6 }) }), [eq()], hears('harsh'))
     expect(summary(a)).toEqual([`tone 2:${eqKey(4, 'gainDb')} 0→-4`])
     expect(a[0].titleMsg).toEqual({ key: 'desktop.advice.title.tone.high.presence', params: { db: 4 } })
     expect(a[0].changeMsg).toEqual({ key: 'desktop.advice.change.eq', params: { plugin: 'ReaEQ', type: 'Band', freq: 3500, from: 0, to: -4 } })
   })
 
   it('boomy → 150 Hz low shelf down; thin → up, capped at +2', () => {
-    expect(summary(advise(held({ tone: tone({ 1: 5 }) }), [eq()]))).toEqual([`tone 2:${eqKey(1, 'gainDb')} 0→-3.5`])
-    expect(summary(advise(held({ tone: tone({ 1: -5 }) }), [eq()]))).toEqual([`tone 2:${eqKey(1, 'gainDb')} 0→2`])
+    expect(summary(advise(held({ tone: tone({ 1: 5 }) }), [eq()], hears('boomy')))).toEqual([`tone 2:${eqKey(1, 'gainDb')} 0→-3.5`])
+    expect(summary(advise(held({ tone: tone({ 1: -5 }) }), [eq()], hears('thin')))).toEqual([`tone 2:${eqKey(1, 'gainDb')} 0→2`])
   })
 
-  it('below 4 dB nothing, unless the person hears that issue (above 1.5 dB)', () => {
-    expect(advise(held({ tone: tone({ 6: 3 }) }), [eq()])).toEqual([])
-    const goal = { style: 'natural' as const, perceived: ['harsh' as const] }
-    expect(summary(advise(held({ tone: tone({ 6: 3 }) }), [eq()], goal))).toEqual([`tone 2:${eqKey(4, 'gainDb')} 0→-2`])
-    // hearing "harsh" says nothing about the bass
-    expect(advise(held({ tone: tone({ 1: 3 }) }), [eq()], goal)).toEqual([])
+  it('nothing for a band the person does not hear, however far off the goal', () => {
+    expect(advise(held({ tone: tone({ 6: 8, 1: 8 }) }), [eq()])).toEqual([])
+    // hearing "harsh" says nothing about the bass, nor about too little presence
+    expect(advise(held({ tone: tone({ 1: 6 }) }), [eq()], hears('harsh'))).toEqual([])
+    expect(advise(held({ tone: tone({ 6: -6 }) }), [eq()], hears('harsh'))).toEqual([])
+    // too little 450 Hz has no perceived issue
+    expect(advise(held({ tone: tone({ 3: -6 }) }), [eq()], hears(...ALL))).toEqual([])
+  })
+
+  it('only above CONFIRM_DB (1.5 dB) the way the person hears it', () => {
+    expect(advise(held({ tone: tone({ 6: 1.5 }) }), [eq()], hears('harsh'))).toEqual([])
+    expect(summary(advise(held({ tone: tone({ 6: 2 }) }), [eq()], hears('harsh')))).toEqual([`tone 2:${eqKey(4, 'gainDb')} 0→-1.5`])
+  })
+
+  it('the step is capped by How much processing: light 2, medium 4, strong 6 (medium by default)', () => {
+    const h = held({ tone: tone({ 1: 10 }) })
+    const step = (amount?: TuningPrefs['amount']): number =>
+      value(advise(h, [eq()], hears('boomy'), amount ? { prefs: { amount, noise: 'natural' } } : {})[0]).to
+    expect([step('light'), step('medium'), step('strong'), step()]).toEqual([-2, -4, -6, -4])
   })
 
   it('harsh while clipping: level first, no presence cut', () => {
-    expect(advise(held({ tone: tone({ 6: 6 }), clipFrames: 3 }), [eq(), comp(12)]).map((a) => a.reason)).toEqual(['tooLoud'])
+    expect(advise(held({ tone: tone({ 6: 6 }), clipFrames: 3 }), [eq(), comp(12)], hears('harsh')).map((a) => a.reason)).toEqual(['tooLoud'])
   })
 
   it('only bands that exist and are on; a band moved a little still counts', () => {
-    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(GUIDE_BANDS.slice(0, 3))])).toEqual([])
-    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(GUIDE_BANDS, false)])).toEqual([])
+    const g = hears('harsh')
+    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(GUIDE_BANDS.slice(0, 3))], g)).toEqual([])
+    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(GUIDE_BANDS, false)], g)).toEqual([])
     const off = GUIDE_BANDS.map((b) => (b.freqHz === 3500 ? { ...b, on: false } : b))
-    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(off)])).toEqual([])
+    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(off)], g)).toEqual([])
     const moved = GUIDE_BANDS.map((b) => (b.freqHz === 3500 ? { ...b, freqHz: 3000, gainDb: -1 } : b))
-    expect(summary(advise(held({ tone: tone({ 6: 6 }) }), [eq(moved)]))).toEqual([`tone 2:${eqKey(4, 'gainDb')} -1→-4`])
+    expect(summary(advise(held({ tone: tone({ 6: 6 }) }), [eq(moved)], g))).toEqual([`tone 2:${eqKey(4, 'gainDb')} -1→-4`])
   })
 
   it('never moves the wrong way when a band is already past the guide range', () => {
     const deep = GUIDE_BANDS.map((b) => (b.freqHz === 3500 ? { ...b, gainDb: -6 } : b))
-    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(deep)])).toEqual([])
+    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq(deep)], hears('harsh'))).toEqual([])
   })
 
   it('biggest deviation first', () => {
-    const a = advise(held({ tone: tone({ 1: 4.5, 6: 7, 7: -5 }) }), [eq()])
+    const a = advise(held({ tone: tone({ 1: 4.5, 6: 7, 7: -5 }) }), [eq()], hears('boomy', 'harsh', 'dull'))
     expect(a.map((x) => x.titleMsg.key.split('.').slice(-2).join('.'))).toEqual(['high.presence', 'low.sibilance', 'high.boom'])
+  })
+
+  it('the trend tone replaces the held window and its evidence travels with the advice', () => {
+    const nan = Array.from({ length: 9 }, () => NaN)
+    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq()], hears('harsh'), { tone: nan, evidenceSec: 15 })).toEqual([])
+    const a = advise(held(), [eq()], hears('harsh'), { tone: tone({ 6: 6 }), evidenceSec: 15 })
+    expect(summary(a)).toEqual([`tone 2:${eqKey(4, 'gainDb')} 0→-4`])
+    expect(a[0].evidenceSec).toBe(15)
+    expect(advise(held({ tone: tone({ 6: 6 }) }), [eq()], hears('harsh'))[0].evidenceSec).toBeUndefined()
+    // level advice never carries it
+    expect(advise(held({ speechDb: -14 }), [comp(12)], undefined, { evidenceSec: 15 })[0].evidenceSec).toBeUndefined()
+  })
+})
+
+describe('advise: background noise mode', () => {
+  const max = { prefs: { amount: 'medium', noise: 'max' } as const }
+  const noisy = held({ pauseDb: -40 })
+
+  it('max: noisy pauses → Noise Removal strength up one step, capped at 100', () => {
+    const a = advise(noisy, chain(), undefined, max)
+    expect(summary(a)).toEqual(['noisyPause 0:strength 85→100'])
+    expect(a[0].titleMsg).toEqual({ key: 'desktop.advice.title.noisyPause' })
+    expect(a[0].changeMsg).toEqual({ key: 'desktop.advice.change.strength', params: { plugin: 'Elgato Noise Removal', from: 85, to: 100 } })
+    expect(summary(advise(noisy, [noiseRemoval(40)], undefined, max))).toEqual([`noisyPause 0:strength 40→${40 + NR_STEP}`])
+  })
+
+  it('max: nothing at 100, with the remover off or absent, quiet pauses or no pause reading', () => {
+    expect(advise(noisy, [noiseRemoval(100)], undefined, max)).toEqual([])
+    expect(advise(noisy, [noiseRemoval(85, false), gate()], undefined, max)).toEqual([])
+    expect(advise(held({ pauseDb: -50 }), chain(), undefined, max)).toEqual([])
+    expect(advise(held({ pauseDb: -Infinity }), chain(), undefined, max)).toEqual([])
+    expect(advise(held({ pauseDb: NaN }), chain(), undefined, max)).toEqual([])
+  })
+
+  it('max: dead silence is not advised against; natural: noisy pauses are left alone', () => {
+    expect(advise(held({ deadSilence: 0.3 }), chain(), undefined, max)).toEqual([])
+    expect(advise(noisy, chain())).toEqual([])
+    expect(summary(advise(held({ deadSilence: 0.3 }), chain()))).toEqual([`deadSilence 0:strength 85→${85 - NR_STEP}`])
+  })
+
+  it('comes after too loud and before too quiet', () => {
+    expect(advise(held({ pauseDb: -40, speechDb: -10 }), chain(), undefined, max).map((a) => a.reason)).toEqual(['tooLoud', 'noisyPause'])
+    expect(advise(held({ pauseDb: -40, speechDb: -32 }), chain(), undefined, max).map((a) => a.reason)).toEqual(['noisyPause', 'tooQuiet'])
+  })
+})
+
+describe('advise: blocked moves', () => {
+  it('blockFor: slot, key and direction of a value change; switches are not blockable', () => {
+    expect(blockFor(advise(held({ speechDb: -14 }), [comp(12)])[0])).toBe(blockKey(3, 'wetDb', 'down'))
+    expect(blockFor(advise(held({ speechDb: -32 }), [comp(6)])[0])).toBe('3:wetDb:up')
+    expect(blockFor({ id: 's', reason: 'tone', kind: 'switch', slot: 1, on: false, titleMsg: { key: 'x' }, changeMsg: { key: 'y' } })).toBeNull()
+  })
+
+  it('a blocked move is not advised again; the other direction still is', () => {
+    const blocked = new Set([blockKey(3, 'wetDb', 'down')])
+    expect(advise(held({ speechDb: -14 }), [comp(12)], undefined, { blocked })).toEqual([])
+    expect(summary(advise(held({ speechDb: -32 }), [comp(6)], undefined, { blocked }))).toEqual(['tooQuiet 3:wetDb 6→17'])
+  })
+
+  it('blocks are per value and direction: other values still get advice', () => {
+    const g = hears('boomy', 'harsh')
+    const h = held({ tone: tone({ 1: 6, 6: 6 }) })
+    const blocked = new Set([blockKey(2, eqKey(4, 'gainDb'), 'down')])
+    expect(summary(advise(h, [eq()], g, { blocked }))).toEqual([`tone 2:${eqKey(1, 'gainDb')} 0→-4`])
   })
 })
 
 describe('advise: order and one change per value', () => {
   it('orders by importance: doubled gate, too loud, dead silence, too quiet / tone', () => {
     const c = [noiseRemoval(), gate({ dryDb: 0 }), eq(), comp(12)]
-    const a = advise(held({ speechDb: -8, deadSilence: 0.2, tone: tone({ 1: 6 }) }), c)
+    const a = advise(held({ speechDb: -8, deadSilence: 0.2, tone: tone({ 1: 6 }) }), c, hears('boomy'))
     expect(a.map((x) => x.reason)).toEqual(['gateDoubled', 'tooLoud', 'deadSilence', 'tone'])
     expect(new Set(a.map((x) => x.id)).size).toBe(a.length)
   })
@@ -180,7 +272,7 @@ describe('advise: order and one change per value', () => {
   it('two tone bands landing on the same ReaEQ band → one change, the bigger deviation', () => {
     // a single Band at 335 Hz is within half an octave of both 250 Hz (warmth) and 450 Hz (mud)
     const one = [{ type: 'Band', on: true, freqHz: 335, gainDb: 0, bwOct: 1 }] as const
-    const a = advise(held({ tone: tone({ 2: 5, 3: 6 }) }), [eq(one)])
+    const a = advise(held({ tone: tone({ 2: 5, 3: 6 }) }), [eq(one)], hears('boomy', 'muffled'))
     expect(a).toHaveLength(1)
     expect(a[0].titleMsg.key).toBe('desktop.advice.title.tone.high.mud')
     expect(value(a[0]).key).toBe(eqKey(1, 'gainDb'))

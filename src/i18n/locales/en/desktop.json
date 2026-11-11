@@ -21,6 +21,7 @@
           "noiseRemoval": "Your pauses drop to dead silence, so the noise removal is cutting into your voice: turn its strength down a step. Pauses should sound quiet, not dead.",
           "gate": "Your pauses drop to dead silence, so the gate is closing on your voice: lower its Threshold {{db, number(maximumFractionDigits: 1)}} dB so it opens earlier. Pauses should sound quiet, not dead."
         },
+        "noisyPause": "Your pauses still carry background noise and you want it gone: turn the noise removal's strength up a step.",
         "tone": {
           "high": {
             "boom": "Too much boom: lower the 150 Hz low shelf by {{db, number(maximumFractionDigits: 1)}} dB.",
@@ -106,7 +107,44 @@
         "title": "Try this",
         "apply": "Apply",
         "undo": "Undo",
-        "empty": "Nothing to change right now. Keep talking."
+        "empty": "Nothing to change right now. Keep talking.",
+        "evidence": "Seen in {{sec}} s of talk, same direction every time",
+        "pickHear": "Pick what you hear under Your sound to get EQ suggestions."
+      },
+      "sound": {
+        "title": "Your sound",
+        "hint": "Advice follows this",
+        "style": "Style",
+        "hear": "What you hear (pick any)",
+        "good": "Sounds good",
+        "amount": "How much processing",
+        "amounts": {
+          "light": "Light",
+          "medium": "Medium",
+          "strong": "Strong"
+        },
+        "noise": "Background noise",
+        "noises": {
+          "natural": "Keep it natural",
+          "max": "Remove as much as possible"
+        },
+        "footnote": "Tone changes only for what you pick under What you hear. Level and noise advice always run.",
+        "issues": {
+          "boomy": "Boomy",
+          "muffled": "Muffled",
+          "thin": "Thin",
+          "harsh": "Harsh",
+          "sharpS": "Sharp S sounds",
+          "dull": "Dull"
+        }
+      },
+      "feedback": {
+        "applied": "Applied: {{change}}",
+        "listening": "Listening to the change… {{sec}} s",
+        "ask": "Does it sound better?",
+        "better": "Better",
+        "same": "Same",
+        "worse": "Worse, undo"
       },
       "effects": {
         "title": "Your effects, in Wave Link order",

@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { useMsg } from '../../common/MsgText'
 import { AdviceList } from './AdviceList'
+import { ApplyFeedback } from './ApplyFeedback'
 import { EffectsList } from './EffectsList'
 import { HistoryChart } from './HistoryChart'
 import { MetricCards } from './MetricCards'
@@ -13,13 +14,14 @@ import { SaveDialog } from './SaveDialog'
 import { SegmentsTable } from './SegmentsTable'
 import { TuningBar } from './TuningBar'
 import { useTuningSession } from './useTuningSession'
+import { YourSoundPanel } from './YourSoundPanel'
 
 /** The live tuning screen (SPEC "Desktop app (v2.0)" → Live tuning screen, approved mockup), top to bottom. */
 export function LiveTuning() {
   const { t } = useTranslation()
   const tm = useMsg()
   const s = useTuningSession()
-  const { engine, chain } = s
+  const { engine, chain, feedback } = s
   const running = engine.state === 'running'
   const rate = engine.status?.sampleRate ?? 48000
   const reafirOn = chain.model?.undo.chain.some((x) => x.kind === 'reafir' && x.on) ?? false
@@ -44,14 +46,19 @@ export function LiveTuning() {
         <Typography color="text.secondary">{t(running ? 'desktop.tune.talk' : 'desktop.tune.idle')}</Typography>
       )}
       <HistoryChart history={update?.history ?? { points: [], markers: [] }} />
-      <AdviceList
-        advice={s.advice}
-        applied={chain.applied}
-        notice={chain.notice}
-        onApply={chain.applyAdvice}
-        onUndo={chain.undoApplied}
-        onCloseNotice={chain.clearNotice}
-      />
+      <div className="grid items-start gap-4 md:grid-cols-2">
+        <AdviceList
+          advice={s.advice}
+          applied={chain.applied}
+          notice={chain.notice}
+          hearsNothing={s.goal.perceived.length === 0}
+          feedback={<ApplyFeedback pending={feedback.pending} leftMs={feedback.leftMs} onRate={feedback.rate} />}
+          onApply={feedback.apply}
+          onUndo={chain.undoApplied}
+          onCloseNotice={chain.clearNotice}
+        />
+        <YourSoundPanel prefs={s.prefs.prefs} onPrefs={s.prefs.setPrefs} />
+      </div>
       <EffectsList chain={chain} advice={s.advice} />
       <SegmentsTable segments={update?.segments ?? []} />
       {s.fileError && <Alert severity="warning">{t('desktop.tune.fileError', { reason: tm(s.fileError) })}</Alert>}

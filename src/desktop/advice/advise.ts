@@ -3,6 +3,8 @@
 // (src/audio/diagnose.ts), the live hints (src/live/hints.ts) and the guide's EQ (src/settings/suggest.ts via ./tone.ts).
 import { LEVEL_GOOD_MAX, LEVEL_GOOD_MIN, PEAK_WARN_DB, TARGET_SPEECH_DB } from '../../audio/diagnose'
 import type { HeldMetrics } from '../../live/hold'
+import { NOISY_PAUSE_DB } from '../../live/hints'
+import { LIVE_WINDOW_SEC } from '../../live/types'
 import {
   CHOPPED_ZERO,
   CLIP_MIN_DROP_DB,
@@ -17,6 +19,7 @@ import {
 import { DEFAULT_GOAL, type VoiceGoal } from '../../types'
 import { slotsWith } from './chain'
 import { changeTarget, dbChangeMsg, strengthChangeMsg, titleMsg, valueAdvice } from './msgs'
+import { AMOUNT_STEP_DB, DEFAULT_TUNING_PREFS, type TuningPrefs } from './prefs'
 import { toneAdvice } from './tone'
 import type { Advice, ChainSlot } from './types'
 
@@ -34,23 +37,55 @@ export interface AdviseOptions {
    * last applied change, so values measured before it are not advised on twice.
    */
   notBeforeMs?: number
+  /** "Your sound" choices: largest EQ step and noise mode (default DEFAULT_TUNING_PREFS). */
+  prefs?: TuningPrefs
+  /** Stable tone of the trend (trendTone, NaN where not stable); when given, tone advice uses it instead of held.fx.tone. */
+  tone?: readonly number[]
+  /** Seconds of talk behind `tone`, carried on tone advice. */
+  evidenceSec?: number
+  /** blockKey()s the person rated worse this session: such a move is never advised again. */
+  blocked?: ReadonlySet<string>
 }
+
+/** A move the person can block: one value of one slot, in one direction. */
+export const blockKey = (slot: number, key: string, dir: 'up' | 'down'): string => `${slot}:${key}:${dir}`
+
+/** The block key of an advice (direction from `to` vs `from`); switches are not blockable → null. */
+export function blockFor(a: Advice): string | null {
+  if (a.kind !== 'value' || a.to === a.from) return null
+  return blockKey(a.slot, a.key, a.to > a.from ? 'up' : 'down')
+}
+
+/**
+ * After a change, advice waits this long: a window ending sooner still holds audio from before the change (the live
+ * window is LIVE_WINDOW_SEC long), and advising on it would repeat the same move on top of the one just applied.
+ */
+export const SETTLE_MS = LIVE_WINDOW_SEC * 1000
+
+/** notBeforeMs for advise() after a change at changeMs (the stream clock): the first window made only of new audio. */
+export const adviceNotBefore = (changeMs: number | undefined): number | undefined =>
+  changeMs === undefined ? undefined : changeMs + SETTLE_MS
 
 const r05 = (v: number): number => Math.round(v * 2) / 2 || 0
 
 /**
  * Advice for the processed side, most important first: doubled ReaGate (Dry → −20) · too loud (Wet down to −21 dBFS,
- * at least 3 dB when it clipped) · dead silence (Noise Removal −20, else ReaGate Threshold −10) · too quiet (Wet up,
- * cap 18) · tone vs the goal (ReaEQ bands, biggest deviation first). Only on values present in switched-on slots, at most
- * one change per (slot, key) (the more important advice wins). Empty while nothing was heard yet (heardAtMs null).
+ * at least 3 dB when it clipped) · dead silence (Noise Removal −20, else ReaGate Threshold −10; noise "natural" only) ·
+ * noisy pauses (Noise Removal +20, noise "max" only) · too quiet (Wet up, cap 18) · tone for what the person hears
+ * (ReaEQ bands, biggest deviation first, at most the amount's step). Only on values present in switched-on slots, at
+ * most one change per (slot, key) (the more important advice wins), never a blocked move. Empty while nothing was heard
+ * yet (heardAtMs null).
  */
 export function advise(held: HeldMetrics, chain: readonly ChainSlot[], goal: VoiceGoal = DEFAULT_GOAL, opts: AdviseOptions = {}): Advice[] {
   const fx = held.fx
   if (fx.heardAtMs === null) return []
   if (opts.notBeforeMs !== undefined && fx.heardAtMs < opts.notBeforeMs) return []
+  const prefs = opts.prefs ?? DEFAULT_TUNING_PREFS
   const out: Advice[] = []
   const used = new Set<string>()
   const push = (a: Advice): void => {
+    const b = blockFor(a)
+    if (b !== null && opts.blocked?.has(b)) return
     const t = changeTarget(a)
     if (used.has(t)) return
     used.add(t)
@@ -80,7 +115,7 @@ export function advise(held: HeldMetrics, chain: readonly ChainSlot[], goal: Voi
   }
 
   // dead silence in pauses: the noise remover lower first, else the gate opens 10 dB earlier (not below −72)
-  if (fx.deadSilence > CHOPPED_ZERO) {
+  if (prefs.noise === 'natural' && fx.deadSilence > CHOPPED_ZERO) {
     const nr = slotsWith(chain, 'noiseRemoval', 'strength').find((s) => s.values.strength > 0)
     const gate = slotsWith(chain, 'reagate', 'thresholdDb', 'wetDb', 'dryDb').find(
       (g) => !gatePassesAll({ wet: g.values.wetDb, dry: g.values.dryDb }) && g.values.thresholdDb > GATE_MIN_DB,
@@ -96,6 +131,16 @@ export function advise(held: HeldMetrics, chain: readonly ChainSlot[], goal: Voi
     }
   }
 
+  // noisy pauses, when the person wants the noise gone: the noise remover a step stronger (not above 100)
+  if (prefs.noise === 'max' && Number.isFinite(fx.pauseDb) && fx.pauseDb > NOISY_PAUSE_DB) {
+    const nr = slotsWith(chain, 'noiseRemoval', 'strength').find((s) => s.values.strength < 100)
+    if (nr) {
+      const from = nr.values.strength
+      const to = Math.min(100, Math.round(from + NR_STEP))
+      push(valueAdvice('noisyPause', nr, 'strength', to, titleMsg('noisyPause'), strengthChangeMsg(nr, from, to)))
+    }
+  }
+
   // too quiet: Wet makes up the level toward −21 dBFS, never past it and never above 18 dB
   if (comp && !clipped && Number.isFinite(speech) && speech < LEVEL_GOOD_MIN) {
     const wet = comp.values.wetDb
@@ -104,6 +149,7 @@ export function advise(held: HeldMetrics, chain: readonly ChainSlot[], goal: Voi
     if (raise >= 1 && to > wet) push(valueAdvice('tooQuiet', comp, 'wetDb', to, titleMsg('tooQuiet', { db: to - wet, target: TARGET_SPEECH_DB }), dbChangeMsg(comp, 'Wet', wet, to)))
   }
 
-  for (const a of toneAdvice(fx.tone, chain, goal, clipped)) push(a)
+  const toneOpts = { maxStepDb: AMOUNT_STEP_DB[prefs.amount], evidenceSec: opts.evidenceSec }
+  for (const a of toneAdvice(opts.tone ?? fx.tone, chain, goal, clipped, toneOpts)) push(a)
   return out
 }

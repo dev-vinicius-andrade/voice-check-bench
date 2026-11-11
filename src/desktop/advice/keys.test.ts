@@ -3,6 +3,7 @@ import en from '../../i18n/locales/en/desktop.json'
 import pt from '../../i18n/locales/pt-BR/desktop.json'
 import type { Msg } from '../../plain/types'
 import type { HeldSide } from '../../live/hold'
+import type { VoiceGoal } from '../../types'
 import { advise } from './advise'
 import { chain, comp, eq, gate, held, noiseRemoval, tone } from './testFixtures'
 import { apply, emptyUndo } from './undo'
@@ -30,7 +31,9 @@ function collectMsgs(): Msg[] {
   ]
   const chains = [chain(), [noiseRemoval(0), gate({ dryDb: 0 }), eq(), comp(8)], [gate()]]
   const out: Msg[] = []
-  for (const fx of scenarios) for (const c of chains) for (const a of advise(held(fx), c)) out.push(a.titleMsg, a.changeMsg)
+  const goal: VoiceGoal = { style: 'natural', perceived: ['boomy', 'muffled', 'thin', 'harsh', 'sharpS', 'dull'] }
+  for (const fx of scenarios) for (const c of chains) for (const a of advise(held(fx), c, goal)) out.push(a.titleMsg, a.changeMsg)
+  for (const a of advise(held({ pauseDb: -40 }), chain(), goal, { prefs: { amount: 'medium', noise: 'max' } })) out.push(a.titleMsg, a.changeMsg)
   const r = apply(emptyUndo(chain()), { id: 'x', reason: 'tooLoud', titleMsg: { key: 'desktop.advice.title.tooLoud' }, kind: 'value', slot: 3, key: 'wetDb', from: 6, to: 2 })
   if (r.ok) out.push(r.inverse.titleMsg)
   return out
@@ -49,9 +52,11 @@ describe('desktop.advice keys', () => {
         'desktop.advice.title.tooQuiet',
         'desktop.advice.title.deadSilence.noiseRemoval',
         'desktop.advice.title.deadSilence.gate',
+        'desktop.advice.title.noisyPause',
       ]),
     )
-    expect(titles.filter((k) => k.includes('.tone.'))).toHaveLength(10)
+    // every band both ways, except too little 450 Hz: no perceived issue asks for it, so it is never advised
+    expect(titles.filter((k) => k.includes('.tone.'))).toHaveLength(9)
     expect(keys).toEqual(expect.arrayContaining(['desktop.advice.change.db', 'desktop.advice.change.eq', 'desktop.advice.change.strength', 'desktop.advice.undo']))
   })
 

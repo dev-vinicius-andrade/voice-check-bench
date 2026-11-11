@@ -27,7 +27,8 @@ export interface ChainState {
   /** Slider released: the value is final, a marker and a new segment. */
   commit(slot: number, key: string, value: number): void
   setOn(slot: number, on: boolean): void
-  applyAdvice(a: Advice): void
+  /** The applied id, or null when the change could not be applied (a notice says why). */
+  applyAdvice(a: Advice): string | null
   undoApplied(appliedId: string): void
 }
 
@@ -81,14 +82,18 @@ export function useChainState(bridge: DesktopBridge, markChange: (m: Msg) => voi
     changed(model, c)
   }
 
-  const applyAdvice = (a: Advice): void => {
-    if (!model) return
+  const applyAdvice = (a: Advice): string | null => {
+    if (!model) return null
     const r = apply(model.undo, a)
-    if (!r.ok) return setNotice({ key: 'desktop.advice.missing' })
+    if (!r.ok) {
+      setNotice({ key: 'desktop.advice.missing' })
+      return null
+    }
     setModel({ ...model, undo: r.state })
     setApplied((list) => [...list, { appliedId: r.applied.id, advice: a }])
     void run(engineOp(a, r.state.chain, model.slots, model.entries))
     changed(model, a, a.changeMsg)
+    return r.applied.id
   }
 
   const undoApplied = (appliedId: string): void => {

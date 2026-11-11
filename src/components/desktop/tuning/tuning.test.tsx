@@ -3,10 +3,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { ThemeProvider } from '@mui/material/styles'
 import i18n from '../../../i18n'
 import en from '../../../i18n/locales/en/desktop.json'
+import wizard from '../../../i18n/locales/en/wizard.json'
 import type { DesktopBridge } from '../../../desktop/bridge'
 import { audioStatus, INPUT_KEY, snapshot } from '../../../desktop/testChain'
 import { noiseFrames, voiceFrames } from '../../../desktop/testFrames'
 import type { AudioFrame, AudioSlot, WlFlowReport } from '../../../desktop/types'
+import { useBench } from '../../../store/benchStore'
 import { theme } from '../../../theme'
 import { db2a } from '../../../wavelink/fxp'
 import { DesktopScreen } from '../DesktopScreen'
@@ -98,7 +100,11 @@ async function started(dryAmp = 0) {
 }
 
 beforeAll(() => i18n.changeLanguage('en'))
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  useBench.getState().setGoal({ style: 'natural', perceived: [] })
+  localStorage.removeItem('vcb-tuning-prefs')
+})
 
 describe('live tuning: start and stop', () => {
   it('starts on the picked devices with the monitor off, shows the delay and the chain; stops', async () => {
@@ -152,6 +158,8 @@ describe('live tuning: changes', () => {
     fireEvent.click(within(undoRow).getByRole('button', { name: T.tune.try.undo }))
     await waitFor(() => expect(bridge.audioSetParam).toHaveBeenLastCalledWith(1, 9, expect.closeTo(1, 6)))
     expect(screen.queryByTestId('tune-advice-undo')).toBeNull()
+    // undone from the list: no "Does it sound better?" card left for it
+    expect(screen.queryByTestId('tune-feedback')).toBeNull()
     push(voiceFrames(1, 2, 5))
     expect(screen.getAllByTestId('tune-chart-marker')).toHaveLength(2)
     expect(screen.getAllByTestId('tune-segment-row')).toHaveLength(3)
@@ -180,6 +188,63 @@ describe('live tuning: changes', () => {
     fireEvent.click(within(nr).getByRole('button', { name: /Show the settings/ }))
     fireEvent.change(within(nr).getByRole('slider', { name: T.tune.effects.strength }), { target: { value: 40 } })
     await waitFor(() => expect(bridge.audioSetParam).toHaveBeenCalledWith(0, 1163972580, 0.4))
+  })
+})
+
+describe('live tuning: Your sound and feedback', () => {
+  it('Your sound edits the goal and the processing prefs; EQ advice waits for a pick under What you hear', async () => {
+    await started()
+    const panel = screen.getByTestId('tune-sound')
+    const chip = (name: string) => within(panel).getByRole('button', { name })
+    expect(chip(T.tune.sound.good).getAttribute('aria-pressed')).toBe('true')
+    expect(chip(T.tune.sound.amounts.medium).getAttribute('aria-pressed')).toBe('true')
+    expect(chip(T.tune.sound.noises.natural).getAttribute('aria-pressed')).toBe('true')
+    expect(within(panel).queryByRole('button', { name: wizard.wizard.goal.perceived.nasal })).toBeNull()
+    expect(screen.getByTestId('tune-try-empty').textContent).toContain(T.tune.try.pickHear)
+    fireEvent.click(chip(T.tune.sound.issues.harsh))
+    expect(useBench.getState().goal.perceived).toEqual(['harsh'])
+    expect(chip(T.tune.sound.good).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByTestId('tune-try-empty').textContent).not.toContain(T.tune.try.pickHear)
+    fireEvent.click(chip(wizard.wizard.goal.style.warm.name))
+    expect(useBench.getState().goal.style).toBe('warm')
+    fireEvent.click(chip(T.tune.sound.amounts.light))
+    fireEvent.click(chip(T.tune.sound.noises.max))
+    expect(JSON.parse(localStorage.getItem('vcb-tuning-prefs') ?? 'null')).toEqual({ amount: 'light', noise: 'max' })
+    expect(chip(T.tune.sound.noises.max).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(chip(T.tune.sound.good))
+    expect(useBench.getState().goal.perceived).toEqual([])
+  })
+
+  it('after Apply it listens on the stream clock, then asks; Better keeps the change', async () => {
+    const { push } = await started(1)
+    push(voiceFrames(6, 2))
+    const row = screen.getByText('ReaGate Dry 0 → -20 dB').closest('li') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: T.tune.try.apply }))
+    const card = screen.getByTestId('tune-feedback')
+    expect(card.textContent).toContain('Applied: ReaGate Dry 0 → -20 dB')
+    expect(within(card).getByTestId('tune-feedback-wait').textContent).toBe('Listening to the change… 4 s')
+    push(voiceFrames(2, 2, 7))
+    expect(within(card).getByTestId('tune-feedback-wait').textContent).toBe('Listening to the change… 2 s')
+    expect(within(card).queryByRole('button', { name: T.tune.feedback.better })).toBeNull()
+    push(voiceFrames(3, 2, 8))
+    expect(within(card).getByText(T.tune.feedback.ask)).toBeTruthy()
+    fireEvent.click(within(card).getByRole('button', { name: T.tune.feedback.better }))
+    expect(screen.queryByTestId('tune-feedback')).toBeNull()
+    expect(screen.getByTestId('tune-advice-undo').textContent).toContain('ReaGate Dry 0 → -20 dB')
+  })
+
+  it('Worse undoes the change and that move is not advised again', async () => {
+    const { bridge, push } = await started(1)
+    push(voiceFrames(6, 2))
+    const row = screen.getByText('ReaGate Dry 0 → -20 dB').closest('li') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: T.tune.try.apply }))
+    push(voiceFrames(5, 2, 7))
+    fireEvent.click(within(screen.getByTestId('tune-feedback')).getByRole('button', { name: T.tune.feedback.worse }))
+    await waitFor(() => expect(bridge.audioSetParam).toHaveBeenLastCalledWith(1, 9, expect.closeTo(1, 6)))
+    expect(screen.queryByTestId('tune-feedback')).toBeNull()
+    expect(screen.queryByTestId('tune-advice-undo')).toBeNull()
+    push(voiceFrames(6, 2, 9))
+    expect(within(screen.getByTestId('tune-try')).queryByText(/ReaGate Dry/)).toBeNull()
   })
 })
 

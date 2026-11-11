@@ -21,6 +21,7 @@
           "noiseRemoval": "Suas pausas caem para silêncio total, então a remoção de ruído está cortando sua voz: diminua a força dela um nível. As pausas devem soar baixinhas, não mortas.",
           "gate": "Suas pausas caem para silêncio total, então o gate está fechando em cima da sua voz: abaixe o Threshold dele {{db, number(maximumFractionDigits: 1)}} dB para ele abrir antes. As pausas devem soar baixinhas, não mortas."
         },
+        "noisyPause": "Suas pausas ainda têm ruído de fundo e você quer tirar ele: aumente um passo a intensidade da remoção de ruído.",
         "tone": {
           "high": {
             "boom": "Grave demais: abaixe o low shelf de 150 Hz em {{db, number(maximumFractionDigits: 1)}} dB.",
@@ -106,7 +107,44 @@
         "title": "Experimente",
         "apply": "Aplicar",
         "undo": "Desfazer",
-        "empty": "Nada para mudar agora. Continue falando."
+        "empty": "Nada para mudar agora. Continue falando.",
+        "evidence": "Visto em {{sec}} s de fala, sempre na mesma direção",
+        "pickHear": "Escolha o que você ouve em Seu som para receber sugestões de EQ."
+      },
+      "sound": {
+        "title": "Seu som",
+        "hint": "As sugestões seguem isto",
+        "style": "Estilo",
+        "hear": "O que você ouve (escolha quantos quiser)",
+        "good": "Está bom",
+        "amount": "Quanto processamento",
+        "amounts": {
+          "light": "Pouco",
+          "medium": "Médio",
+          "strong": "Forte"
+        },
+        "noise": "Ruído de fundo",
+        "noises": {
+          "natural": "Manter natural",
+          "max": "Tirar o máximo possível"
+        },
+        "footnote": "O timbre só muda para o que você escolher em O que você ouve. As sugestões de volume e ruído valem sempre.",
+        "issues": {
+          "boomy": "Graves demais",
+          "muffled": "Abafada",
+          "thin": "Fina",
+          "harsh": "Áspera",
+          "sharpS": "S chiado",
+          "dull": "Sem brilho"
+        }
+      },
+      "feedback": {
+        "applied": "Aplicado: {{change}}",
+        "listening": "Ouvindo a mudança… {{sec}} s",
+        "ask": "Ficou melhor?",
+        "better": "Melhor",
+        "same": "Igual",
+        "worse": "Pior, desfazer"
       },
       "effects": {
         "title": "Seus efeitos, na ordem do Wave Link",
