@@ -17,7 +17,7 @@ use super::stats::{Counters, CountersSnapshot};
 use super::stream::{FrameSink, StreamThread, STREAM_RING_BLOCKS};
 use super::types::{AudioSlot, AudioStatus, ChainSource, LatencyInfo};
 use super::{MAX_GAIN_DB, MIN_GAIN_DB};
-use crate::chain::{build_chain, ChainControl, ChainEntrySpec};
+use crate::chain::{build_chain, ChainControl, ChainEntrySpec, ExportedState};
 use crate::host::{BLOCK, SAMPLE_RATE};
 
 #[derive(Debug, Clone)]
@@ -268,6 +268,12 @@ impl Engine {
         self.check_slot(slot)?;
         self.chain.load_state(slot, parameter_state)?;
         self.slot(slot)
+    }
+
+    /// Every hosted slot's current `ParameterState` and `BypassState` (VST3: its own bypass follows the slot), for
+    /// writing the live chain back to Wave Link.
+    pub fn export_states(&self) -> AudioResult<Vec<ExportedState>> {
+        Ok(self.chain.export_states()?)
     }
 
     pub fn counters(&self) -> CountersSnapshot {

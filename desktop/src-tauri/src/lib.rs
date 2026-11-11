@@ -28,6 +28,9 @@ fn engine_info(app: tauri::AppHandle) -> EngineInfo {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Auto-update from the GitHub Releases feed (tauri.conf.json plugins.updater) and relaunch after install.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             engine_info,
             wavelink::commands::wavelink_read,
@@ -44,6 +47,7 @@ pub fn run() {
             audio::commands::audio_set_monitor,
             audio::commands::audio_set_gain,
             audio::commands::audio_status,
+            audio::commands::audio_export_states,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Voice Check Bench")

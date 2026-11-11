@@ -1,5 +1,6 @@
 import { GuideScreen } from './components/guide/GuideScreen'
 import { DesktopScreen } from './components/desktop/DesktopScreen'
+import { UpdateNotice } from './components/desktop/UpdateNotice'
 import { CommunityPage } from './components/pages/CommunityPage'
 import { HomePage } from './components/pages/HomePage'
 import { HowItWorksPage } from './components/pages/HowItWorksPage'
@@ -41,6 +42,7 @@ export default function App() {
       </main>
       <Footer />
       <StatusSnackbar />
+      {isDesktop() && <UpdateNotice />}
     </div>
   )
 }

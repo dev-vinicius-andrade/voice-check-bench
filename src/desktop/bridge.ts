@@ -3,12 +3,18 @@
 import { decodeAudioFrame } from './audioFrame'
 import type {
   AudioDevices,
+  AudioExportedState,
   AudioFrame,
   AudioMonitor,
   AudioSlot,
   AudioStartOptions,
   AudioStatus,
   EngineInfo,
+  WlBackupInfo,
+  WlChainChange,
+  WlDiffLine,
+  WlFlowReport,
+  WlSnapshot,
 } from './types'
 
 /** True inside the Tauri webview (Tauri v2 injects `__TAURI_INTERNALS__`); false on the web and without a window. */
@@ -85,3 +91,60 @@ export async function audioSetGain(gainDb: number): Promise<void> {
 export async function audioStatus(): Promise<AudioStatus | null> {
   return call<AudioStatus | null>('audio_status')
 }
+
+/** Every hosted slot's current ParameterState and BypassState, chain order (nothing is written). */
+export async function audioExportStates(): Promise<AudioExportedState[]> {
+  return call<AudioExportedState[]>('audio_export_states')
+}
+
+// ---- Wave Link Settings.json (desktop/src-tauri/src/wavelink). Commands reject with a WlError ({ code, message }). ----
+
+/** Settings.json path, hash and inputs with their effect chains (read-only). */
+export async function wavelinkRead(): Promise<WlSnapshot> {
+  return call<WlSnapshot>('wavelink_read')
+}
+
+/** What `changes` would change in the current file; nothing is written. */
+export async function wavelinkPreview(changes: WlChainChange[]): Promise<WlDiffLine[]> {
+  return call<WlDiffLine[]>('wavelink_preview', { changes })
+}
+
+/**
+ * Backup, close Wave Link, write, start it again, verify. `expectedHash` is the hash from `wavelinkRead`; `force`
+ * closes Wave Link by force when it does not close by itself (ask the person first).
+ */
+export async function wavelinkExport(changes: WlChainChange[], expectedHash: string, force: boolean): Promise<WlFlowReport> {
+  return call<WlFlowReport>('wavelink_export', { changes, expectedHash, force })
+}
+
+/** Backups next to Settings.json, newest first. */
+export async function wavelinkBackups(): Promise<WlBackupInfo[]> {
+  return call<WlBackupInfo[]>('wavelink_backups')
+}
+
+/** Writes a backup back over Settings.json with the export's close/start/verify steps. */
+export async function wavelinkRestore(path: string, force: boolean): Promise<WlFlowReport> {
+  return call<WlFlowReport>('wavelink_restore', { path, force })
+}
+
+/** Every command in one object, so screens can take a fake in tests. */
+export const desktopBridge = {
+  engineInfo,
+  audioDevices,
+  audioStart,
+  audioStop,
+  audioSetParam,
+  audioSetBypass,
+  audioLoadState,
+  audioSetMonitor,
+  audioSetGain,
+  audioStatus,
+  audioExportStates,
+  wavelinkRead,
+  wavelinkPreview,
+  wavelinkExport,
+  wavelinkBackups,
+  wavelinkRestore,
+}
+
+export type DesktopBridge = typeof desktopBridge

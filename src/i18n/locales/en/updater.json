@@ -1,0 +1,12 @@
+{
+  "updater": {
+    "available": "Version {{version}} is available.",
+    "install": "Install and restart",
+    "later": "Later",
+    "installing": "Installing version {{version}}…",
+    "installingProgress": "Installing version {{version}}… {{fraction, number(style: percent)}}",
+    "progressLabel": "Update download progress",
+    "failed": "Version {{version}} could not be installed. The app keeps running on this version.",
+    "retry": "Try again"
+  }
+}

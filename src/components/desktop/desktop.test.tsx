@@ -1,8 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
 import i18n from '../../i18n'
 import en from '../../i18n/locales/en/desktop.json'
+import { desktopBridge } from '../../desktop/bridge'
 import type { EngineInfo } from '../../desktop/types'
 import { hashToRoute } from '../../hooks/useHashRoute'
 import { defaultUiPrefs, loadUiPrefs } from '../../storage/prefs'
@@ -41,16 +42,18 @@ describe('DesktopScreen', () => {
   const view = (load: () => Promise<EngineInfo>) =>
     render(
       <ThemeProvider theme={theme}>
-        <DesktopScreen load={load} />
+        <DesktopScreen bridge={{ ...desktopBridge, engineInfo: load, audioDevices: () => new Promise(() => undefined) }} />
       </ThemeProvider>,
     )
 
-  it('shows the engine info', async () => {
+  it('opens on the live tuning screen with the engine info in a footer line', async () => {
     view(() => Promise.resolve(INFO))
     expect(screen.getByRole('heading', { name: en.desktop.title })).toBeTruthy()
-    expect(screen.getByText(en.desktop.coming)).toBeTruthy()
-    expect(await screen.findByText('rustc 1.99.1')).toBeTruthy()
-    for (const v of ['0.1.0', 'windows', 'x86_64']) expect(screen.getByText(v)).toBeTruthy()
+    expect(screen.getByText(en.desktop.tune.idle)).toBeTruthy()
+    expect(screen.getByRole('button', { name: en.desktop.tune.save })).toHaveProperty('disabled', true)
+    const footer = await screen.findByTestId('engine-footer')
+    await waitFor(() => expect(footer.textContent).toContain('rustc 1.99.1'))
+    for (const v of ['0.1.0', 'windows', 'x86_64']) expect(footer.textContent).toContain(v)
   })
 
   it('shows an error when the engine does not answer', async () => {

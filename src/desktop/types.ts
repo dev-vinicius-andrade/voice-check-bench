@@ -79,6 +79,17 @@ export interface AudioSlot {
   params: ParamInfo[]
 }
 
+/** `audio_export_states` item (chain.rs ExportedState): a hosted slot's current state, ready to write to Wave Link. */
+export interface AudioExportedState {
+  index: number
+  name: string
+  filePath: string
+  /** Wave Link BypassState; a VST3 plugin's own bypass inside `parameterState` follows it. */
+  bypassed: boolean
+  /** Base64 ParameterState as the plugin saves it now. */
+  parameterState: string
+}
+
 /** The Wave Link input whose chain runs (Settings.json, read-only). */
 export interface ChainSource {
   settingsPath: string
@@ -150,4 +161,95 @@ export interface AudioFrame {
   counters: Omit<AudioCounters, 'blockUs'>
   raw: Float32Array
   processed: Float32Array
+}
+
+// ---- Wave Link file (desktop/src-tauri/src/wavelink, PLAN task 40). Commands reject with a WlError ({ code, message }). ----
+
+/** `wavelink_*` command error (wavelink/error.rs WlErrorCode). */
+export interface WlError {
+  code:
+    | 'notFound'
+    | 'parse'
+    | 'changedMeanwhile'
+    | 'missingEntry'
+    | 'invalidChange'
+    | 'closeTimeout'
+    | 'writeFailed'
+    | 'startFailed'
+    | 'verifyFailed'
+  message: string
+}
+
+/** One effect of an input's chain (wavelink/model.rs ChainEntry). */
+export interface WlChainEntry {
+  index: number
+  id: string
+  name: string
+  vendor: string
+  filePath: string
+  pluginId: string
+  /** Wave Link BypassState (true = switched off). */
+  bypassed: boolean
+  /** Base64 ParameterState as stored ('' for Wave Link's built-in effects). */
+  parameterState: string
+}
+
+export interface WlChainInput {
+  key: string
+  label: string
+  entries: WlChainEntry[]
+}
+
+/** `wavelink_read` result: the file, its hash (pass it back to export) and the inputs, likely mic first. */
+export interface WlSnapshot {
+  path: string
+  hash: string
+  inputs: WlChainInput[]
+}
+
+/** One change to an effect of an input's chain (wavelink/edit.rs ChainChange); at least one of the two fields set. */
+export interface WlChainChange {
+  inputKey: string
+  index: number
+  parameterState?: string
+  bypassed?: boolean
+}
+
+/** One changed field (wavelink/edit.rs DiffLine). `from`/`to` are short values ("on"/"off", "changed (N bytes)"). */
+export interface WlDiffLine {
+  inputKey: string
+  input: string
+  index: number
+  plugin: string
+  field: 'parameterState' | 'bypass' | 'chain'
+  from: string
+  to: string
+  fromBytes?: number
+  toBytes?: number
+}
+
+/** A `Settings.before-*.json` backup next to Settings.json (wavelink/files.rs BackupInfo). */
+export interface WlBackupInfo {
+  path: string
+  name: string
+  modifiedMs: number
+  size: number
+}
+
+export type WlFlowStep = 'checked' | 'backedUp' | 'closed' | 'forced' | 'written' | 'started' | 'verified'
+
+/** What an export or restore did (wavelink/export.rs FlowReport). */
+export interface WlFlowReport {
+  path: string
+  backupPath: string | null
+  extraBackupPath: string | null
+  wasRunning: boolean
+  forced: boolean
+  restarted: boolean
+  written: boolean
+  restoredFrom: string | null
+  changes: WlDiffLine[]
+  /** SHA-256 of Settings.json after the flow. */
+  hash: string
+  steps: WlFlowStep[]
 }

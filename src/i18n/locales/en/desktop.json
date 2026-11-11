@@ -1,8 +1,7 @@
 {
   "desktop": {
-    "nav": "Desktop",
-    "title": "Desktop",
-    "coming": "Live plugin tuning is coming here.",
+    "nav": "Tune effects",
+    "title": "Tune your effects live",
     "loading": "Asking the engine…",
     "error": "The engine did not answer: {{message}}",
     "unknown": "unknown",
@@ -42,9 +41,159 @@
       "change": {
         "db": "{{plugin}} {{field}} {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
         "eq": "{{plugin}} {{type}} {{freq, number}} Hz {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
-        "strength": "{{plugin}} strength {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}}"
+        "strength": "{{plugin}} strength {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}}",
+        "ms": "{{plugin}} {{field}} {{from, number(maximumFractionDigits: 0)}} → {{to, number(maximumFractionDigits: 0)}} ms",
+        "ratio": "{{plugin}} Ratio {{from, number(maximumFractionDigits: 1)}}:1 → {{to, number(maximumFractionDigits: 1)}}:1",
+        "hz": "{{plugin}} Band {{n}} {{from, number}} → {{to, number}} Hz",
+        "on": "{{plugin}} on",
+        "off": "{{plugin}} off"
       },
-      "undo": "Put it back the way it was."
+      "undo": "Put it back the way it was.",
+      "conflict": "That value was changed after you applied this, so Undo would overwrite your change. Set it back with its slider instead.",
+      "missing": "That effect or value isn't in the chain any more."
+    },
+    "tune": {
+      "idle": "Pick your mic and headphones, then press Start. Nothing changes in Wave Link until you save.",
+      "talk": "Talk normally, as if you were streaming. The numbers fill in after a second or two.",
+      "bar": {
+        "label": "Devices and listening",
+        "mic": "Microphone",
+        "headphones": "Headphones",
+        "hear": "Hear",
+        "start": "Start",
+        "stop": "Stop",
+        "starting": "Starting…"
+      },
+      "hear": {
+        "processed": "With effects",
+        "raw": "Raw mic",
+        "off": "Off"
+      },
+      "warn": {
+        "monitor": "Mute your mic in Wave Link's monitor mix, or you will hear yourself twice. Or set Hear to Off and listen in Wave Link.",
+        "delay": "Delay right now: {{ms}} ms.",
+        "reafir": "ReaFIR adds 85 ms of that in this preview."
+      },
+      "cards": {
+        "micAlone": "Mic alone: {{v}}",
+        "level": {
+          "title": "Voice level"
+        },
+        "pauses": {
+          "title": "Pauses",
+          "dead": "Dead silence: the effects cut into your voice",
+          "notReduced": "Noise isn't being reduced",
+          "noisy": "You can still hear the room",
+          "quiet": "Quiet",
+          "none": "Pause for a moment to measure"
+        },
+        "tone": {
+          "title": "Tone vs your goal",
+          "onGoal": "{{band}}: close to your goal",
+          "high": "{{band}}: too strong",
+          "low": "{{band}}: too weak",
+          "none": "Keep talking to see your tone"
+        }
+      },
+      "chart": {
+        "title": "Last 60 seconds",
+        "aria": "Speech level over the last 60 seconds, with effects and of the mic alone, the target level and a marker at each change.",
+        "processed": "With effects",
+        "raw": "Mic alone",
+        "target": "Target {{db}} dBFS"
+      },
+      "try": {
+        "title": "Try this",
+        "apply": "Apply",
+        "undo": "Undo",
+        "empty": "Nothing to change right now. Keep talking."
+      },
+      "effects": {
+        "title": "Your effects, in Wave Link order",
+        "empty": "Press Start to load your effects from Wave Link.",
+        "on": "On",
+        "off": "Off",
+        "pluginWindow": "Plugin window",
+        "comingSoon": "Coming soon",
+        "builtin": "Can't preview, kept as is",
+        "loadFailed": "Couldn't load this effect, kept as is",
+        "show": "Show the settings of {{plugin}}",
+        "hide": "Hide the settings of {{plugin}}",
+        "strength": "Strength",
+        "reafirNote": "ReaFIR adds 85 ms to the preview delay.",
+        "bands_one": "{{count}} band",
+        "bands_other": "{{count}} bands"
+      },
+      "segments": {
+        "title": "Before and after each change",
+        "empty": "Start and talk: each change you make adds a row here.",
+        "change": "Change",
+        "voice": "Voice",
+        "pauses": "Pauses",
+        "peaks": "Peaks cut",
+        "dead": "Dead silence",
+        "pct": "{{v}}%"
+      },
+      "fileError": "Wave Link's settings couldn't be read, so saving is off. {{reason}}",
+      "restore": "Restore backup",
+      "save": "Save to Wave Link"
+    },
+    "save": {
+      "title": "Save to Wave Link",
+      "loading": "Checking what will change…",
+      "lead": "These changes go into Wave Link. A backup is made first, then Wave Link closes, the file is written, and Wave Link starts again.",
+      "listLabel": "Changes",
+      "nothing": "Nothing to save: your effects are the same as in Wave Link.",
+      "state": "{{plugin}}: new settings",
+      "chain": "{{plugin}}: the list of effects is different",
+      "unsaved": "{{plugin}}: changes to this effect can't be saved yet, so Wave Link keeps its own setting.",
+      "saving": "Saving… Wave Link closes and starts again.",
+      "force": "Wave Link didn't close by itself. Close it by force? Anything not saved in Wave Link is lost.",
+      "forceConfirm": "Close Wave Link and save",
+      "confirm": "Save",
+      "cancel": "Cancel",
+      "close": "Close",
+      "done": "Saved and checked: Wave Link has your new settings.",
+      "unchanged": "Nothing had to change: Wave Link already has these settings.",
+      "notVerified": "Written, but the check after saving didn't confirm every value. Open Wave Link and look at your effects.",
+      "restarted": "Wave Link was started again.",
+      "notRunning": "Wave Link wasn't running; it uses these settings the next time it starts.",
+      "forced": "Wave Link was closed by force.",
+      "backup": "Backup: {{path}}"
+    },
+    "restore": {
+      "title": "Restore backup",
+      "loading": "Looking for backups…",
+      "lead": "Pick the backup to put back. Wave Link closes, the backup is written over its settings, and Wave Link starts again.",
+      "listLabel": "Backups",
+      "none": "There are no backups yet. One is made every time you save to Wave Link.",
+      "confirm": "Restore",
+      "forceConfirm": "Close Wave Link and restore",
+      "restoring": "Restoring… Wave Link closes and starts again.",
+      "done": "Restored and checked.",
+      "restartPreview": "To hear the restored settings here, press Stop and then Start."
+    },
+    "errors": {
+      "notRunning": "The audio isn't running. Press Start first.",
+      "alreadyRunning": "The audio is already running.",
+      "noDevice": "No microphone or headphones were found.",
+      "deviceNotFound": "The picked device isn't there any more. Pick it again.",
+      "unsupportedFormat": "That device can't run at 48 kHz. Pick another one or change its format in the Windows sound settings.",
+      "streamFailed": "The audio stopped because of a device error. Check the device and press Start again.",
+      "settings": "Wave Link's settings couldn't be read. Is Wave Link installed?",
+      "chain": "Your effects couldn't be loaded.",
+      "invalidArgument": "That value isn't allowed.",
+      "queueFull": "Too many changes at once. Wait a moment and try again.",
+      "notFound": "Wave Link's settings file wasn't found.",
+      "parse": "Wave Link's settings file couldn't be read.",
+      "changedMeanwhile": "Wave Link's settings changed since you pressed Start. Press Stop and Start, then save again.",
+      "missingEntry": "An effect to change isn't in Wave Link any more.",
+      "invalidChange": "Something in the change isn't valid, so nothing was written.",
+      "closeTimeout": "Wave Link didn't close, so nothing was written.",
+      "writeFailed": "The file couldn't be written. Nothing changed, and your backup is safe.",
+      "startFailed": "The file was written, but Wave Link didn't start again. Start it yourself.",
+      "verifyFailed": "The file was written, but it doesn't hold every value. Restore the backup if Wave Link sounds wrong.",
+      "other": "Something went wrong: {{message}}"
     }
   }
 }

@@ -81,9 +81,11 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 42. `[x]` **Live advice → parameter changes** — Careful. After 41.
     - A pure module mapping metrics + chain values to changes, using the refine rules and constants, with Undo.
     - Verify: a test for each rule.
-43. `[ ]` **Desktop UI** — Medium. After 39–42, and after the user approves a mockup.
+43. `[x]` **Desktop UI** — Medium. After 39–42, and after the user approves a mockup.
     - Device pickers, plugin cards with sliders, monitor A/B, history chart, segment table, advice list, export dialog with diff.
     - en + pt-BR.
+    - Follow-ups: "Plugin window" (editor hosting), preview without ReaFIR (chain rebuild), start from a saved profile or the web suggestion.
+    - Auto-update (tauri-plugin-updater, `updater` release feed) added alongside.
 44. `[~]` **Release + download page** — Medium.
     - `[x]` Tag workflow → GitHub Release (`.github/workflows/release.yml`): tag `v<package.json version>`, NSIS installer + `.sha256`, a `-` suffix publishes a pre-release. Pulled forward so each step can be tried from a real download.
     - `[ ]` After 43: the site's "Desktop app" page, README section, first non-pre-release.

@@ -1,8 +1,7 @@
 {
   "desktop": {
-    "nav": "Desktop",
-    "title": "Desktop",
-    "coming": "O ajuste ao vivo dos plugins vai ficar aqui.",
+    "nav": "Ajustar efeitos",
+    "title": "Ajuste seus efeitos ao vivo",
     "loading": "Consultando o motor…",
     "error": "O motor não respondeu: {{message}}",
     "unknown": "desconhecido",
@@ -42,9 +41,160 @@
       "change": {
         "db": "{{plugin}} {{field}} {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
         "eq": "{{plugin}} {{type}} {{freq, number}} Hz {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
-        "strength": "{{plugin}} força {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}}"
+        "strength": "{{plugin}} força {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}}",
+        "ms": "{{plugin}} {{field}} {{from, number(maximumFractionDigits: 0)}} → {{to, number(maximumFractionDigits: 0)}} ms",
+        "ratio": "{{plugin}} Ratio {{from, number(maximumFractionDigits: 1)}}:1 → {{to, number(maximumFractionDigits: 1)}}:1",
+        "hz": "{{plugin}} Band {{n}} {{from, number}} → {{to, number}} Hz",
+        "on": "{{plugin}} ligado",
+        "off": "{{plugin}} desligado"
       },
-      "undo": "Voltar como estava."
+      "undo": "Voltar como estava.",
+      "conflict": "Esse valor mudou depois que você aplicou isto, então Desfazer apagaria sua mudança. Volte o valor pelo controle deslizante.",
+      "missing": "Esse efeito ou valor não está mais na cadeia."
+    },
+    "tune": {
+      "idle": "Escolha seu microfone e seus fones, depois aperte Iniciar. Nada muda no Wave Link até você salvar.",
+      "talk": "Fale normalmente, como se estivesse em live. Os números aparecem depois de um ou dois segundos.",
+      "bar": {
+        "label": "Dispositivos e escuta",
+        "mic": "Microfone",
+        "headphones": "Fones",
+        "hear": "Ouvir",
+        "start": "Iniciar",
+        "stop": "Parar",
+        "starting": "Iniciando…"
+      },
+      "hear": {
+        "processed": "Com efeitos",
+        "raw": "Mic puro",
+        "off": "Desligado"
+      },
+      "warn": {
+        "monitor": "Silencie seu microfone na mixagem de monitor do Wave Link, senão você vai se ouvir duas vezes. Ou coloque Ouvir em Desligado e escute pelo Wave Link.",
+        "delay": "Atraso agora: {{ms}} ms.",
+        "reafir": "O ReaFIR soma 85 ms disso nesta prévia."
+      },
+      "cards": {
+        "micAlone": "Só o mic: {{v}}",
+        "level": {
+          "title": "Volume da voz"
+        },
+        "pauses": {
+          "title": "Pausas",
+          "dead": "Silêncio morto: os efeitos cortam sua voz",
+          "notReduced": "O ruído não está sendo reduzido",
+          "noisy": "Ainda dá para ouvir a sala",
+          "quiet": "Silenciosas",
+          "none": "Faça uma pausa para medir"
+        },
+        "tone": {
+          "title": "Timbre vs seu objetivo",
+          "onGoal": "{{band}}: perto do seu objetivo",
+          "high": "{{band}}: forte demais",
+          "low": "{{band}}: fraco demais",
+          "none": "Continue falando para ver seu timbre"
+        }
+      },
+      "chart": {
+        "title": "Últimos 60 segundos",
+        "aria": "Volume da fala nos últimos 60 segundos, com efeitos e só do mic, o nível alvo e uma marca a cada mudança.",
+        "processed": "Com efeitos",
+        "raw": "Só o mic",
+        "target": "Alvo {{db}} dBFS"
+      },
+      "try": {
+        "title": "Experimente",
+        "apply": "Aplicar",
+        "undo": "Desfazer",
+        "empty": "Nada para mudar agora. Continue falando."
+      },
+      "effects": {
+        "title": "Seus efeitos, na ordem do Wave Link",
+        "empty": "Aperte Iniciar para carregar seus efeitos do Wave Link.",
+        "on": "Ligado",
+        "off": "Desligado",
+        "pluginWindow": "Janela do plugin",
+        "comingSoon": "Em breve",
+        "builtin": "Sem prévia, fica como está",
+        "loadFailed": "Não deu para carregar este efeito, fica como está",
+        "show": "Mostrar os ajustes de {{plugin}}",
+        "hide": "Esconder os ajustes de {{plugin}}",
+        "strength": "Intensidade",
+        "reafirNote": "O ReaFIR soma 85 ms ao atraso da prévia.",
+        "bands_one": "{{count}} banda",
+        "bands_many": "{{count}} bandas",
+        "bands_other": "{{count}} bandas"
+      },
+      "segments": {
+        "title": "Antes e depois de cada mudança",
+        "empty": "Inicie e fale: cada mudança que você fizer vira uma linha aqui.",
+        "change": "Mudança",
+        "voice": "Voz",
+        "pauses": "Pausas",
+        "peaks": "Picos cortados",
+        "dead": "Silêncio morto",
+        "pct": "{{v}}%"
+      },
+      "fileError": "Não deu para ler os ajustes do Wave Link, então salvar está desligado. {{reason}}",
+      "restore": "Restaurar backup",
+      "save": "Salvar no Wave Link"
+    },
+    "save": {
+      "title": "Salvar no Wave Link",
+      "loading": "Vendo o que vai mudar…",
+      "lead": "Estas mudanças vão para o Wave Link. Primeiro é feito um backup, depois o Wave Link fecha, o arquivo é gravado e o Wave Link abre de novo.",
+      "listLabel": "Mudanças",
+      "nothing": "Nada para salvar: seus efeitos estão iguais aos do Wave Link.",
+      "state": "{{plugin}}: novos ajustes",
+      "chain": "{{plugin}}: a lista de efeitos é diferente",
+      "unsaved": "{{plugin}}: as mudanças neste efeito ainda não podem ser salvas, então o Wave Link mantém o ajuste dele.",
+      "saving": "Salvando… o Wave Link fecha e abre de novo.",
+      "force": "O Wave Link não fechou sozinho. Fechar à força? O que não estiver salvo no Wave Link se perde.",
+      "forceConfirm": "Fechar o Wave Link e salvar",
+      "confirm": "Salvar",
+      "cancel": "Cancelar",
+      "close": "Fechar",
+      "done": "Salvo e conferido: o Wave Link está com seus novos ajustes.",
+      "unchanged": "Nada precisou mudar: o Wave Link já tem esses ajustes.",
+      "notVerified": "Gravado, mas a conferência depois de salvar não confirmou todos os valores. Abra o Wave Link e confira seus efeitos.",
+      "restarted": "O Wave Link foi aberto de novo.",
+      "notRunning": "O Wave Link não estava aberto; ele usa esses ajustes na próxima vez que abrir.",
+      "forced": "O Wave Link foi fechado à força.",
+      "backup": "Backup: {{path}}"
+    },
+    "restore": {
+      "title": "Restaurar backup",
+      "loading": "Procurando backups…",
+      "lead": "Escolha o backup para pôr de volta. O Wave Link fecha, o backup é gravado por cima dos ajustes e o Wave Link abre de novo.",
+      "listLabel": "Backups",
+      "none": "Ainda não há backups. Um é feito toda vez que você salva no Wave Link.",
+      "confirm": "Restaurar",
+      "forceConfirm": "Fechar o Wave Link e restaurar",
+      "restoring": "Restaurando… o Wave Link fecha e abre de novo.",
+      "done": "Restaurado e conferido.",
+      "restartPreview": "Para ouvir aqui os ajustes restaurados, aperte Parar e depois Iniciar."
+    },
+    "errors": {
+      "notRunning": "O áudio não está rodando. Aperte Iniciar primeiro.",
+      "alreadyRunning": "O áudio já está rodando.",
+      "noDevice": "Nenhum microfone ou fone foi encontrado.",
+      "deviceNotFound": "O dispositivo escolhido não está mais lá. Escolha de novo.",
+      "unsupportedFormat": "Esse dispositivo não funciona em 48 kHz. Escolha outro ou mude o formato dele nas configurações de som do Windows.",
+      "streamFailed": "O áudio parou por um erro no dispositivo. Confira o dispositivo e aperte Iniciar de novo.",
+      "settings": "Não deu para ler os ajustes do Wave Link. O Wave Link está instalado?",
+      "chain": "Não deu para carregar seus efeitos.",
+      "invalidArgument": "Esse valor não é permitido.",
+      "queueFull": "Mudanças demais de uma vez. Espere um pouco e tente de novo.",
+      "notFound": "O arquivo de ajustes do Wave Link não foi encontrado.",
+      "parse": "Não deu para ler o arquivo de ajustes do Wave Link.",
+      "changedMeanwhile": "Os ajustes do Wave Link mudaram desde que você apertou Iniciar. Aperte Parar e Iniciar e salve de novo.",
+      "missingEntry": "Um efeito a mudar não está mais no Wave Link.",
+      "invalidChange": "Algo na mudança não é válido, então nada foi gravado.",
+      "closeTimeout": "O Wave Link não fechou, então nada foi gravado.",
+      "writeFailed": "Não deu para gravar o arquivo. Nada mudou, e seu backup está seguro.",
+      "startFailed": "O arquivo foi gravado, mas o Wave Link não abriu de novo. Abra você mesmo.",
+      "verifyFailed": "O arquivo foi gravado, mas não tem todos os valores. Restaure o backup se o Wave Link soar errado.",
+      "other": "Algo deu errado: {{message}}"
     }
   }
 }

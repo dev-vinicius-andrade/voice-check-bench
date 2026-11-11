@@ -25,6 +25,9 @@ libloading = "0.9"
 # audio engine (src/audio): WASAPI I/O and lock-free SPSC rings
 cpal = "0.18.2"
 rtrb = "0.4.1"
+# auto-update from the GitHub Releases feed (JS packages @tauri-apps/plugin-updater/-process pinned to the same versions)
+tauri-plugin-updater = "=2.14.1"
+tauri-plugin-process = "=2.4.0"
 
 [dev-dependencies]
 hound = "3.5"

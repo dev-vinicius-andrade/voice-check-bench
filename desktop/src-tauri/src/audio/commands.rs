@@ -9,7 +9,7 @@ use super::error::{err, AudioError, AudioErrorCode, AudioResult};
 use super::pipeline::Monitor;
 use super::types::{AudioSlot, AudioStatus, ChainSource};
 use super::DEFAULT_GAIN_DB;
-use crate::chain::ChainEntrySpec;
+use crate::chain::{ChainEntrySpec, ExportedState};
 use crate::wavelink::files::read_text;
 use crate::wavelink::{default_settings_path, list_inputs};
 
@@ -151,8 +151,48 @@ pub async fn audio_set_gain(gain_db: f32) -> AudioResult<()> {
     blocking(move || with_engine(|e| e.set_gain_db(gain_db))).await
 }
 
+/// Every hosted slot's current state of the running engine (blocking; see `audio_export_states`).
+pub fn export_states() -> AudioResult<Vec<ExportedState>> {
+    with_engine(Engine::export_states)
+}
+
+/// Every hosted slot's current `ParameterState` and `BypassState` (the plugin's own bypass follows the slot), in
+/// chain order: what "Save to Wave Link" writes for effects changed live. Nothing is written here.
+#[tauri::command]
+pub async fn audio_export_states() -> AudioResult<Vec<ExportedState>> {
+    blocking(export_states).await
+}
+
 /// The engine's status, or null when it is not running.
 #[tauri::command]
 pub async fn audio_status() -> AudioResult<Option<AudioStatus>> {
     blocking(|| Ok(engine().as_ref().map(Engine::status))).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn export_states_needs_a_running_engine() {
+        shutdown();
+        let e = export_states().unwrap_err();
+        assert_eq!(e.code, AudioErrorCode::NotRunning);
+    }
+
+    #[test]
+    fn exported_state_serde_shape() {
+        let v = serde_json::to_value(ExportedState {
+            index: 2,
+            name: "Elgato Noise Removal".into(),
+            file_path: "C:/nr.vst3".into(),
+            bypassed: true,
+            parameter_state: "QQ==".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            v,
+            serde_json::json!({"index":2,"name":"Elgato Noise Removal","filePath":"C:/nr.vst3","bypassed":true,"parameterState":"QQ=="})
+        );
+    }
 }

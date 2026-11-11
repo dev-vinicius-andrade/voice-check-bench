@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import fixture from './audioFrame.fixture.json'
 import {
   audioDevices,
+  audioExportStates,
   audioLoadState,
   audioSetBypass,
   audioSetGain,
@@ -12,6 +13,11 @@ import {
   audioStop,
   engineInfo,
   isDesktop,
+  wavelinkBackups,
+  wavelinkExport,
+  wavelinkPreview,
+  wavelinkRead,
+  wavelinkRestore,
 } from './bridge'
 import type { AudioFrame, EngineInfo } from './types'
 
@@ -65,6 +71,7 @@ describe('audio commands', () => {
     await audioSetMonitor('raw')
     await audioSetGain(-10)
     await expect(audioStatus()).resolves.toBeNull()
+    await audioExportStates()
     expect(invoke.mock.calls).toEqual([
       ['audio_devices'],
       ['audio_stop'],
@@ -74,6 +81,7 @@ describe('audio commands', () => {
       ['audio_set_monitor', { monitor: 'raw' }],
       ['audio_set_gain', { gainDb: -10 }],
       ['audio_status'],
+      ['audio_export_states'],
     ])
   })
 
@@ -92,5 +100,24 @@ describe('audio commands', () => {
     FakeChannel.last!.onmessage(new ArrayBuffer(8))
     expect(frames).toHaveLength(1)
     expect(frames[0].latencySamples).toBe(4576)
+  })
+})
+
+describe('wavelink commands', () => {
+  it('invoke the wavelink_* commands with camelCase arguments', async () => {
+    invoke.mockResolvedValue([])
+    const changes = [{ inputKey: 'PCM_IN_01', index: 2, parameterState: 'QQ==' }]
+    await wavelinkRead()
+    await wavelinkPreview(changes)
+    await wavelinkExport(changes, 'abc', false)
+    await wavelinkBackups()
+    await wavelinkRestore('C:/b.json', true)
+    expect(invoke.mock.calls).toEqual([
+      ['wavelink_read'],
+      ['wavelink_preview', { changes }],
+      ['wavelink_export', { changes, expectedHash: 'abc', force: false }],
+      ['wavelink_backups'],
+      ['wavelink_restore', { path: 'C:/b.json', force: true }],
+    ])
   })
 })

@@ -100,7 +100,9 @@ export function useHashRoute(): void {
     }
     const sync = (): void => {
       synced = true
-      go(hashToScreen(location.hash, routeContext(useBench.getState())))
+      // the desktop app opens on its live tuning screen unless a hash asks for another page
+      const hash = isDesktop() && !hashToRoute(location.hash) ? '#/desktop' : location.hash
+      go(hashToScreen(hash, routeContext(useBench.getState())))
       canonicalize()
     }
 

@@ -42,16 +42,34 @@ jobs:
         with:
           workspaces: desktop/src-tauri -> target
       - run: npm ci
-      - run: npm run desktop:build
-
-      - name: Collect installer and checksum
+      # tauri.release.conf.json turns on createUpdaterArtifacts (only here: without the key that build fails), and
+      # the signing key makes Tauri write the updater signature (<setup>.exe.sig) next to the installer.
+      - name: Build signed installer
         shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run desktop:build -- --config desktop/src-tauri/tauri.release.conf.json
+
+      - name: Collect installer, checksum, signature and update manifest
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
+          set -euo pipefail
           mkdir -p out
-          src=$(ls desktop/src-tauri/target/release/bundle/nsis/*_${{ steps.version.outputs.version }}_x64-setup.exe)
-          name="VoiceCheckBench-${{ steps.version.outputs.version }}-windows-x64-setup.exe"
+          src=$(ls desktop/src-tauri/target/release/bundle/nsis/*_"${VERSION}"_x64-setup.exe)
+          if [ ! -s "${src}.sig" ]; then
+            echo "::error::Updater signature ${src}.sig missing; check the TAURI_SIGNING_PRIVATE_KEY secrets"
+            exit 1
+          fi
+          name="VoiceCheckBench-${VERSION}-windows-x64-setup.exe"
           cp "$src" "out/${name}"
+          cp "${src}.sig" "out/${name}.sig"
           (cd out && sha256sum "${name}" > "${name}.sha256")
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${name}"
+          node .github/scripts/updater-manifest.mjs "${VERSION}" "out/${name}.sig" "${url}" out/latest.json \
+            "Voice Check Bench ${VERSION}: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
           ls -l out
 
       - name: Create GitHub Release
@@ -64,7 +82,7 @@ jobs:
           cat > notes.md <<'NOTES'
           Windows installer for the Voice Check Bench desktop app.
 
-          **Download:** the `-setup.exe` file below. The `.sha256` file holds its checksum.
+          **Download:** the `-setup.exe` file below. The `.sha256` file holds its checksum. The `.sig` file and `latest.json` are for the app's auto-update.
 
           The installer is not code-signed yet. Windows SmartScreen may show "Windows protected your PC": click **More info**, then **Run anyway**.
 
@@ -74,3 +92,20 @@ jobs:
             --title "Voice Check Bench ${GITHUB_REF_NAME}" \
             --notes-file notes.md \
             --verify-tag "${flags[@]}"
+
+      # The app's update feed lives on the fixed `updater` release, because GitHub's /releases/latest
+      # skips pre-releases. Its latest.json points at the installer of the version release above.
+      - name: Publish update feed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view updater >/dev/null 2>&1; then
+            gh release create updater \
+              --prerelease \
+              --target "${GITHUB_SHA}" \
+              --title "Updater feed (do not download)" \
+              --notes "Update feed for the Voice Check Bench desktop app (latest.json). Download the installer from the version releases instead."
+          fi
+          gh release upload updater out/latest.json --clobber

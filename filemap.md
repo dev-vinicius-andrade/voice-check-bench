@@ -342,10 +342,11 @@
 - `src/live/{hold,history,segments}.test.ts` — hold through pauses, 60 s window and markers, segments without double counting vs one pass, markChange split, bounded memory, `ZeroRuns` vs digitalSilence
 - `desktop/` — desktop app (Tauri v2, SPEC "Desktop app (v2.0)"); frontend is this Vite app
 - `desktop/src-tauri/Cargo.toml` · `Cargo.lock` — Rust crate `voice-check-bench-desktop` (lib `voice_check_bench_desktop_lib`)
-- `desktop/src-tauri/tauri.conf.json` — product name, identifier `io.andradev.voicecb`, Vite on 1420 for dev, `npm run build` → `../../dist`, main window 1280×860 (min 960×640), NSIS bundle
+- `desktop/src-tauri/tauri.conf.json` — product name, identifier `io.andradev.voicecb`, Vite on 1420 for dev, `npm run build` → `../../dist`, main window 1280×860 (min 960×640), NSIS bundle; updater plugin (pubkey, feed `releases/download/updater/latest.json`, Windows `installMode: passive`)
+- `desktop/src-tauri/tauri.release.conf.json` — release-only override (`--config`): `bundle.createUpdaterArtifacts` (needs TAURI_SIGNING_PRIVATE_KEY; writes `<setup>.exe.sig`)
 - `desktop/src-tauri/build.rs` — tauri-build + records the rustc version (`VCB_RUSTC_VERSION`)
 - `desktop/src-tauri/src/main.rs` — binary entry (no console window in release)
-- `desktop/src-tauri/src/lib.rs` — Tauri builder, command `engine_info` → EngineInfo { appVersion, rustVersion?, os, arch }; registers the wavelink and audio commands; stops the audio engine on exit
+- `desktop/src-tauri/src/lib.rs` — Tauri builder, command `engine_info` → EngineInfo { appVersion, rustVersion?, os, arch }; registers the wavelink and audio commands; stops the audio engine on exit; registers the updater and process plugins
 - `desktop/src-tauri/src/wavelink/mod.rs` — Wave Link Settings.json module (SPEC "Desktop app (v2.0)" `wavelink`): re-exports
 - `desktop/src-tauri/src/wavelink/error.rs` — `WlError` `{ code, message }`, codes notFound/parse/changedMeanwhile/missingEntry/invalidChange/closeTimeout/writeFailed/startFailed/verifyFailed
 - `desktop/src-tauri/src/wavelink/scan.rs` — span tree of a JSON text (byte ranges, keys in order, duplicates kept; leaves decoded by serde_json)
@@ -369,25 +370,37 @@
 - `desktop/src-tauri/src/audio/stream.rs` — `StreamThread` (every 100 ms drains the aligned blocks, `build_frame` with meters and counters → sink), with tests
 - `desktop/src-tauri/src/audio/frame.rs` — `StreamFrame` binary layout v1 (little-endian 80-byte header + raw f32 × n + processed f32 × n), `encode`/`decode`, `rms_peak_db` (floor −120); test against `src/desktop/audioFrame.fixture.json`
 - `desktop/src-tauri/src/audio/devices.rs` — WASAPI capture/render listing (`AudioDevice` {id, name, isSystemDefault}), default pick ("Wave XLR"/"Mic In" input, "Headphones" output, else system default), open by id
-- `desktop/src-tauri/src/audio/engine.rs` — `Engine` (start: devices, build_chain, rings, streams, stream thread; control: monitor, gain, set_param/bypass/load_state → `AudioSlot`, status; drop order streams → stream thread → plugins), `EngineOptions`
+- `desktop/src-tauri/src/audio/engine.rs` — `Engine` (start: devices, build_chain, rings, streams, stream thread; control: monitor, gain, set_param/bypass/load_state → `AudioSlot`, `export_states` (every hosted slot's ParameterState + BypassState), status; drop order streams → stream thread → plugins), `EngineOptions`
 - `desktop/src-tauri/src/audio/types.rs` — serializable views: `AudioStatus`, `AudioSlot` (SlotInfo + params), `LatencyInfo` {alignedSamples, activeSamples}, `ChainSource`
 - `desktop/src-tauri/src/audio/error.rs` — `AudioError` `{ code, message }`, codes notRunning/alreadyRunning/noDevice/deviceNotFound/unsupportedFormat/streamFailed/settings/chain/invalidArgument/queueFull
-- `desktop/src-tauri/src/audio/commands.rs` — Tauri commands `audio_devices`, `audio_start` (mic chain from Settings.json read-only, monitor default Off, binary frames on a Channel), `audio_stop`, `audio_set_param`, `audio_set_bypass`, `audio_load_state`, `audio_set_monitor`, `audio_set_gain`, `audio_status`; one process-wide engine; `mic_chain`, `shutdown`
+- `desktop/src-tauri/src/audio/commands.rs` — Tauri commands `audio_devices`, `audio_start` (mic chain from Settings.json read-only, monitor default Off, binary frames on a Channel), `audio_stop`, `audio_set_param`, `audio_set_bypass`, `audio_load_state`, `audio_set_monitor`, `audio_set_gain`, `audio_status`, `audio_export_states` (→ chain ExportedState list; NotRunning without an engine); one process-wide engine; `mic_chain`, `shutdown`, `export_states`; tests: not running, ExportedState serde shape
 - `desktop/src-tauri/tests/audio_engine.rs` — real mic chain offline through `Pipeline` (skips without Settings/plugins): constant aligned latency and raw/processed lag within filter phase (≤ 8) for every bypass combination, sample-exact when all bypassed
 - `desktop/src-tauri/examples/audio_soak.rs` — `cargo run --release --example audio_soak -- --seconds 600 --phase 30`: real engine, monitor Off, cycles chain states, prints overruns/underruns, processing p50/p99/max and stream-frame alignment
 - `desktop/src-tauri/tests/plugin_host.rs` — real plugins on a temp copy of Settings.json (skips when Settings, plugins or the `_test` take are absent; `VCB_SETTINGS_COPY`, `VCB_TEST_TAKE`): VST2/VST3 byte-identical round trips, ReaFIR by params, ReaComp Wet bytes, offline chain vs spike numbers, Noise Removal bypass off + latency
-- `desktop/src-tauri/capabilities/default.json` — main window permissions (`core:default` only)
+- `desktop/src-tauri/capabilities/default.json` — main window permissions (`core:default`, `updater:default`, `process:allow-restart`)
 - `desktop/src-tauri/icons/` — app icons generated by `tauri icon` from `app-icon.png` (placeholder)
 - `desktop/src-tauri/app-icon.png` — 1024 px placeholder source icon
 - `desktop/src-tauri/.gitignore` — `target/`, `gen/`
 - `.github/workflows/desktop.yml` — Windows desktop build check (desktop/src/package changes, manual): `npm run desktop:build`, NSIS installer artifact
-- `.github/workflows/release.yml` — desktop release on tag `v<package.json version>`: builds the NSIS installer, publishes a GitHub Release (pre-release when the version has a `-` suffix) with the `.exe` and its `.sha256`
-- `src/desktop/types.ts` — desktop bridge contract: EngineInfo (mirrors lib.rs); audio engine: AudioError, AudioDevice(s), AudioMonitor, SlotStatus, ParamInfo, AudioSlot, ChainSource, AudioCounters, AudioStatus, AudioStartOptions, AudioFrame
-- `src/desktop/bridge.ts` — `isDesktop()` (`__TAURI_INTERNALS__`), `engineInfo()` and the audio wrappers (`audioDevices`, `audioStart` with a Channel decoding binary frames, `audioStop`, `audioSetParam`, `audioSetBypass`, `audioLoadState`, `audioSetMonitor`, `audioSetGain`, `audioStatus`) via lazily imported `@tauri-apps/api/core` (framework-free)
+- `.github/workflows/release.yml` — desktop release on tag `v<package.json version>`: builds the signed NSIS installer (TAURI_SIGNING_* secrets → `.exe.sig`), publishes a GitHub Release (pre-release when the version has a `-` suffix) with the `.exe`, `.sha256`, `.sig` and `latest.json`, then uploads `latest.json` to the fixed `updater` pre-release (the app's update feed)
+- `.github/scripts/updater-manifest.mjs` — writes the updater feed manifest `latest.json` (version, notes, pub_date, `windows-x86_64` signature + installer URL)
+- `src/desktop/types.ts` — desktop bridge contract: EngineInfo (mirrors lib.rs); audio engine: AudioError, AudioDevice(s), AudioMonitor, SlotStatus, ParamInfo, AudioSlot, ChainSource, AudioCounters, AudioStatus, AudioStartOptions, AudioFrame, AudioExportedState; Wave Link file: WlError, WlChainEntry, WlChainInput, WlSnapshot, WlChainChange, WlDiffLine, WlBackupInfo, WlFlowStep, WlFlowReport
+- `src/desktop/bridge.ts` — `isDesktop()` (`__TAURI_INTERNALS__`), `engineInfo()`, the audio wrappers (`audioDevices`, `audioStart` with a Channel decoding binary frames, `audioStop`, `audioSetParam`, `audioSetBypass`, `audioLoadState`, `audioSetMonitor`, `audioSetGain`, `audioStatus`, `audioExportStates`) and the Wave Link wrappers (`wavelinkRead`, `wavelinkPreview`, `wavelinkExport`, `wavelinkBackups`, `wavelinkRestore`) via lazily imported `@tauri-apps/api/core`; `desktopBridge` / `DesktopBridge` = all of them in one object (screens take a fake in tests) (framework-free)
 - `src/desktop/audioFrame.ts` — `decodeAudioFrame` (binary stream frame v1 → AudioFrame with Float32Array raw/processed)
 - `src/desktop/audioFrame.fixture.json` — one encoded frame (hex) and its values, shared by the Rust encoder test and the TS decoder test
 - `src/desktop/audioFrame.test.ts` — decodes the shared fixture, rejects bad version/length, copies samples
-- `src/desktop/bridge.test.ts` — isDesktop default/injected, engineInfo invokes `engine_info`, audio commands' names/arguments, audioStart channel decoding (mocked)
+- `src/desktop/bridge.test.ts` — isDesktop default/injected, engineInfo invokes `engine_info`, audio and wavelink commands' names/arguments, audioStart channel decoding (mocked)
+- `src/desktop/slots.ts` — adapter engine slots ↔ advice chain in real units: `slotKind`, `PARAM_MAPS` (ReaGate/ReaComp keys → bank index + fxp curve, dB ≤ −100 = amplitude 0), `chainOf(slots, entries)` (ReaEQ values from the stored chunk, Noise Removal strength = VAD Threshold × 100), `engineOp(change, …)` → set_param (normalized) / load_state (re-encoded ReaEQ, `encodeEqState` rewrites only changed fields) / set_bypass
+- `src/desktop/exportPlan.ts` — `exportPlan(inputKey, start, chain, slots, entries, exported)` → WlChainChanges for Save to Wave Link (ReaGate/ReaComp changed floats from the engine, ReaEQ changed fields, VST2 BypassState; Elgato (VST3) changed live → the engine's exported ParameterState + matching BypassState, `unsaved` only when the engine's states could not be read)
+- `src/desktop/diffLines.ts` — `describeDiff()`: wavelink_preview lines → Msgs, per plugin field where ReaGate/ReaComp/ReaEQ decode (`stateChanges`)
+- `src/desktop/liveFeed.ts` — `DesktopLiveFeed`: aligned stream frames → rings → every 500 ms window metrics with lag 0 (liveFrames + smoothing + hints) → LiveTracker (hold, history, segments); `markChange`, stream clock `nowMs`
+- `src/desktop/changeMsg.ts` — `changeLineMsg(slot, change)`: exact change line of any live change (markers, segment labels); `FIELD_LABELS`
+- `src/desktop/sliderSpecs.ts` — slider ranges per kind (validateSuggestion ranges; log scale for ReaComp Ratio and ReaEQ frequency), `slidersOf`, `eqSliders`, `toPos`/`fromPos`
+- `src/desktop/throttle.ts` — `throttle(send, interval)` (≤ `MAX_SENDS_PER_SEC` 20 per second, latest value always sent, `flush` on release)
+- `src/desktop/errors.ts` — engine `{ code, message }` → `desktop.errors.<code>` Msg (`errorCode`, `errorMsg`)
+- `src/desktop/{slots,liveFeed}.test.ts` · `testChain.ts` · `testFrames.ts` — adapter both ways (units → normalized → units, VAD, ReaEQ state bytes), export plan, sliders, change lines; live feed updates/hold/segments, throttle, error keys; test chain/snapshot/status and voice/noise stream frames
+- `src/desktop/updater.ts` — auto-update: `checkForUpdate()` (desktop only, lazy `@tauri-apps/plugin-updater`) → `AvailableUpdate` { version, notes, `install(onProgress)` (download + install + relaunch via `@tauri-apps/plugin-process`), `dismiss()` }; every failure soft (logged, null/false)
+- `src/desktop/updater.test.ts` — web → null, up to date / failed check → null, progress + relaunch, install and relaunch failures, dismiss (mocked plugins)
 - `src/desktop/advice/types.ts` — "Try this" contract: `ChainSlot` (live chain in real units: ReaGate/ReaComp/ReaEQ `band<n>.*`/Noise Removal `strength` keys), `ValueChange` / `SwitchChange`, `Advice` (+ changeMsg), `AdviceReason`
 - `src/desktop/advice/chain.ts` — `eqKey`/`eqBands`/`eqValues` (ReaEQ bands ↔ flat values), `slotsWith`, `slotAt`, `currentOf`, `withChange`, `sameValue` (VALUE_EPS)
 - `src/desktop/advice/advise.ts` — `advise(held, chain, goal, { notBeforeMs })`: doubled gate → Dry −20 · too loud → last ReaComp Wet down to −21 dBFS (≥ 3 when clipped) · dead silence → Noise Removal −`NR_STEP`, else ReaGate Threshold −10 (≥ −72) · too quiet → Wet up (cap 18) · tone; one change per (slot, key)
@@ -395,7 +408,30 @@
 - `src/desktop/advice/msgs.ts` — `desktop.advice.*` Msg builders (title, change lines db/eq/strength, undo), `valueAdvice`, `changeTarget`
 - `src/desktop/advice/undo.ts` — pure applied-changes stack: `emptyUndo`, `setChain`, `apply` (→ inverse), `undo(id)` in any order, conflict when the value changed since
 - `src/desktop/advice/{advise,undo,keys}.test.ts` · `testFixtures.ts` — each rule fires / does not fire, order, one change per value, nothing unheard; undo in/out of order and conflicts; every key in en + pt-BR with its params
-- `src/components/desktop/DesktopScreen.tsx` — route #/desktop (desktop app only; the app opens on it): title, "coming here" line, engine info list or error
+- `src/components/desktop/DesktopScreen.tsx` — route #/desktop (desktop app only; the app opens on it): title, the live tuning screen, engine info footer line; optional `bridge` prop (provided through BridgeContext)
+- `src/components/desktop/bridgeContext.ts` — `BridgeContext` (default `desktopBridge`), `useBridge()`
+- `src/components/desktop/EngineFooter.tsx` — one caption line: app version · Rust · system · architecture (or loading/error)
+- `src/components/desktop/tuning/LiveTuning.tsx` — live tuning screen (SPEC approved mockup, task 43), top to bottom: bar, monitor warning, metric cards, last 60 s chart, Try this, effects, before/after table, Restore backup / Save to Wave Link; the two dialogs
+- `src/components/desktop/tuning/useTuningSession.ts` — composes devices, engine, chain, save and restore; Start = audio_start (monitor Off) + wavelink_read; advice from held metrics (notBeforeMs = last change)
+- `src/components/desktop/tuning/useAudioDevices.ts` — engine devices once per mount, defaults picked
+- `src/components/desktop/tuning/useLiveEngine.ts` — start/stop, status, monitor, frames → DesktopLiveFeed updates, latency, markChange; stops on unmount
+- `src/components/desktop/tuning/useChainState.ts` — live chain in an undo state: throttled slider previews, commit (marker + segment), switches, Apply/Undo (conflict notice), engine replies kept for the export
+- `src/components/desktop/tuning/chainModel.ts` — `ChainModel`, `AppliedRow`, `edit`/`switchEdit` (hand changes), `modelOf` (engine status + Settings snapshot), `savedModel`, `opOf`, `withSlot` (pure)
+- `src/components/desktop/tuning/useEngineOps.ts` — engine commands of the live chain (`run`) and one throttle per slider (cancelled on unmount)
+- `src/components/desktop/tuning/useSaveFlow.ts` · `useRestoreFlow.ts` — Save (audio_export_states → plan → wavelink_preview → confirm → export, closeTimeout → force confirmation → verify report, re-read) and Restore (backups → pick → restore, force path) state machines
+- `src/components/desktop/tuning/TuningBar.tsx` — mic and headphones pickers, Hear (With effects / Raw mic / Off, follows the engine), Start/Stop
+- `src/components/desktop/tuning/MonitorAlert.tsx` — mute the mic in Wave Link's monitor mix, delay in ms, ReaFIR 85 ms note
+- `src/components/desktop/tuning/MetricCards.tsx` · `cardStatus.ts` — Voice level / Pauses / Tone vs your goal (processed big, mic alone + problem, status colour), "Last heard N s ago"
+- `src/components/desktop/tuning/HistoryChart.tsx` — "Last 60 seconds" SVG: processed and raw speech level, −21 dBFS target, dashed change markers with labels
+- `src/components/desktop/tuning/AdviceList.tsx` — "Try this" rows (title + exact change, Apply → Undo), notice alert
+- `src/components/desktop/tuning/EffectsList.tsx` · `EffectCard.tsx` · `SlotSliders.tsx` · `ParamSlider.tsx` · `useSlotSummary.ts` · `sliderFormat.ts` — effects in Wave Link order: collapsed cards with a summary (open when advised), On switch, disabled "Plugin window" (coming soon), sliders (ReaEQ per band), built-ins greyed out
+- `src/components/desktop/tuning/SegmentsTable.tsx` — "Before and after each change": voice, pauses, peaks cut, dead silence per segment
+- `src/components/desktop/tuning/SaveDialog.tsx` · `RestoreDialog.tsx` · `FlowReportView.tsx` — Save diff/confirm/force/result, Restore pick/confirm/force/result, verify report
+- `src/components/desktop/tuning/tuning.test.tsx` — fake bridge: start/stop and monitor, engine error alert, frames → cards and held caption, Apply/Undo + markers/segments, Undo conflict, sliders → normalized set_param, switch → bypass, Save with diff and force path, Restore
 - `src/components/desktop/useEngineInfo.ts` — loads EngineInfo once per mount (loading/ready/error; injectable loader)
-- `src/components/desktop/desktop.test.tsx` — #/desktop is home on the web, launch screen in the app, saved desktop screen ignored on the web; DesktopScreen info and error
-- `src/i18n/locales/{en,pt-BR}/desktop.json` — `desktop.*` strings (nav, title, engine info, `advice.*` "Try this" titles, change lines and undo)
+- `src/components/desktop/UpdateNotice.tsx` — desktop app only (mounted from App): snackbar "Version … is available" with Install and restart / Later, download progress, retry when the install failed
+- `src/components/desktop/useUpdateNotice.ts` — one update check 3 s after start; idle/available/installing/failed state, install, later (dismiss)
+- `src/components/desktop/UpdateNotice.test.tsx` — delayed single check, no update → nothing, Later dismisses, progress while installing, retry after a failure (fake updater)
+- `src/components/desktop/desktop.test.tsx` — #/desktop is home on the web, launch screen in the app, saved desktop screen ignored on the web; DesktopScreen opens on live tuning, engine footer info and error
+- `src/i18n/locales/{en,pt-BR}/desktop.json` — `desktop.*` strings (nav, title, engine info, `advice.*` "Try this" titles, change lines, undo, conflict; `tune.*` live tuning screen; `save.*` / `restore.*` dialogs; `errors.<code>` engine errors)
+- `src/i18n/locales/{en,pt-BR}/updater.json` — `updater.*` strings (update available, install and restart, later, installing with progress, failed, retry)

@@ -1,5 +1,5 @@
 // Merges the per-area locale files into one bundle per locale. Each area file has its own top-level key
-// (plain, engine, common, results, wizard, pages, guide, replicas, suggestx, profiles, live, desktop) so tasks can edit different files without conflicts.
+// (plain, engine, common, results, wizard, pages, guide, replicas, suggestx, profiles, live, desktop, updater) so tasks can edit different files without conflicts.
 import enCommon from './locales/en/common.json'
 import enDesktop from './locales/en/desktop.json'
 import enEngine from './locales/en/engine.json'
@@ -11,6 +11,7 @@ import enProfiles from './locales/en/profiles.json'
 import enReplicas from './locales/en/replicas.json'
 import enResults from './locales/en/results.json'
 import enSuggest from './locales/en/suggest.json'
+import enUpdater from './locales/en/updater.json'
 import enWizard from './locales/en/wizard.json'
 import ptCommon from './locales/pt-BR/common.json'
 import ptDesktop from './locales/pt-BR/desktop.json'
@@ -23,9 +24,10 @@ import ptProfiles from './locales/pt-BR/profiles.json'
 import ptReplicas from './locales/pt-BR/replicas.json'
 import ptResults from './locales/pt-BR/results.json'
 import ptSuggest from './locales/pt-BR/suggest.json'
+import ptUpdater from './locales/pt-BR/updater.json'
 import ptWizard from './locales/pt-BR/wizard.json'
 
 export const BUNDLES = {
-  en: { ...enPlain, ...enEngine, ...enCommon, ...enResults, ...enWizard, ...enPages, ...enGuide, ...enReplicas, ...enSuggest, ...enProfiles, ...enLive, ...enDesktop },
-  'pt-BR': { ...ptPlain, ...ptEngine, ...ptCommon, ...ptResults, ...ptWizard, ...ptPages, ...ptGuide, ...ptReplicas, ...ptSuggest, ...ptProfiles, ...ptLive, ...ptDesktop },
+  en: { ...enPlain, ...enEngine, ...enCommon, ...enResults, ...enWizard, ...enPages, ...enGuide, ...enReplicas, ...enSuggest, ...enProfiles, ...enLive, ...enDesktop, ...enUpdater },
+  'pt-BR': { ...ptPlain, ...ptEngine, ...ptCommon, ...ptResults, ...ptWizard, ...ptPages, ...ptGuide, ...ptReplicas, ...ptSuggest, ...ptProfiles, ...ptLive, ...ptDesktop, ...ptUpdater },
 } as const

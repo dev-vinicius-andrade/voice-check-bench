@@ -313,4 +313,5 @@ A Windows app that runs the person's real Wave Link plugins live on the raw mic.
 - **Distribution:**
   - GitHub Releases (NSIS installer), built by `.github/workflows/release.yml` on tags `v<package.json version>` (a `-` suffix publishes a pre-release).
   - Unsigned at first; the download page explains the SmartScreen warning.
+  - Auto-update: the app checks `releases/download/updater/latest.json` once, 3 s after start (tauri-plugin-updater, minisign pubkey in tauri.conf.json). release.yml signs the update (TAURI_SIGNING_* secrets; `tauri.release.conf.json` turns on createUpdaterArtifacts), attaches `.sig` and `latest.json` to the version release, and uploads `latest.json` to the fixed `updater` pre-release, because /releases/latest skips pre-releases. Install is passive NSIS, then relaunch. Every failure is soft (Try again / Later).
   - The site gets a "Desktop app" page with the download link. The web app stays fully usable without it.
