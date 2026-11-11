@@ -1,0 +1,38 @@
+{
+  "_comment": "One audio stream frame (layout v1, desktop/src-tauri/src/audio/frame.rs). Rust encodes `frame` to `hex`; the TS decoder reads `hex` back to `frame`.",
+  "hex": "010000000700000080bb000004000000e0110000010000000000f4c1000044c10000a0c10000d0c0bc0200000100000002000000030000000400000005000000000034420000164400409c44000000000000003f000080be000000000000803f000080bf0000003e0000403f000000bf",
+  "frame": {
+    "seq": 7,
+    "sampleRate": 48000,
+    "latencySamples": 4576,
+    "settled": true,
+    "latencyChanged": false,
+    "rawRmsDb": -30.5,
+    "rawPeakDb": -12.25,
+    "processedRmsDb": -20.0,
+    "processedPeakDb": -6.5,
+    "counters": {
+      "blocks": 700,
+      "inputOverruns": 1,
+      "outputUnderruns": 2,
+      "monitorDropped": 3,
+      "streamDropped": 4,
+      "streamErrors": 5,
+      "processP50Us": 45.0,
+      "processP99Us": 600.0,
+      "processMaxUs": 1250.0
+    },
+    "raw": [
+      0.5,
+      -0.25,
+      0.0,
+      1.0
+    ],
+    "processed": [
+      -1.0,
+      0.125,
+      0.75,
+      -0.5
+    ]
+  }
+}

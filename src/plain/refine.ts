@@ -99,11 +99,11 @@ const cloneSettings = (s: SuggestionJson): SuggestionJson => JSON.parse(JSON.str
 type Gate = SuggestionJson['gate']
 const amp = (db: number): number => 10 ** (db / 20)
 /** Level of the voice while the gate is open, relative to the input, dB (Wet and Dry add up). */
-const openGainDb = (g: Pick<Gate, 'wet' | 'dry'>): number => 20 * Math.log10(amp(g.wet) + amp(g.dry))
+export const openGainDb = (g: Pick<Gate, 'wet' | 'dry'>): number => 20 * Math.log10(amp(g.wet) + amp(g.dry))
 /** Wet all the way down: the gate is off (only the untouched Dry passes). */
 export const gateIsOff = (g: Pick<Gate, 'wet'>): boolean => g.wet <= GATE_OFF_WET_DB + 40
 /** The gate never cuts anything: off, or Dry at 0 dB or above (the voice always passes untouched). */
-const gatePassesAll = (g: Pick<Gate, 'wet' | 'dry'>): boolean => gateIsOff(g) || g.dry >= -1
+export const gatePassesAll = (g: Pick<Gate, 'wet' | 'dry'>): boolean => gateIsOff(g) || g.dry >= -1
 /** Wet open and Dry high: the voice passes twice. */
 export const gateDoubles = (g: Pick<Gate, 'wet' | 'dry'>): boolean => !gateIsOff(g) && g.dry > GATE_DOUBLE_DRY_DB
 

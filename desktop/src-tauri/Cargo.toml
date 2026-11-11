@@ -22,6 +22,9 @@ sha2 = "0.10"
 vst3 = "0.3"
 base64 = "0.23"
 libloading = "0.9"
+# audio engine (src/audio): WASAPI I/O and lock-free SPSC rings
+cpal = "0.18.2"
+rtrb = "0.4.1"
 
 [dev-dependencies]
 hound = "3.5"

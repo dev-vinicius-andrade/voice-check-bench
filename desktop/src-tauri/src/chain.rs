@@ -10,6 +10,10 @@
 //! [`ChainProcessor::latency_samples`]). [`ChainControl::set_bypass`] sets the slot *and* the plugin's own bypass
 //! parameters, so an export writes both consistently. Loading a state never touches either.
 //!
+//! Delay compensation (task 39) is done by the caller: every processed piece reports its [`BlockLatency`] (what the
+//! slots that really processed added, and the full chain delay as if every slot processed), and `audio` delays the
+//! output by the difference. A bypassed slot then still costs its latency and the total stays constant.
+//!
 //! See the threading model in `host/mod.rs`.
 
 use std::cell::UnsafeCell;
@@ -57,6 +61,8 @@ pub struct SlotInfo {
     pub status: SlotStatus,
     pub bypassed: bool,
     pub latency_samples: u32,
+    /// Delay of the slot while it processes (own bypass off), also while bypassed: what compensation keeps for it.
+    pub full_latency_samples: u32,
 }
 
 /// A hosted plugin's current state, ready to be written back as its `ParameterState` and `BypassState`.
@@ -78,6 +84,8 @@ struct Slot {
     busy: AtomicBool,
     bypassed: AtomicBool,
     latency: AtomicU32,
+    /// [`Plugin::full_latency_samples`]: the slot's delay while processing, whatever its bypass.
+    full_latency: AtomicU32,
     /// Mutated (teardown) only on the host thread while holding `busy`.
     plugin: UnsafeCell<Option<Plugin>>,
 }
@@ -113,6 +121,19 @@ impl Slot {
             } else {
                 std::thread::sleep(Duration::from_micros(200));
             }
+        }
+    }
+
+    /// Re-read both latencies from the plugin (after a state load, parameter or bypass change). The larger value is
+    /// stored first, so a reader never sees `latency > full_latency` from a half-done update.
+    fn refresh_latency(&self, p: &Plugin) {
+        let (now, full) = (p.latency_samples(), p.full_latency_samples());
+        if full >= self.full_latency.load(Ordering::Acquire) {
+            self.full_latency.store(full, Ordering::Release);
+            self.latency.store(now, Ordering::Release);
+        } else {
+            self.latency.store(now, Ordering::Release);
+            self.full_latency.store(full, Ordering::Release);
         }
     }
 
@@ -153,6 +174,13 @@ impl Shared {
             .iter()
             .filter(|s| !s.bypassed.load(Ordering::Acquire))
             .map(|s| s.latency.load(Ordering::Acquire))
+            .sum()
+    }
+
+    fn full_latency_samples(&self) -> u32 {
+        self.slots
+            .iter()
+            .map(|s| s.full_latency.load(Ordering::Acquire))
             .sum()
     }
 
@@ -197,6 +225,7 @@ fn make_slot(spec: ChainEntrySpec) -> Slot {
     };
     Slot {
         latency: AtomicU32::new(plugin.as_ref().map_or(0, Plugin::latency_samples)),
+        full_latency: AtomicU32::new(plugin.as_ref().map_or(0, Plugin::full_latency_samples)),
         name: spec.name,
         file_path: spec.file_path,
         status,
@@ -234,6 +263,7 @@ pub fn build_chain(specs: &[ChainEntrySpec]) -> HostResult<(ChainControl, ChainP
         ChainProcessor {
             shared,
             scratch: vec![0.0; BLOCK],
+            last: BlockLatency::default(),
         },
     ))
 }
@@ -274,8 +304,17 @@ impl ChainControl {
                 status: s.status.clone(),
                 bypassed: s.bypassed.load(Ordering::Acquire),
                 latency_samples: s.latency.load(Ordering::Acquire),
+                full_latency_samples: s.full_latency.load(Ordering::Acquire),
             })
             .collect()
+    }
+
+    /// [`SlotInfo`] of slot `i`.
+    pub fn slot(&self, i: usize) -> HostResult<SlotInfo> {
+        self.slots()
+            .into_iter()
+            .nth(i)
+            .ok_or_else(|| HostError(format!("no chain slot {i}")))
     }
 
     /// Current parameters of slot `i` (re-read every call: ReaEQ changes its list after a state load).
@@ -289,7 +328,7 @@ impl ChainControl {
             let (slot, p) = s.hosted(i)?;
             p.set_param(id, normalized)?;
             // A bypass parameter can change the latency (Noise Removal).
-            slot.latency.store(p.latency_samples(), Ordering::Release);
+            slot.refresh_latency(p);
             Ok(())
         })
     }
@@ -299,7 +338,7 @@ impl ChainControl {
         self.on_host(move |s| {
             let (slot, p) = s.hosted(i)?;
             p.set_bypass(on)?;
-            slot.latency.store(p.latency_samples(), Ordering::Release);
+            slot.refresh_latency(p);
             slot.bypassed.store(on, Ordering::Release);
             if p.needs_settle() {
                 s.bump_settle();
@@ -315,7 +354,7 @@ impl ChainControl {
             let (slot, p) = s.hosted(i)?;
             let held = slot.hold();
             let r = p.load_state(&state);
-            slot.latency.store(p.latency_samples(), Ordering::Release);
+            slot.refresh_latency(p);
             drop(held);
             if p.needs_settle() {
                 s.bump_settle();
@@ -356,6 +395,11 @@ impl ChainControl {
         self.shared.latency_samples()
     }
 
+    /// Total delay with every slot processing (bypassed ones included): the constant, compensated chain latency.
+    pub fn full_latency_samples(&self) -> u32 {
+        self.shared.full_latency_samples()
+    }
+
     pub fn is_settled(&self) -> bool {
         self.shared.is_settled()
     }
@@ -383,6 +427,7 @@ impl Drop for ChainControl {
                 // SAFETY: host thread, holding `busy` (see `Slot::plugin`).
                 let plugin = unsafe { (*slot.plugin.get()).take() };
                 slot.latency.store(0, Ordering::Release);
+                slot.full_latency.store(0, Ordering::Release);
                 drop(held);
                 drop(plugin);
             }
@@ -390,10 +435,27 @@ impl Drop for ChainControl {
     }
 }
 
+/// Delay of one processed piece, read in the same pass that processed it (so it matches what was done).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct BlockLatency {
+    /// Sum of the latencies of the slots that really processed (not bypassed, not busy, hosted).
+    pub active: u32,
+    /// Sum of every slot's full latency (as if every slot processed with its own bypass off).
+    pub full: u32,
+}
+
+impl BlockLatency {
+    /// The extra delay that keeps the chain at its full latency.
+    pub fn compensation(&self) -> u32 {
+        self.full.saturating_sub(self.active)
+    }
+}
+
 /// Audio side of a chain: move it to the audio thread. Real-time safe: no allocation, no locks, no waiting.
 pub struct ChainProcessor {
     shared: Arc<Shared>,
     scratch: Vec<f32>,
+    last: BlockLatency,
 }
 
 impl ChainProcessor {
@@ -417,10 +479,13 @@ impl ChainProcessor {
             let len = end - start;
             let piece = &mut output[start..end];
             piece.copy_from_slice(&input[start..end]);
+            let mut lat = BlockLatency::default();
             for (k, slot) in self.shared.slots.iter().enumerate() {
-                if !slot.bypassed.load(Ordering::Relaxed) {
+                lat.full += slot.full_latency.load(Ordering::Acquire);
+                if !slot.bypassed.load(Ordering::Acquire) {
                     if let Some(_held) = slot.try_hold() {
                         if let Some(p) = slot.plugin() {
+                            lat.active += slot.latency.load(Ordering::Acquire);
                             p.process(piece, &mut self.scratch[..len]);
                             piece.copy_from_slice(&self.scratch[..len]);
                         }
@@ -428,6 +493,7 @@ impl ChainProcessor {
                 }
                 tap(k, piece);
             }
+            self.last = lat;
             start = end;
         }
     }
@@ -435,6 +501,11 @@ impl ChainProcessor {
     /// Total delay of the active (not bypassed) slots, in samples.
     pub fn latency_samples(&self) -> u32 {
         self.shared.latency_samples()
+    }
+
+    /// Delay of the last processed piece: what its slots really added, and the full (compensated) chain latency.
+    pub fn last_block_latency(&self) -> BlockLatency {
+        self.last
     }
 
     /// False for [`SETTLE`] after a VST3 state load or bypass change: Noise Removal output is not trustworthy yet.
@@ -483,6 +554,7 @@ mod tests {
         assert!(slots[0].bypassed);
         assert!(matches!(slots[2].status, SlotStatus::LoadFailed { .. }));
         assert_eq!(ctl.latency_samples(), 0);
+        assert_eq!(ctl.full_latency_samples(), 0);
         assert!(ctl.is_settled(), "no VST3, nothing to settle");
         assert!(
             ctl.export_states().unwrap().is_empty(),
@@ -499,6 +571,7 @@ mod tests {
             taps[k] += s.len();
         });
         assert_eq!(out, input);
+        assert_eq!(proc_.last_block_latency(), BlockLatency::default());
         assert_eq!(
             taps,
             vec![1000, 1000, 1000],

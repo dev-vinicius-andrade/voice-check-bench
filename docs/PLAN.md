@@ -69,7 +69,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 38. `[x]` **Plugin host engine** — Careful. After 37.
     - `host/vst2`, `host/vst3` and `chain` from the spike code: message-loop thread, latency compensation, bypass handling, state import/export.
     - Verify: Rust tests on a Settings copy. ReaGate, ReaComp, ReaEQ and the three Elgato states round-trip byte-identical; ReaFIR is equal by parameters. Offline chain on a `_test` take matches the spike numbers.
-39. `[ ]` **Audio engine + stream** — Careful. After 38.
+39. `[x]` **Audio engine + stream** — Careful. After 38.
     - cpal I/O, parameter queue, monitor modes, aligned raw/processed channel, counters. Delay-compensated bypass (constant chain latency); re-check `latency_samples()` after state loads.
     - Verify: a 10 min run with 0 underruns, processing p99 < 20 % of a block, measured alignment 0 samples.
 40. `[x]` **Wave Link read + export** — Careful. After 37; can run in parallel with 38.
@@ -78,7 +78,7 @@ Status: `[ ]` todo · `[~]` in progress · `[x]` accepted. Spec: `docs/SPEC.md`.
 41. `[x]` **Hold + history + segments** — Careful. After 37; can run in parallel.
     - Framework-free TS in `src/desktop/` and in the web `src/live/`: hold, 60 s history, segments, summaries.
     - Verify: tests.
-42. `[ ]` **Live advice → parameter changes** — Careful. After 41.
+42. `[x]` **Live advice → parameter changes** — Careful. After 41.
     - A pure module mapping metrics + chain values to changes, using the refine rules and constants, with Undo.
     - Verify: a test for each rule.
 43. `[ ]` **Desktop UI** — Medium. After 39–42, and after the user approves a mockup.

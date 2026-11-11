@@ -12,6 +12,39 @@
       "rustVersion": "Rust",
       "os": "System",
       "arch": "Architecture"
+    },
+    "advice": {
+      "title": {
+        "gateDoubled": "ReaGate's Dry is at {{from, number(maximumFractionDigits: 1)}} dB with Wet open, so your voice goes through it twice and jumps about 6 dB louder whenever the gate opens. Set Dry to {{to, number(maximumFractionDigits: 1)}} dB.",
+        "tooLoud": "Your voice is too loud and can distort: bring the compressor's Wet down {{db, number(maximumFractionDigits: 1)}} dB so your speech sits around {{target, number(maximumFractionDigits: 1)}} dBFS.",
+        "tooQuiet": "Your voice is too quiet: bring the compressor's Wet up {{db, number(maximumFractionDigits: 1)}} dB so your speech gets closer to {{target, number(maximumFractionDigits: 1)}} dBFS.",
+        "deadSilence": {
+          "noiseRemoval": "Your pauses drop to dead silence, so the noise removal is cutting into your voice: turn its strength down a step. Pauses should sound quiet, not dead.",
+          "gate": "Your pauses drop to dead silence, so the gate is closing on your voice: lower its Threshold {{db, number(maximumFractionDigits: 1)}} dB so it opens earlier. Pauses should sound quiet, not dead."
+        },
+        "tone": {
+          "high": {
+            "boom": "Too much boom: lower the 150 Hz low shelf by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Your voice sounds thick: lower the 250 Hz band by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Your voice sounds muddy or boxy: lower the 450 Hz band by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Your voice sounds harsh: lower the 3.5 kHz band by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Your S sounds are sharp: lower the 10 kHz high shelf by {{db, number(maximumFractionDigits: 1)}} dB."
+          },
+          "low": {
+            "boom": "Your voice lacks bass: raise the 150 Hz low shelf by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Your voice sounds thin: raise the 250 Hz band by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Your voice sounds hollow: raise the 450 Hz band by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Your voice sounds dull or far away: raise the 3.5 kHz band by {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Your voice lacks crispness: raise the 10 kHz high shelf by {{db, number(maximumFractionDigits: 1)}} dB."
+          }
+        }
+      },
+      "change": {
+        "db": "{{plugin}} {{field}} {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
+        "eq": "{{plugin}} {{type}} {{freq, number}} Hz {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
+        "strength": "{{plugin}} strength {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}}"
+      },
+      "undo": "Put it back the way it was."
     }
   }
 }

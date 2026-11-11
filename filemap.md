@@ -345,7 +345,7 @@
 - `desktop/src-tauri/tauri.conf.json` — product name, identifier `io.andradev.voicecb`, Vite on 1420 for dev, `npm run build` → `../../dist`, main window 1280×860 (min 960×640), NSIS bundle
 - `desktop/src-tauri/build.rs` — tauri-build + records the rustc version (`VCB_RUSTC_VERSION`)
 - `desktop/src-tauri/src/main.rs` — binary entry (no console window in release)
-- `desktop/src-tauri/src/lib.rs` — Tauri builder, command `engine_info` → EngineInfo { appVersion, rustVersion?, os, arch }
+- `desktop/src-tauri/src/lib.rs` — Tauri builder, command `engine_info` → EngineInfo { appVersion, rustVersion?, os, arch }; registers the wavelink and audio commands; stops the audio engine on exit
 - `desktop/src-tauri/src/wavelink/mod.rs` — Wave Link Settings.json module (SPEC "Desktop app (v2.0)" `wavelink`): re-exports
 - `desktop/src-tauri/src/wavelink/error.rs` — `WlError` `{ code, message }`, codes notFound/parse/changedMeanwhile/missingEntry/invalidChange/closeTimeout/writeFailed/startFailed/verifyFailed
 - `desktop/src-tauri/src/wavelink/scan.rs` — span tree of a JSON text (byte ranges, keys in order, duplicates kept; leaves decoded by serde_json)
@@ -356,11 +356,25 @@
 - `desktop/src-tauri/src/wavelink/export.rs` — `export`/`restore` flow: hash check → backup → close (10 s, force opt-in) → atomic write → start → verify; `FlowReport`, `Step`, `Timings`
 - `desktop/src-tauri/src/wavelink/commands.rs` — Tauri commands `wavelink_read`, `wavelink_preview`, `wavelink_export`, `wavelink_backups`, `wavelink_restore`
 - `desktop/src-tauri/src/wavelink/{tests,flow_tests,test_support}.rs` — apply/diff on a synthesized .NET-style fixture and a temp copy of the real file (skipped when absent); export/restore with a fake process
-- `desktop/src-tauri/src/host/mod.rs` — plugin host engine (SPEC `host/vst2`, `host/vst3`): threading model doc, `Plugin` enum (load by file type, params, set_param, load/save Wave Link `ParameterState`, own bypass, latency, process), `ParamInfo`, `HostError`, constants `SAMPLE_RATE` 48 kHz · `BLOCK` 480 · `SETTLE` 120 ms · `NOISE_REMOVAL_EXTRA_LATENCY` 480
+- `desktop/src-tauri/src/host/mod.rs` — plugin host engine (SPEC `host/vst2`, `host/vst3`): threading model doc, `Plugin` enum (load by file type, params, set_param, load/save Wave Link `ParameterState`, own bypass, latency and full latency (own bypass off), process), `ParamInfo`, `HostError`, constants `SAMPLE_RATE` 48 kHz · `BLOCK` 480 · `SETTLE` 120 ms · `NOISE_REMOVAL_EXTRA_LATENCY` 480
 - `desktop/src-tauri/src/host/thread.rs` — the one process-wide host thread: OleInitialize, Win32 message pump every 4 ms, `host().run(job)`, `is_host_thread`, `pump_messages`
 - `desktop/src-tauri/src/host/vst2/{mod,ffi,bank}.rs` — ReaPlugs VST2 hosting (port of spike/vst2-host): `AEffect` FFI + host callback, `Vst2Plugin` (setParameter banks / effGetChunk(0) chunks, suspend-load-resume, initialDelay latency), JUCE `CcnK…FxBk/FBCh` bank codec with inline tests
 - `desktop/src-tauri/src/host/vst3/{mod,com,module,state}.rs` — Elgato VST3 hosting (port of spike/vst3-probe): `Vst3Plugin` (component + controller, mono 48 kHz/480 realtime, bypass params, Noise Removal +480 while its own bypass is off), host COM objects + lock-free `ParamMailbox`/`RtChanges`, module/factory loading + JUCE PluginId, `VC2!`/JUCE-base64 `ParameterState` codec with inline tests
-- `desktop/src-tauri/src/chain.rs` — `ChainEntrySpec` {name, filePath, bypassed, parameterState}, `build_chain` → `ChainControl` (host-thread control: slots, params, set_param, set_bypass slot + plugin, load/save state, `export_states`, latency, settle) + `ChainProcessor` (audio thread, real-time safe `process_block[_tapped]`); built-in / failed entries pass through as not previewable
+- `desktop/src-tauri/src/chain.rs` — `ChainEntrySpec` {name, filePath, bypassed, parameterState}, `build_chain` → `ChainControl` (host-thread control: slots, params, set_param, set_bypass slot + plugin, load/save state, `export_states`, latency and full latency, settle) + `ChainProcessor` (audio thread, real-time safe `process_block[_tapped]`, `last_block_latency` → `BlockLatency` {active, full} read in the same pass); per-slot full latency (with own bypass off) for delay compensation; built-in / failed entries pass through as not previewable
+- `desktop/src-tauri/src/audio/mod.rs` — audio engine (SPEC `audio`, `stream`; task 39): thread-ownership and delay-compensation doc, re-exports, `DEFAULT_GAIN_DB` −10, gain range −120..24 dB
+- `desktop/src-tauri/src/audio/pipeline.rs` — real-time core without cpal: `Pipeline` (one 480 block: drain `RtCommand` queue → chain → raw delayed by full latency, processed by full − active → monitor Processed/Raw/Off × gain, clamped → `StreamBlock` ring), `BlockChain` trait (impl for ChainProcessor), `Monitor`, `db_to_gain`, `MAX_ALIGN`; tests in `pipeline_tests.rs` (fake delay chain: every bypass combination aligned at lag 0, commands apply between blocks, clamping, drop counting)
+- `desktop/src-tauri/src/audio/delay.rs` — `DelayLine` (preallocated circular delay, delay may change between calls) with tests
+- `desktop/src-tauri/src/audio/stats.rs` — `Counters` (atomics: blocks, input overruns = WASAPI capture Xruns, output underruns, monitor/stream drops, stream errors) + `Histogram` (1 µs buckets, nearest-rank p50/p99/max) → `CountersSnapshot`, with tests
+- `desktop/src-tauri/src/audio/io.rs` — cpal callbacks: `InputSide` (channel 0 → 480 blocks → Pipeline → monitor ring), `OutputSide` (ring → every channel, one-block prefill, underrun count), F32/I16/I32/F64
+- `desktop/src-tauri/src/audio/stream.rs` — `StreamThread` (every 100 ms drains the aligned blocks, `build_frame` with meters and counters → sink), with tests
+- `desktop/src-tauri/src/audio/frame.rs` — `StreamFrame` binary layout v1 (little-endian 80-byte header + raw f32 × n + processed f32 × n), `encode`/`decode`, `rms_peak_db` (floor −120); test against `src/desktop/audioFrame.fixture.json`
+- `desktop/src-tauri/src/audio/devices.rs` — WASAPI capture/render listing (`AudioDevice` {id, name, isSystemDefault}), default pick ("Wave XLR"/"Mic In" input, "Headphones" output, else system default), open by id
+- `desktop/src-tauri/src/audio/engine.rs` — `Engine` (start: devices, build_chain, rings, streams, stream thread; control: monitor, gain, set_param/bypass/load_state → `AudioSlot`, status; drop order streams → stream thread → plugins), `EngineOptions`
+- `desktop/src-tauri/src/audio/types.rs` — serializable views: `AudioStatus`, `AudioSlot` (SlotInfo + params), `LatencyInfo` {alignedSamples, activeSamples}, `ChainSource`
+- `desktop/src-tauri/src/audio/error.rs` — `AudioError` `{ code, message }`, codes notRunning/alreadyRunning/noDevice/deviceNotFound/unsupportedFormat/streamFailed/settings/chain/invalidArgument/queueFull
+- `desktop/src-tauri/src/audio/commands.rs` — Tauri commands `audio_devices`, `audio_start` (mic chain from Settings.json read-only, monitor default Off, binary frames on a Channel), `audio_stop`, `audio_set_param`, `audio_set_bypass`, `audio_load_state`, `audio_set_monitor`, `audio_set_gain`, `audio_status`; one process-wide engine; `mic_chain`, `shutdown`
+- `desktop/src-tauri/tests/audio_engine.rs` — real mic chain offline through `Pipeline` (skips without Settings/plugins): constant aligned latency and raw/processed lag within filter phase (≤ 8) for every bypass combination, sample-exact when all bypassed
+- `desktop/src-tauri/examples/audio_soak.rs` — `cargo run --release --example audio_soak -- --seconds 600 --phase 30`: real engine, monitor Off, cycles chain states, prints overruns/underruns, processing p50/p99/max and stream-frame alignment
 - `desktop/src-tauri/tests/plugin_host.rs` — real plugins on a temp copy of Settings.json (skips when Settings, plugins or the `_test` take are absent; `VCB_SETTINGS_COPY`, `VCB_TEST_TAKE`): VST2/VST3 byte-identical round trips, ReaFIR by params, ReaComp Wet bytes, offline chain vs spike numbers, Noise Removal bypass off + latency
 - `desktop/src-tauri/capabilities/default.json` — main window permissions (`core:default` only)
 - `desktop/src-tauri/icons/` — app icons generated by `tauri icon` from `app-icon.png` (placeholder)
@@ -368,10 +382,20 @@
 - `desktop/src-tauri/.gitignore` — `target/`, `gen/`
 - `.github/workflows/desktop.yml` — Windows desktop build check (desktop/src/package changes, manual): `npm run desktop:build`, NSIS installer artifact
 - `.github/workflows/release.yml` — desktop release on tag `v<package.json version>`: builds the NSIS installer, publishes a GitHub Release (pre-release when the version has a `-` suffix) with the `.exe` and its `.sha256`
-- `src/desktop/types.ts` — desktop bridge contract: EngineInfo (mirrors lib.rs)
-- `src/desktop/bridge.ts` — `isDesktop()` (`__TAURI_INTERNALS__`), `engineInfo()` via lazily imported `@tauri-apps/api/core` invoke (framework-free)
-- `src/desktop/bridge.test.ts` — isDesktop default/injected, engineInfo invokes `engine_info` (mocked)
+- `src/desktop/types.ts` — desktop bridge contract: EngineInfo (mirrors lib.rs); audio engine: AudioError, AudioDevice(s), AudioMonitor, SlotStatus, ParamInfo, AudioSlot, ChainSource, AudioCounters, AudioStatus, AudioStartOptions, AudioFrame
+- `src/desktop/bridge.ts` — `isDesktop()` (`__TAURI_INTERNALS__`), `engineInfo()` and the audio wrappers (`audioDevices`, `audioStart` with a Channel decoding binary frames, `audioStop`, `audioSetParam`, `audioSetBypass`, `audioLoadState`, `audioSetMonitor`, `audioSetGain`, `audioStatus`) via lazily imported `@tauri-apps/api/core` (framework-free)
+- `src/desktop/audioFrame.ts` — `decodeAudioFrame` (binary stream frame v1 → AudioFrame with Float32Array raw/processed)
+- `src/desktop/audioFrame.fixture.json` — one encoded frame (hex) and its values, shared by the Rust encoder test and the TS decoder test
+- `src/desktop/audioFrame.test.ts` — decodes the shared fixture, rejects bad version/length, copies samples
+- `src/desktop/bridge.test.ts` — isDesktop default/injected, engineInfo invokes `engine_info`, audio commands' names/arguments, audioStart channel decoding (mocked)
+- `src/desktop/advice/types.ts` — "Try this" contract: `ChainSlot` (live chain in real units: ReaGate/ReaComp/ReaEQ `band<n>.*`/Noise Removal `strength` keys), `ValueChange` / `SwitchChange`, `Advice` (+ changeMsg), `AdviceReason`
+- `src/desktop/advice/chain.ts` — `eqKey`/`eqBands`/`eqValues` (ReaEQ bands ↔ flat values), `slotsWith`, `slotAt`, `currentOf`, `withChange`, `sameValue` (VALUE_EPS)
+- `src/desktop/advice/advise.ts` — `advise(held, chain, goal, { notBeforeMs })`: doubled gate → Dry −20 · too loud → last ReaComp Wet down to −21 dBFS (≥ 3 when clipped) · dead silence → Noise Removal −`NR_STEP`, else ReaGate Threshold −10 (≥ −72) · too quiet → Wet up (cap 18) · tone; one change per (slot, key)
+- `src/desktop/advice/tone.ts` — `toneAdvice()`: live tone bands → the guide's ReaEQ moves (`TONE_EQ` suggest ranges, −0.7 × deviation, perceived issues from 1.5 dB, nearest band within `BAND_MATCH_OCT`)
+- `src/desktop/advice/msgs.ts` — `desktop.advice.*` Msg builders (title, change lines db/eq/strength, undo), `valueAdvice`, `changeTarget`
+- `src/desktop/advice/undo.ts` — pure applied-changes stack: `emptyUndo`, `setChain`, `apply` (→ inverse), `undo(id)` in any order, conflict when the value changed since
+- `src/desktop/advice/{advise,undo,keys}.test.ts` · `testFixtures.ts` — each rule fires / does not fire, order, one change per value, nothing unheard; undo in/out of order and conflicts; every key in en + pt-BR with its params
 - `src/components/desktop/DesktopScreen.tsx` — route #/desktop (desktop app only; the app opens on it): title, "coming here" line, engine info list or error
 - `src/components/desktop/useEngineInfo.ts` — loads EngineInfo once per mount (loading/ready/error; injectable loader)
 - `src/components/desktop/desktop.test.tsx` — #/desktop is home on the web, launch screen in the app, saved desktop screen ignored on the web; DesktopScreen info and error
-- `src/i18n/locales/{en,pt-BR}/desktop.json` — `desktop.*` strings (nav, title, engine info)
+- `src/i18n/locales/{en,pt-BR}/desktop.json` — `desktop.*` strings (nav, title, engine info, `advice.*` "Try this" titles, change lines and undo)

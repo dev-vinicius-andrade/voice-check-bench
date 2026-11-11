@@ -293,13 +293,24 @@ A Windows app that runs the person's real Wave Link plugins live on the raw mic.
     - too quiet → Wet up (cap 18);
     - harsh or boomy vs the goal → the guide's EQ moves.
   - One tap applies a change live; each change has its own Undo.
+- **Live tuning screen (approved mockup, task 43):** one scrolling screen, top to bottom:
+  1. Bar: mic picker, headphones picker, "Hear" segmented control (With effects / Raw mic / Off), Start/Stop.
+  2. Warning alert: mute the mic in Wave Link's monitor mix; current delay in ms (plus the ReaFIR 85 ms note when it is on).
+  3. Three metric cards (Voice level, Pauses, Tone vs your goal): processed value big, "mic alone" value and the problem in the caption, status colour from good/warn/bad. Below them "Last heard N s ago" while held.
+  4. "Last 60 seconds" chart: processed and raw speech level, the −21 dBFS target line, a dashed marker labelled with each setting change.
+  5. "Try this": one row per advice (plain title + exact change "ReaGate Dry 0 → −20 dB"), button Apply; once applied the button becomes Undo.
+  6. "Your effects, in Wave Link order": one card per slot with name, vendor, On switch, "Plugin window" button and sliders. Cards start collapsed showing a one-line summary, except the ones an advice points at; Wave Link built-ins are greyed out with "can't preview, kept as is".
+  7. "Before and after each change" table: one row per segment (Start, then each change): voice, pauses, peaks cut, dead silence.
+  8. Right-aligned footer: "Restore backup", primary "Save to Wave Link".
 - **Start points:** the current Wave Link chain (default), a saved profile, or the web app's suggestion (SuggestionJson → plugin values through the existing `src/wavelink` mapping).
 - **Safety:**
   - Nothing is written to Wave Link without "Save to Wave Link" plus a confirmation.
   - A backup is made every time, and the app has "Restore backup".
   - While previewing, the person also hears Wave Link's own monitor. The app tells them to mute the mic in Wave Link's monitor mix, or to pick Monitor: Off and listen in Wave Link.
-  - ReaFIR in the preview adds 85 ms. The app says so and offers to preview without it.
+  - ReaFIR in the preview adds 85 ms. The app says so and offers to preview without it: that removes ReaFIR from the preview chain (rebuild), because a bypassed slot keeps its latency (compensated bypass). Export keeps ReaFIR as it is in Wave Link.
+  - Audio starts with Monitor: Off. The Raw monitor is delayed to line up with Processed, so A/B switches have no jump.
+  - Measured (task 39 soak, 10 min): 0 underruns, p99 processing 6.4 % of a block, latency constant across all bypass combinations. Filtering plugins (EQ, De-Esser, Noise Removal) shift the correlation peak by ~1 sample of phase, not a misalignment. After Noise Removal is switched on, wait up to 700 ms before trusting its output.
 - **Distribution:**
-  - GitHub Releases (NSIS installer), built by a workflow on tags `desktop-v*`.
+  - GitHub Releases (NSIS installer), built by `.github/workflows/release.yml` on tags `v<package.json version>` (a `-` suffix publishes a pre-release).
   - Unsigned at first; the download page explains the SmartScreen warning.
   - The site gets a "Desktop app" page with the download link. The web app stays fully usable without it.

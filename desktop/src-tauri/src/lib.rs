@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+pub mod audio;
 pub mod chain;
 pub mod host;
 pub mod wavelink;
@@ -34,7 +35,22 @@ pub fn run() {
             wavelink::commands::wavelink_export,
             wavelink::commands::wavelink_backups,
             wavelink::commands::wavelink_restore,
+            audio::commands::audio_devices,
+            audio::commands::audio_start,
+            audio::commands::audio_stop,
+            audio::commands::audio_set_param,
+            audio::commands::audio_set_bypass,
+            audio::commands::audio_load_state,
+            audio::commands::audio_set_monitor,
+            audio::commands::audio_set_gain,
+            audio::commands::audio_status,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Voice Check Bench")
+        .build(tauri::generate_context!())
+        .expect("error while building Voice Check Bench")
+        .run(|_, event| {
+            // Stop the audio streams and unload the plugins before the process goes away.
+            if let tauri::RunEvent::Exit = event {
+                audio::commands::shutdown();
+            }
+        })
 }

@@ -29,7 +29,8 @@
 //!   passes its input through unchanged for the block. The audio thread never blocks, allocates or locks a mutex.
 //!
 //! Real-time safe (audio thread): `ChainProcessor::process_block`, `ChainProcessor::process_block_tapped`,
-//! `ChainProcessor::latency_samples`, `ChainProcessor::is_settled`. Everything else is control-side.
+//! `ChainProcessor::latency_samples`, `ChainProcessor::last_block_latency`, `ChainProcessor::is_settled`.
+//! Everything else is control-side.
 //!
 //! **Settling:** after a VST3 state load or bypass change, Elgato Noise Removal only follows the change once the host
 //! thread has pumped messages for ≥ [`SETTLE`] (120 ms). The chain records a deadline; `is_settled()` /
@@ -220,6 +221,16 @@ impl Plugin {
         match self {
             Plugin::Vst2(p) => p.latency_samples(),
             Plugin::Vst3(p) => p.latency_samples(),
+        }
+    }
+
+    /// Delay while the plugin really processes, whatever its own bypass is now: the delay a bypassed slot is
+    /// compensated with (task 39). Equal to [`Plugin::latency_samples`] except for Elgato Noise Removal with its own
+    /// bypass on (0 now, [`NOISE_REMOVAL_EXTRA_LATENCY`] more when processing).
+    pub fn full_latency_samples(&self) -> u32 {
+        match self {
+            Plugin::Vst2(p) => p.latency_samples(),
+            Plugin::Vst3(p) => p.full_latency_samples(),
         }
     }
 

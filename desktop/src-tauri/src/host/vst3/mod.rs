@@ -41,6 +41,8 @@ pub struct Vst3Plugin {
     plugin_id: u32,
     extra_latency: u32,
     latency: AtomicU32,
+    /// Latency while the plugin really processes (own bypass off), whatever its bypass is now.
+    full_latency: AtomicU32,
     bypass_ids: Vec<u32>,
     mailbox: Arc<ParamMailbox>,
     changes: ComWrapper<RtChanges>,
@@ -164,6 +166,7 @@ impl Vst3Plugin {
             plugin_id,
             extra_latency,
             latency: AtomicU32::new(0),
+            full_latency: AtomicU32::new(0),
             bypass_ids,
             mailbox,
             changes,
@@ -192,6 +195,8 @@ impl Vst3Plugin {
         } else {
             self.extra_latency
         };
+        self.full_latency
+            .store(reported + self.extra_latency, Ordering::Release);
         self.latency.store(reported + extra, Ordering::Release);
     }
 
@@ -221,6 +226,11 @@ impl Vst3Plugin {
 
     pub fn latency_samples(&self) -> u32 {
         self.latency.load(Ordering::Acquire)
+    }
+
+    /// Latency with the plugin's own bypass off (Noise Removal: + its unreported 480), even while bypassed.
+    pub fn full_latency_samples(&self) -> u32 {
+        self.full_latency.load(Ordering::Acquire)
     }
 
     /// Flags of the last `restartComponent` the plugin asked for (0 when none).

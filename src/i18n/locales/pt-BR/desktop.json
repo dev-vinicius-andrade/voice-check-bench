@@ -12,6 +12,39 @@
       "rustVersion": "Rust",
       "os": "Sistema",
       "arch": "Arquitetura"
+    },
+    "advice": {
+      "title": {
+        "gateDoubled": "O Dry do ReaGate está em {{from, number(maximumFractionDigits: 1)}} dB com o Wet aberto, então sua voz passa por ele duas vezes e fica uns 6 dB mais alta sempre que o gate abre. Coloque o Dry em {{to, number(maximumFractionDigits: 1)}} dB.",
+        "tooLoud": "Sua voz está alta demais e pode distorcer: abaixe o Wet do compressor {{db, number(maximumFractionDigits: 1)}} dB para sua fala ficar perto de {{target, number(maximumFractionDigits: 1)}} dBFS.",
+        "tooQuiet": "Sua voz está baixa demais: suba o Wet do compressor {{db, number(maximumFractionDigits: 1)}} dB para sua fala chegar mais perto de {{target, number(maximumFractionDigits: 1)}} dBFS.",
+        "deadSilence": {
+          "noiseRemoval": "Suas pausas caem para silêncio total, então a remoção de ruído está cortando sua voz: diminua a força dela um nível. As pausas devem soar baixinhas, não mortas.",
+          "gate": "Suas pausas caem para silêncio total, então o gate está fechando em cima da sua voz: abaixe o Threshold dele {{db, number(maximumFractionDigits: 1)}} dB para ele abrir antes. As pausas devem soar baixinhas, não mortas."
+        },
+        "tone": {
+          "high": {
+            "boom": "Grave demais: abaixe o low shelf de 150 Hz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Sua voz soa encorpada demais: abaixe a banda de 250 Hz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Sua voz soa abafada ou de caixa: abaixe a banda de 450 Hz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Sua voz soa áspera: abaixe a banda de 3,5 kHz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Seus S soam cortantes: abaixe o high shelf de 10 kHz em {{db, number(maximumFractionDigits: 1)}} dB."
+          },
+          "low": {
+            "boom": "Falta grave na sua voz: suba o low shelf de 150 Hz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Sua voz soa fina: suba a banda de 250 Hz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Sua voz soa oca: suba a banda de 450 Hz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Sua voz soa sem brilho ou distante: suba a banda de 3,5 kHz em {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Falta nitidez na sua voz: suba o high shelf de 10 kHz em {{db, number(maximumFractionDigits: 1)}} dB."
+          }
+        }
+      },
+      "change": {
+        "db": "{{plugin}} {{field}} {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
+        "eq": "{{plugin}} {{type}} {{freq, number}} Hz {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}} dB",
+        "strength": "{{plugin}} força {{from, number(maximumFractionDigits: 1)}} → {{to, number(maximumFractionDigits: 1)}}"
+      },
+      "undo": "Voltar como estava."
     }
   }
 }
