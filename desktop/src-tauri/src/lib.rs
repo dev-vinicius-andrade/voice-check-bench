@@ -2,6 +2,7 @@ use serde::Serialize;
 
 pub mod audio;
 pub mod chain;
+pub mod download;
 pub mod host;
 pub mod render;
 pub mod wavelink;
@@ -56,6 +57,7 @@ pub fn run() {
             render::commands::render_run,
             render::commands::render_export_states,
             render::commands::render_close,
+            download::save_wav,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Voice Check Bench")

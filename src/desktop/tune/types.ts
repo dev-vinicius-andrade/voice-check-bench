@@ -25,6 +25,8 @@ export type Bother =
   | 'nasal'
   | 'boxy'
   | 'tooQuiet'
+  | 'tooLoud'
+  | 'crackling'
   | 'unevenVolume'
 
 export interface TuneGoals {

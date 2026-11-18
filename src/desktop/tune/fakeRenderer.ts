@@ -12,6 +12,11 @@ export interface FakeOptions {
   eqGain?: (slot: number, band: number, gainDb: number) => number
   /** Extra processing after the chain (a limiter, a broken effect). */
   post?: (x: Float32Array, chain: readonly ChainSlot[]) => void
+  /**
+   * A Noise Removal that reacts to level, like the real one behind a compressor: dB it takes off 2.5 kHz and up for
+   * every dB its input sits over −30 dBFS RMS (0 = it does not react, the default).
+   */
+  removerReactsDb?: number
   /** What a switched-on ReaFIR does (default: lowCut at REAFIR_CUT_HZ). */
   reafir?: (x: Float32Array, sampleRate: number) => void
 }
@@ -68,6 +73,22 @@ function noiseRemoval(x: Float32Array, sr: number, strength: number): void {
   for (let s = 0; s < x.length; s += w) {
     const end = Math.min(x.length, s + w)
     if (blockRms(x, s, end) < thr) for (let i = s; i < end; i++) x[i] *= g
+  }
+}
+
+/** The level-reactive part of a remover: a high shelf at 2.5 kHz cut by `perDb` for every dB the input RMS is over −30 dBFS (at most 12 dB). */
+function reactiveTilt(x: Float32Array, sr: number, perDb: number): void {
+  const over = Math.max(0, dbOf(blockRms(x, 0, x.length)) + 30)
+  const c = biquad({ type: 'High Shelf', freq: 2500, gain: -Math.min(12, perDb * over), bw: 2 }, sr)
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0
+  for (let i = 0; i < x.length; i++) {
+    const x0 = x[i]
+    const y0 = (c.b0 * x0 + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2) / c.a0
+    x2 = x1
+    x1 = x0
+    y2 = y1
+    y1 = y0
+    x[i] = y0
   }
 }
 
@@ -136,7 +157,10 @@ export function fakeRenderer(take: Float32Array, chain: readonly ChainSlot[], op
     for (const s of live) {
       if (!s.on) continue
       if (s.kind === 'reafir') reafir(x, sr)
-      else if (s.kind === 'noiseRemoval') noiseRemoval(x, sr, s.values.strength ?? 0)
+      else if (s.kind === 'noiseRemoval') {
+        if (opts.removerReactsDb) reactiveTilt(x, sr, opts.removerReactsDb)
+        noiseRemoval(x, sr, s.values.strength ?? 0)
+      }
       else if (s.kind === 'reagate') gate(x, sr, s.values)
       else if (s.kind === 'reaeq') eq(x, sr, s, eqGain)
       else if (s.kind === 'reacomp') comp(x, sr, s.values)

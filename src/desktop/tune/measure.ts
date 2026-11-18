@@ -19,7 +19,7 @@ export const CELLS_PER_BAND = 6
 export const N_CELLS = N_BANDS * CELLS_PER_BAND
 /** A pause frame is at most this far above the room noise, dB, and at least PAUSE_GUARD frames away from speech. */
 export const PAUSE_MARGIN_DB = 6
-const PAUSE_GUARD = 2
+export const PAUSE_GUARD = 2
 /** Fewer pause frames than this: pause noise is not measured. */
 export const MIN_PAUSE_FRAMES = 10
 /** Speech frames at or under this level: the render lost the voice altogether, dBFS. */

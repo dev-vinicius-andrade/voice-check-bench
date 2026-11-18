@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { sameValue, slotAt, withChange } from '../../../desktop/advice/chain'
 import type { Advice, Change } from '../../../desktop/advice/types'
 import { apply, setChain, undo } from '../../../desktop/advice/undo'
@@ -7,10 +7,10 @@ import { changeLineMsg } from '../../../desktop/changeMsg'
 import { engineOp } from '../../../desktop/slots'
 import type { AudioSlot, AudioStatus, WlSnapshot } from '../../../desktop/types'
 import type { Msg } from '../../../plain/types'
-import { edit, modelOf, opOf, savedModel, switchEdit, withSlot, type AppliedRow, type ChainModel } from './chainModel'
+import { batchOn, edit, modelOf, opOf, savedModel, switchEdit, withSlot, type AppliedRow, type BatchOp, type ChainModel } from './chainModel'
 import { useEngineOps } from './useEngineOps'
 
-export type { AppliedRow, ChainModel } from './chainModel'
+export type { AppliedRow, BatchOp, ChainModel } from './chainModel'
 
 export interface ChainState {
   model: ChainModel | null
@@ -30,6 +30,8 @@ export interface ChainState {
   /** The applied id, or null when the change could not be applied (a notice says why). */
   applyAdvice(a: Advice): string | null
   undoApplied(appliedId: string): void
+  /** Several changes at once, in order (the noise calibration); per op the entry's id, or null when it was not done. */
+  applyBatch(batch: readonly BatchOp[]): (string | null)[]
 }
 
 /** The live chain: slider edits (throttled), switches, "Try this" with its Undo, all sent to the engine. */
@@ -106,7 +108,25 @@ export function useChainState(bridge: DesktopBridge, markChange: (m: Msg) => voi
     changed(model, r.revert)
   }
 
+  // a batch may come from a stream frame before the last one rendered: it builds on what the last batch left
+  const latest = useRef({ model, applied })
+  useEffect(() => {
+    latest.current = { model, applied }
+  }, [model, applied])
+  const applyBatch = (batch: readonly BatchOp[]): (string | null)[] => {
+    const now = latest.current
+    if (!now.model) return batch.map(() => null)
+    const r = batchOn(now.model, now.applied, batch)
+    latest.current = { model: r.model, applied: r.applied }
+    setModel(r.model)
+    setApplied(r.applied)
+    if (r.notice) setNotice(r.notice)
+    r.ops.forEach((op) => void run(op))
+    r.changes.forEach(({ change, label }) => changed(r.model, change, label))
+    return r.ids
+  }
+
   const saved = (snap: WlSnapshot): void => setModel((m) => savedModel(m, snap))
 
-  return { model, applied, lastChangeMs, notice, clearNotice: () => setNotice(null), load, saved, preview, commit, setOn, applyAdvice, undoApplied }
+  return { model, applied, lastChangeMs, notice, clearNotice: () => setNotice(null), load, saved, preview, commit, setOn, applyAdvice, undoApplied, applyBatch }
 }

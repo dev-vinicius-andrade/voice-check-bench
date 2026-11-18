@@ -13,19 +13,26 @@
 //! - `run {input, output}`: raw little-endian f32 files (mono, 48 kHz) → `{samples, ms}`
 //! - `export_states` → ExportedState[]
 //! - `wavelink_read` → WlSnapshot
+//! - `wavelink_preview {changes}` → DiffLine[] · `wavelink_export {changes, expectedHash, force}` → FlowReport: the app's
+//!   wavelink_preview / wavelink_export (same `export()`, same JSON shapes) on the `VCB_WAVELINK_SETTINGS` copy only,
+//!   with a Wave Link that is never running (nothing is closed or started). Refused without the override or on the real
+//!   file.
 //! - `close` → null; `quit` (or end of input) closes and exits.
 
 use std::io::{BufRead, Write};
 use std::time::Instant;
 
+use chrono::Local;
 use serde::Serialize;
 use serde_json::{json, Value};
 use voice_check_bench_desktop_lib::audio::commands::mic_chain;
 use voice_check_bench_desktop_lib::render::commands::{samples_from_le_bytes, samples_to_le_bytes};
 use voice_check_bench_desktop_lib::render::RenderSession;
-use voice_check_bench_desktop_lib::wavelink::files::read_text;
+use voice_check_bench_desktop_lib::wavelink::files::{read_text, PATH_OVERRIDE_ENV};
+use voice_check_bench_desktop_lib::wavelink::process::PACKAGE_FAMILY;
 use voice_check_bench_desktop_lib::wavelink::{
-    default_settings_path, hash_text, list_inputs, WlSnapshot,
+    apply, default_settings_path, diff, export, hash_text, list_inputs, ChainChange, Options,
+    ProcessControl, Timings, WlResult, WlSnapshot,
 };
 
 type Reply = Result<Value, Value>;
@@ -82,6 +89,88 @@ fn wavelink_read() -> Reply {
     to_json::<WlSnapshot, voice_check_bench_desktop_lib::wavelink::WlError>(snap)
 }
 
+/// A Wave Link that is not running: export never closes or starts anything.
+struct NotRunning;
+
+impl ProcessControl for NotRunning {
+    fn is_running(&self) -> WlResult<bool> {
+        Ok(false)
+    }
+    fn request_close(&self) -> WlResult<()> {
+        Ok(())
+    }
+    fn force_close(&self) -> WlResult<()> {
+        Ok(())
+    }
+    fn start(&self) -> WlResult<()> {
+        Ok(())
+    }
+}
+
+/// The `VCB_WAVELINK_SETTINGS` copy; refused when the override is missing or points at Wave Link's own file.
+fn copy_path() -> Result<std::path::PathBuf, Value> {
+    if std::env::var_os(PATH_OVERRIDE_ENV).is_none_or(|p| p.is_empty()) {
+        return Err(fail(
+            "invalidArgument",
+            format!("set {PATH_OVERRIDE_ENV} to a COPY of Settings.json"),
+        ));
+    }
+    let path =
+        default_settings_path().map_err(|e| serde_json::to_value(e).unwrap_or(Value::Null))?;
+    let canon = |p: &std::path::Path| std::fs::canonicalize(p).ok();
+    let real = std::env::var_os("LOCALAPPDATA").map(|b| {
+        std::path::PathBuf::from(b)
+            .join("Packages")
+            .join(PACKAGE_FAMILY)
+            .join("LocalState")
+            .join("Settings.json")
+    });
+    let same = real.is_some_and(|r| canon(&r).is_some() && canon(&r) == canon(&path));
+    let in_package = path
+        .to_string_lossy()
+        .to_lowercase()
+        .contains(&PACKAGE_FAMILY.to_lowercase());
+    if same || in_package {
+        return Err(fail(
+            "invalidArgument",
+            "refusing to write Wave Link's own Settings.json: pass a copy",
+        ));
+    }
+    Ok(path)
+}
+
+fn changes_of(req: &Value) -> Result<Vec<ChainChange>, Value> {
+    serde_json::from_value(arg(req, "changes")?.clone())
+        .map_err(|e| fail("invalidArgument", format!("\"changes\": {e}")))
+}
+
+fn wavelink_preview(req: &Value) -> Reply {
+    let path = copy_path()?;
+    let changes = changes_of(req)?;
+    to_json((|| {
+        let text = read_text(&path)?;
+        diff(&text, &apply(&text, &changes)?)
+    })())
+}
+
+fn wavelink_export(req: &Value) -> Reply {
+    let path = copy_path()?;
+    let changes = changes_of(req)?;
+    let force = arg(req, "force")?.as_bool().unwrap_or(false);
+    let opts = Options {
+        force,
+        timings: Timings::default(),
+        now: Local::now().naive_local(),
+    };
+    to_json(export(
+        &path,
+        &NotRunning,
+        &changes,
+        text(req, "expectedHash")?,
+        &opts,
+    ))
+}
+
 fn run(s: &mut RenderSession, req: &Value) -> Reply {
     let bytes =
         std::fs::read(text(req, "input")?).map_err(|e| fail("invalidArgument", e.to_string()))?;
@@ -102,6 +191,8 @@ fn handle(session: &mut Option<RenderSession>, req: &Value) -> Reply {
     match cmd {
         "open" => return open_session(session),
         "wavelink_read" => return wavelink_read(),
+        "wavelink_preview" => return wavelink_preview(req),
+        "wavelink_export" => return wavelink_export(req),
         "close" | "quit" => {
             *session = None;
             return Ok(Value::Null);

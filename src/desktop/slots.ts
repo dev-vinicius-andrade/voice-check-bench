@@ -155,6 +155,18 @@ export function chainOf(slots: readonly AudioSlot[], entries: readonly WlChainEn
   })
 }
 
+/**
+ * The chain as the engine plays it: chainOf, with a slot off while its plugin passes audio through on its own bypass
+ * although Wave Link lists it as on (ownBypassOn; the tuner's render session does the same). Switching such a slot on
+ * (set_bypass false) clears that bypass too, so its values start to count.
+ */
+export function playedChain(slots: readonly AudioSlot[], entries: readonly WlChainEntry[] | null): ChainSlot[] {
+  return chainOf(slots, entries).map((c) => (c.on && slots.some((s) => s.index === c.index && ownBypassOn(s)) ? { ...c, on: false } : c))
+}
+
+/** Slots Wave Link lists as on whose plugin sits on its own bypass (playedChain shows them off). */
+export const ownBypassedSlots = (slots: readonly AudioSlot[]): number[] => slots.filter((s) => !s.bypassed && ownBypassOn(s)).map((s) => s.index)
+
 /** One engine command. */
 export type EngineOp =
   | { op: 'param'; slot: number; id: number; value: number }

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Direction, MetricRow } from '../../../desktop/autotune/results'
 import { bandKey, rowValue } from './format'
 
-const COLOR: Record<Direction, string> = { better: 'success.main', worse: 'error.main', same: 'text.secondary' }
+const COLOR: Record<Direction, string> = { better: 'success.main', worse: 'error.main', same: 'text.secondary', over: 'error.main' }
 
 /** Before → after of the whole recording: level, peak, room noise, SNR, steadiness and the tone bands that moved. */
 export function MetricTable({ rows }: { rows: readonly MetricRow[] }) {
@@ -21,7 +21,7 @@ export function MetricTable({ rows }: { rows: readonly MetricRow[] }) {
             <Typography variant="body2" className="min-w-0 flex-1">{label(r)}</Typography>
             <span className="flex flex-wrap items-baseline gap-x-3">
               <Typography variant="body2" component="span" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                {rowValue(r, r.before)} → {rowValue(r, r.after)}
+                {r.beforeNote ? t(`desktop.autotune.ui.result.metrics.note.${r.beforeNote}`) : rowValue(r, r.before)} → {r.afterNote ? t(`desktop.autotune.ui.result.metrics.note.${r.afterNote}`) : rowValue(r, r.after)}
               </Typography>
               <Typography variant="body2" component="span" color={COLOR[r.dir]} sx={{ fontWeight: 600 }}>
                 {t(`desktop.autotune.ui.result.metrics.${r.dir}`)}

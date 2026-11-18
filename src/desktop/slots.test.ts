@@ -4,10 +4,10 @@ import { bankBlob, gateValues } from '../wavelink/testFixtures'
 import { withChange } from './advice/chain'
 import type { ValueChange } from './advice/types'
 import { changeLineMsg } from './changeMsg'
-import { exportPlan } from './exportPlan'
-import { chainOf, DB_FLOOR, encodeEqState, engineOp, eqStateValues, PARAM_MAPS, slotKind } from './slots'
+import { asListed, exportPlan } from './exportPlan'
+import { chainOf, DB_FLOOR, encodeEqState, engineOp, eqStateValues, ownBypassedSlots, PARAM_MAPS, playedChain, slotKind } from './slots'
 import { fromPos, slidersOf, toPos } from './sliderSpecs'
-import { engineSlots, entries, eqBytes as eqBytesOf, GATE, NR } from './testChain'
+import { engineSlots, entries, eqBytes as eqBytesOf, GATE, NR, nrParams } from './testChain'
 
 const f32 = (v: number) => Math.fround(v)
 const eqBytes = eqBytesOf()
@@ -137,6 +137,24 @@ describe('export plan', () => {
     expect(plan).toEqual({ changes: [{ inputKey: 'PCM_IN', index: 0, parameterState: 'TlIy', bypassed: true }], unsaved: [] })
     // not changed live: whatever the engine exports, nothing is written
     expect(exportPlan('PCM_IN', start, start, engineSlots(), entries(), exported).changes).toEqual([])
+  })
+
+  it('a Noise Removal on its own bypass plays as off; switched on live, Save writes its exported state (no BypassState)', () => {
+    const slots = engineSlots()
+    slots[0] = { ...slots[0], params: nrParams().map((p) => (p.isBypass ? { ...p, normalized: 1 } : p)) }
+    expect(ownBypassedSlots(slots)).toEqual([0])
+    const start = playedChain(slots, entries())
+    expect(start[0].on).toBe(false)
+    expect(chainOf(slots, entries())[0].on).toBe(true)
+    const exported = [{ index: 0, name: NR, filePath: '', bypassed: false, parameterState: 'TlIy' }]
+    // left off (a strength moved while it did nothing): as Wave Link has it, nothing written
+    const idle = asListed(start, withChange(start, change(0, 'strength', 85, 10)), [0])
+    expect(exportPlan('PCM_IN', idle.start, idle.chain, slots, entries(), exported).changes).toEqual([])
+    // switched on with a strength: the engine's state, which carries its own bypass off
+    let on = withChange(start, { id: 's', reason: 'undo', titleMsg: { key: 'x' }, kind: 'switch', slot: 0, on: true })
+    on = withChange(on, change(0, 'strength', 85, 10))
+    const live = asListed(start, on, [0])
+    expect(exportPlan('PCM_IN', live.start, live.chain, slots, entries(), exported).changes).toEqual([{ inputKey: 'PCM_IN', index: 0, parameterState: 'TlIy' }])
   })
 
   it('nothing changed → nothing to write', () => {

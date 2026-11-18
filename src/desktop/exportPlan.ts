@@ -46,6 +46,25 @@ function vst3Change(inputKey: string, entry: WlChainEntry, ex: AudioExportedStat
 }
 
 /**
+ * The live screen's chains as Wave Link lists them, for exportPlan. A plugin on its own bypass that Wave Link lists as
+ * on (`ownBypassed`, ../slots.ts playedChain) is off on the live screen: still off, it is as Wave Link has it (listed
+ * on, its stored state untouched, whatever was moved while it did nothing); switched on, it starts as off, so the plan
+ * writes its exported state, which takes it off its own bypass (the tuner's exportChanges does the same).
+ */
+export function asListed(start: readonly ChainSlot[], chain: readonly ChainSlot[], ownBypassed: readonly number[]): { start: ChainSlot[]; chain: ChainSlot[] } {
+  const idle = new Set(ownBypassed.filter((i) => chain.some((c) => c.index === i && !c.on)))
+  const listed = (s: ChainSlot): ChainSlot => ({ ...s, on: true })
+  const startOf = (i: number): ChainSlot | undefined => start.find((s) => s.index === i)
+  return {
+    start: start.map((s) => (idle.has(s.index) ? listed(s) : s)),
+    chain: chain.map((c) => {
+      const s = idle.has(c.index) ? startOf(c.index) : undefined
+      return s ? listed(s) : c
+    }),
+  }
+}
+
+/**
  * Changes for input `inputKey`. `start` is the chain as it was read from Wave Link (to tell what changed live),
  * `chain` the live one, `slots` the engine's (current parameters), `entries` the stored Wave Link entries,
  * `exported` the engine's audio_export_states (null when it could not be read).

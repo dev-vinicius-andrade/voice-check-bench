@@ -115,6 +115,11 @@
           "times": "O gate estava fechando em cima do fim das suas palavras: o Hold e o Release dele ficam mais longos, para ele continuar aberto até a palavra acabar.",
           "threshold": "O gate estava cortando o começo das suas palavras mais baixas: o Threshold dele desce para {{to, number(maximumFractionDigits: 1)}} dB, com folga abaixo delas, para ele abrir a tempo.",
           "floor": "O gate ainda estava cortando palavras mais baixas: o Dry dele vai para {{to, number(maximumFractionDigits: 1)}} dB, assim o que ele abaixa continua audível em vez de ser cortado."
+        },
+        "peak": {
+          "attack": "Picos curtos no começo das suas palavras passavam antes de o compressor reagir, e o ganho de compensação fazia eles distorcerem: o Attack dele vai para {{to, number(maximumFractionDigits: 1)}} ms para pegar esses picos.",
+          "comp": "Seus momentos mais altos ficavam muito acima do resto da sua voz e distorciam: o Threshold do compressor vai para {{to, number(maximumFractionDigits: 1)}} dB e o Ratio sobe, para ele segurar esses picos.",
+          "strength": "Palavras começando do silêncio total criavam picos que distorciam: a força da remoção de ruído vai para {{to, number(maximumFractionDigits: 1)}}, para as pausas não serem cortadas até o nada."
         }
       },
       "unmet": {
@@ -127,7 +132,8 @@
           "capQuiet": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB abaixo do alvo com o Wet do compressor no máximo: suba o ganho do microfone.",
           "capLoud": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB acima do alvo com o Wet do compressor no mínimo: abaixe o ganho do microfone.",
           "peaks": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB abaixo do alvo: mais alto que isso, seus momentos mais fortes distorceriam.",
-          "held": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB longe do alvo: mexer mais no Wet do compressor fez o resto medir pior (um efeito depois dele reage ao volume), então ele fica aqui. Ajuste o ganho do microfone."
+          "held": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB longe do alvo: mexer mais no Wet do compressor fez o resto medir pior (um efeito depois dele reage ao volume), então ele fica aqui. Ajuste o ganho do microfone.",
+          "toneMoved": "Levar sua voz ao volume alvo mudou um pouco o timbre dela (até {{db, number(maximumFractionDigits: 1)}} dB em uma faixa): a remoção de ruído depois do compressor reage ao volume com que sua voz chega nela. Ouça o resultado; se o timbre não agradar, rode de novo a partir daqui."
         },
         "dead": "Suas pausas ainda caem para silêncio total. Outro efeito está cortando o som: desligue os efeitos um por um para achar qual.",
         "chopped": "Palavras mais baixas ainda estão sendo cortadas. Outro efeito está cortando o som: desligue os efeitos um por um para achar qual.",
@@ -156,7 +162,10 @@
         "room": {
           "loud": "O ruído do seu ambiente é alto: sua voz fica só {{snr, number(maximumFractionDigits: 1)}} dB acima dele na própria gravação. Os efeitos conseguem esconder, mas baixar o ruído na origem é o que mais ajuda: chegue mais perto do microfone, abaixe o ganho dele e silencie ou afaste o que faz o barulho (ventilador, PC, ar-condicionado)."
         },
-        "silentPauses": "Suas pausas agora ficam totalmente em silêncio: é o Noise Removal tirando o ruído do ambiente, e nenhuma palavra é cortada. Se soar artificial, abaixe um pouco a força dele."
+        "silentPauses": "Suas pausas agora ficam totalmente em silêncio: é o Noise Removal tirando o ruído do ambiente, e nenhuma palavra é cortada. Se soar artificial, abaixe um pouco a força dele.",
+        "peak": {
+          "over": "Seus momentos mais altos ainda chegam a {{peak, number(maximumFractionDigits: 1)}} dBFS (deveriam ficar abaixo de {{ceiling, number(maximumFractionDigits: 1)}}) e vão distorcer ou estalar. Nada mais na sua cadeia consegue baixar isso: abaixe o ganho do microfone e grave de novo."
+        }
       },
       "change": {
         "band": "{{plugin}} {{band}}: {{fromHz, number}} Hz, {{fromOct, number(maximumFractionDigits: 2)}} oct, {{fromDb, number(maximumFractionDigits: 1)}} dB → {{toHz, number}} Hz, {{toOct, number(maximumFractionDigits: 2)}} oct, {{toDb, number(maximumFractionDigits: 1)}} dB"
@@ -231,6 +240,8 @@
             "sharpS": "S estridente",
             "dull": "Sem brilho",
             "tooQuiet": "Baixa demais",
+            "tooLoud": "Alta demais",
+            "crackling": "Estalando ou distorcendo",
             "unevenVolume": "Volume irregular"
           },
           "amount": "Processamento",
@@ -266,6 +277,17 @@
           "play": "Tocar",
           "pause": "Pausar",
           "noAudio": "A reprodução não está disponível aqui.",
+          "stop": "Parar",
+          "position": "Posição na gravação",
+          "time": "{{elapsed}} / {{total}}",
+          "download": {
+            "before": "Baixar Antes (WAV)",
+            "after": "Baixar Depois (WAV)",
+            "saving": "Salvando o arquivo WAV…",
+            "saved": "Salvo em {{path}}",
+            "noFolder": "A pasta Downloads não foi encontrada, então o arquivo não foi salvo.",
+            "writeFailed": "Não foi possível salvar o arquivo na pasta Downloads. Verifique se há espaço no disco e tente de novo."
+          },
           "metrics": {
             "title": "O que mudou",
             "label": "Antes e depois",
@@ -277,7 +299,13 @@
             "band": "Timbre: {{band}} (distância do seu alvo)",
             "better": "Melhor",
             "worse": "Pior",
-            "same": "Quase igual"
+            "same": "Quase igual",
+            "over": "Ainda distorce",
+            "note": {
+              "silence": "silêncio",
+              "none": "–",
+              "hidden": "escondida pelo ruído do ambiente"
+            }
           },
           "bands": {
             "rumble": "ronco, 40–80 Hz",
@@ -315,7 +343,10 @@
           "retune": "Ajustar de novo",
           "cancelAdjust": "Cancelar",
           "saved": "Salvo. O Wave Link agora usa estas configurações.",
-          "fineTune": "Ajuste fino ao vivo"
+          "changedMeanwhile": "Os ajustes do Wave Link mudaram depois que esta gravação foi ajustada, então nada foi gravado. Aperte Gravar de novo para ajustar a partir dos seus ajustes como estão agora.",
+          "fineTune": "Ajuste fino ao vivo",
+          "calibrateHint": "As pausas ainda não estão silenciosas o bastante?",
+          "calibrate": "Calibrar ruído ao vivo"
         }
       }
     },
@@ -439,6 +470,80 @@
         "dead": "Silêncio morto",
         "pct": "{{v}}%"
       },
+      "calibrate": {
+        "title": "Calibrar ruído",
+        "lead": "Deixe o microfone ligado. Fique em silêncio por alguns segundos enquanto o app ajusta sua remoção de ruído e ouve suas pausas depois de cada mudança, depois fale normalmente para ele conferir que nenhuma palavra foi cortada. Você ouve cada mudança na hora.",
+        "start": "Calibrar ruído",
+        "again": "Calibrar de novo",
+        "cancel": "Parar e desfazer",
+        "needEngine": "Aperte Iniciar primeiro: a calibração ouve seu microfone pelos seus efeitos.",
+        "hearOff": "Ouvir está Desligado. Coloque os fones e mude Ouvir para Com efeitos para escutar enquanto a remoção de ruído muda.",
+        "hearButton": "Ouvir com efeitos",
+        "phases": "Etapas da calibração",
+        "phase": {
+          "quiet": "Fique em silêncio",
+          "set": "Ajustando seus efeitos",
+          "talk": "Fale normalmente"
+        },
+        "trying": "Testando: {{change}}",
+        "progress": "Progresso da calibração",
+        "settling": "Esperando a mudança fazer efeito…",
+        "left": "Faltam {{sec}} s",
+        "measuring": "Ouvindo…",
+        "mic": "Mic",
+        "heard": "Como sai",
+        "do": {
+          "quiet": "Fique em silêncio: o app está ouvindo o ambiente.",
+          "quietSet": "Continue em silêncio: o app está ajustando sua remoção de ruído e ouvindo suas pausas depois de cada mudança.",
+          "talk": "Agora fale normalmente, como se estivesse em live.",
+          "talkAgain": "Continue falando: a remoção de ruído ficou mais suave e suas palavras são conferidas de novo."
+        },
+        "notice": {
+          "talkedQuiet": "Pareceu fala, então a medição do ambiente recomeçou. Fique em silêncio até a barra encher.",
+          "talkedSet": "Pareceu fala enquanto uma mudança era medida. Ela é medida de novo: fique em silêncio mais um pouco.",
+          "noSpeech": "Não ouvimos você falar. Fale normalmente por uns 10 segundos, na sua distância de sempre do microfone.",
+          "gap": "Parte do áudio se perdeu no caminho (o computador estava ocupado), então esta parte é medida de novo.",
+          "cancelled": "Calibração interrompida. Seus efeitos voltaram ao que eram.",
+          "undone": "Calibração desfeita. Seus efeitos voltaram ao que eram.",
+          "engineStopped": "O áudio parou, então a calibração parou. Aperte Iniciar e calibre de novo.",
+          "backedOff": "Algumas palavras foram cortadas, então a remoção de ruído ficou mais suave. Continue falando para conferir de novo."
+        },
+        "reason": {
+          "nrOn": "Calibrar ruído: o Noise Removal estava na sua cadeia mas não funcionava, então ele foi ligado.",
+          "strength": "Calibrar ruído: a intensidade mais leve que deixa suas pausas em silêncio.",
+          "firOff": "Calibrar ruído: agora o Noise Removal faz o trabalho, então o ReaFIR foi desligado (ele também tirava os graves da sua voz).",
+          "gate": "Calibrar ruído: o gate fecha alguns dB acima do ambiente, suave o bastante para o ambiente não pulsar.",
+          "words": "Calibrar ruído: mais suave, porque cortou algumas palavras.",
+          "pumping": "Calibrar ruído: um piso mais raso, porque o ambiente subia e descia entre as palavras.",
+          "more": "Calibrar ruído: mais redução, como você pediu.",
+          "less": "Calibrar ruído: menos redução, como você pediu.",
+          "back": "Calibrar ruído: de volta ao que era."
+        },
+        "note": {
+          "nothing": "Sua cadeia não tem nada que remova ruído (nem Elgato Noise Removal nem ReaGate), então não há o que calibrar.",
+          "alreadySilent": "Suas pausas já estão em silêncio: nada para mudar.",
+          "notReached": "Suas pausas não ficaram em silêncio total dentro da intensidade que seu nível de processamento permite. Ficaram o mais silenciosas possível.",
+          "noHelp": "A remoção de ruído não deixou suas pausas mais silenciosas, então ficou como estava.",
+          "wouldCut": "Remover o ruído cortava suas palavras até no ajuste mais suave, então seus efeitos ficaram como estavam. As palavras vêm primeiro.",
+          "wordsFirst": "Ficou mais suave para nenhuma palavra ser cortada: suas pausas podem não ficar em silêncio total.",
+          "noiseBetween": "O ambiente ainda vai e volta entre suas palavras (cerca de {{db, number}} dB).",
+          "moreCuts": "Mais redução cortava suas palavras, então voltou um passo.",
+          "morePumps": "Mais redução fazia o ambiente subir e descer entre suas palavras, então voltou um passo.",
+          "keptReafir": "Suas pausas só ficavam em silêncio com o ReaFIR ligado, então ele continua ligado."
+        },
+        "result": {
+          "room": "Ruído do ambiente no seu microfone: {{level}}",
+          "pauses": "Suas pausas como saem: {{before}} → {{after}}",
+          "silence": "silêncio",
+          "wordsWhole": "Nenhuma palavra cortada.",
+          "cut": "Algumas palavras ainda são cortadas ({{pct}} % da sua voz).",
+          "changes": "O que mudou",
+          "noChanges": "Nada mudou."
+        },
+        "more": "Mais redução",
+        "less": "Menos redução",
+        "undo": "Desfazer calibração"
+      },
       "fileError": "Não deu para ler os ajustes do Wave Link, então salvar está desligado. {{reason}}",
       "restore": "Restaurar backup",
       "save": "Salvar no Wave Link"
@@ -459,7 +564,7 @@
       "cancel": "Cancelar",
       "close": "Fechar",
       "done": "Salvo e conferido: o Wave Link está com seus novos ajustes.",
-      "unchanged": "Nada precisou mudar: o Wave Link já tem esses ajustes.",
+      "unchanged": "O Wave Link já tem esses ajustes — nada foi gravado.",
       "notVerified": "Gravado, mas a conferência depois de salvar não confirmou todos os valores. Abra o Wave Link e confira seus efeitos.",
       "restarted": "O Wave Link foi aberto de novo.",
       "notRunning": "O Wave Link não estava aberto; ele usa esses ajustes na próxima vez que abrir.",

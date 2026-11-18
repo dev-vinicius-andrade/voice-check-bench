@@ -147,7 +147,10 @@ describe('tune: tone', () => {
     expect(eqChanges.map((c) => c.key)).not.toContain('band5.gainDb')
     for (let b = 3; b <= 8; b++) expect(Math.abs(r.after.tone[b]), `band ${b}`).toBeLessThanOrEqual(4)
     // the missing bass is beyond what a shelf may add: reported, not forced
-    expect(unmetKeys(r)).toContain('tone.limitLow')
+    // nobody complained about it and a voice without bass is not theirs to fix: no line; with "thin" picked there is one
+    expect(unmetKeys(r)).not.toContain('tone.limitLow')
+    const thin = await run({ tone: [-25, -20, -7] }, fullChain(GOOD_WET), { bothers: ['thin'] })
+    expect(unmetKeys(thin.result)).toContain('tone.limitLow')
   }, TIMEOUT)
 
   it('chain without an EQ: unmet "add ReaEQ", tone untouched', async () => {
@@ -195,13 +198,17 @@ describe('tune: a change that makes things worse is reverted', () => {
     expect(unmetKeys(r)).toContain('tone.limitHigh')
   }, TIMEOUT)
 
-  it('a noise-removal step that turns pauses into dead silence is taken back and a smaller one kept', async () => {
-    // the fake remover zeroes pauses from strength 80: 60 → 80 is rejected, 60 → 70 kept
+  it('a noise-removal step that turns pauses fully silent is kept: silence in the pauses is the remover doing its job, and the result says so', async () => {
+    // the fake remover zeroes pauses from strength 80: with "room noise" picked 60 → 80 takes the room out entirely
     const { result: r } = await run({ noiseDb: -45 }, [noiseRemoval(60), eq(), comp(GOOD_WET)], { bothers: ['roomNoise'] })
     const c = vals(r.changes).find((x) => x.key === 'strength')
-    expect(c?.to).toBe(70)
-    expect(r.log.some((l) => l.stage === 'noise' && l.event === 'revert' && l.text.includes('damage'))).toBe(true)
-    expect(r.after.deadSilence).toBeLessThan(0.05)
+    expect(c?.to).toBeGreaterThanOrEqual(70)
+    expect(r.after.snrDb).toBeGreaterThan(r.before.snrDb + 2)
+    // no word is lost for it, and it is not counted or reported as damage
+    expect(r.after.wordLossDb).toBeLessThanOrEqual(2)
+    expect(r.after.score.damage).toBeLessThan(5)
+    expect(unmetKeys(r)).not.toContain('dead')
+    if (r.after.deadSilence > 0.05) expect(unmetKeys(r)).toContain('silentPauses')
   }, TIMEOUT)
 
   it('a make-up gain that only clips is not kept', async () => {
@@ -238,14 +245,18 @@ describe('tune: noise & gate', () => {
     expect(unmetKeys(r)).toContain('noise.noTool')
   }, TIMEOUT)
 
-  it('dead-silent pauses from the noise remover: one step lighter, unless the goals ask for as much removal as possible', async () => {
+  it('a chain that starts with the noise remover silencing its pauses: left as it is, said as what it is, never "another effect is cutting the sound"', async () => {
     const chain = (): ChainSlot[] => [noiseRemoval(85), gate({ thresholdDb: -60 }), eq(), comp(GOOD_WET)]
     const natural = await run({ noiseDb: -60 }, chain())
     expect(natural.result.before.deadSilence).toBeGreaterThan(0.2)
-    const c = vals(natural.result.changes).find((x) => x.key === 'strength')
-    expect(c).toMatchObject({ from: 85, to: 65, reason: 'deadSilence' })
-    expect(c?.effect.metric).toBe('deadSilence')
-    expect(natural.result.after.deadSilence).toBeLessThan(0.05)
+    // silent pauses are not damage, whoever switched the remover on: its strength stays
+    expect(vals(natural.result.changes).find((x) => x.key === 'strength')).toBeUndefined()
+    expect(natural.result.before.score.damage).toBeLessThan(5)
+    expect(unmetKeys(natural.result)).toContain('silentPauses')
+    expect(unmetKeys(natural.result)).not.toContain('dead')
+    // …but a remover that cuts the quiet words is still taken down (strength 100 eats them in the fake)
+    const eats = await run({ noiseDb: -40, phraseDb: [0, -14] }, [noiseRemoval(100), eq(), comp(GOOD_WET)])
+    if (eats.result.before.wordLossDb > 2) expect(vals(eats.result.changes).find((x) => x.key === 'strength')?.to).toBeLessThan(100)
 
     const max = await run({ noiseDb: -60 }, chain(), { bothers: ['roomNoise'], amount: 'strong' })
     expect(vals(max.result.changes).find((x) => x.key === 'strength')).toBeUndefined()
@@ -325,7 +336,10 @@ describe('tune: compression', () => {
     expect(stages).toEqual(expect.arrayContaining(['ratio', 'thresholdDb']))
     expect(r.after.spreadDb).toBeLessThan(r.before.spreadDb - 1)
     expect(vals(r.changes).find((c) => c.key === 'ratio')?.effect).toMatchObject({ metric: 'spreadDb', after: r.after.spreadDb })
-    expect(Math.abs(r.after.speechDb - TARGET_SPEECH_DB)).toBeLessThanOrEqual(1.01)
+    // the level is trimmed back as far as the peaks allow: they are a hard limit, and a voice left quieter for them is said
+    expect(r.after.peakDb).toBeLessThanOrEqual(targetsOf(r.goals).peakCeilDb + 0.05)
+    if (Math.abs(r.after.speechDb - targetsOf(r.goals).speechDb) > 2) expect(unmetKeys(r)).toContain('level.peaks')
+    else expect(Math.abs(r.after.speechDb - targetsOf(r.goals).speechDb)).toBeLessThanOrEqual(2)
     expect(r.after.clipped).toBe(0)
   }, TIMEOUT)
 

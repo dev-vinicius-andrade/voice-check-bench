@@ -48,3 +48,8 @@ export const fmtInput = (v: number, digits = 1): string => (Number.isFinite(v) ?
 export const fmtInputSigned = (v: number, digits = 1): string => (Number.isFinite(v) ? (v > 0 ? '+' : '') + v.toFixed(digits) : '—')
 /** File size in megabytes: "12.4 MB" / "12,4 MB". */
 export const fmtMb = (bytes: number): string => `${fmtNum(bytes / 1_000_000, 1)} MB`
+/** A playback position or length as m:ss ("0:04", "1:25"), whole seconds rounded down; negative or not finite → "0:00". */
+export const fmtClock = (sec: number): string => {
+  const s = Number.isFinite(sec) && sec > 0 ? Math.floor(sec) : 0
+  return `${nf(0, false).format(Math.floor(s / 60))}:${String(s % 60).padStart(2, '0')}`
+}

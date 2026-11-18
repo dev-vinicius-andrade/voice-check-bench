@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { DesktopBridge } from '../../../desktop/bridge'
 import { errorCode, errorMsg } from '../../../desktop/errors'
-import { exportPlan, type ExportPlan } from '../../../desktop/exportPlan'
+import { asListed, exportPlan, type ExportPlan } from '../../../desktop/exportPlan'
 import type { WlDiffLine, WlFlowReport, WlSnapshot } from '../../../desktop/types'
 import type { Msg } from '../../../plain/types'
 import type { ChainModel } from './useChainState'
@@ -54,8 +54,10 @@ export function useExportFlow(
   }
 
   const confirm = async (force: boolean): Promise<void> => {
-    if ((state.step !== 'confirm' && state.step !== 'force') || !hash.current) return
+    if (state.step !== 'confirm' && state.step !== 'force') return
     const { plan } = state
+    // never a silent no-op: without the hash the file was read with, nothing can be written safely
+    if (!hash.current) return setState({ step: 'error', msg: { key: 'desktop.errors.notFound' } })
     setState({ step: 'saving', plan })
     try {
       const report = await bridge.wavelinkExport(plan.changes, hash.current, force)
@@ -77,7 +79,9 @@ export function useSaveFlow(bridge: DesktopBridge, model: ChainModel | null, onS
       if (!model?.entries || !model.inputKey) throw new Error('no Wave Link chain')
       // Elgato states come from the engine; when it is stopped they cannot be read and are listed as not saved
       const exported = await bridge.audioExportStates().catch(() => null)
-      return { plan: exportPlan(model.inputKey, model.start, model.undo.chain, model.slots, model.entries, exported), hash: model.hash ?? '' }
+      // as Wave Link lists them: a plugin switched on off its own bypass is written with the state that clears it
+      const { start, chain } = asListed(model.start, model.undo.chain, model.ownBypassed)
+      return { plan: exportPlan(model.inputKey, start, chain, model.slots, model.entries, exported), hash: model.hash ?? '' }
     },
     () => void bridge.wavelinkRead().then(onSaved, () => undefined),
   )

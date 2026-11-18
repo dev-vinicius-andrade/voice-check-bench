@@ -2,8 +2,16 @@
 // after rows with a direction, and the samples prepared for playback. Framework-free.
 import { PEAK_WARN_DB } from '../../audio/diagnose'
 import { targetsOf, type TakeSummary, type TuneResult } from '../tune'
+import { toneExcess } from '../tune/targets'
 
-export type Direction = 'better' | 'worse' | 'same'
+/** 'over': the loudest moment ends above the peak ceiling (it still distorts): an error, never a comparison. */
+export type Direction = 'better' | 'worse' | 'same' | 'over'
+
+/** A value shown as words instead of a number: digital silence in the pauses, nothing to compare, a band hidden by room noise. */
+export type RowNote = 'silence' | 'none' | 'hidden'
+
+/** Pauses at or under this are digital silence, dBFS. */
+export const SILENCE_DBFS = -95
 
 export type MetricId = 'speech' | 'peak' | 'noise' | 'snr' | 'spread' | 'band'
 
@@ -16,6 +24,9 @@ export interface MetricRow {
   /** dBFS for levels, dB for differences. */
   unit: 'dbfs' | 'db'
   dir: Direction
+  /** Words in place of the before / after number. */
+  beforeNote?: RowNote
+  afterNote?: RowNote
 }
 
 /** A tone band is listed when it moved at least this much. */
@@ -29,6 +40,9 @@ const lowerBetter = (before: number, after: number): Direction =>
 /** Closer to `target` is better. */
 const towards = (before: number, after: number, target: number): Direction =>
   lowerBetter(Math.abs(before - target), Math.abs(after - target))
+
+const silent = (s: TakeSummary): boolean => s.pauseDb <= SILENCE_DBFS
+const note = (n: RowNote, before: boolean, after: boolean): Pick<MetricRow, 'beforeNote' | 'afterNote'> => ({ ...(before ? { beforeNote: n } : {}), ...(after ? { afterNote: n } : {}) })
 
 /** Peaks only matter near clipping: rising into the last dB is worse, coming out of it is better. */
 function peakDir(before: number, after: number): Direction {
@@ -45,14 +59,24 @@ export function metricRows(result: Pick<TuneResult, 'before' | 'after' | 'goals'
   const t = targetsOf(result.goals, result.limit)
   const rows: MetricRow[] = [
     { id: 'speech', before: b.speechDb, after: a.speechDb, unit: 'dbfs', dir: towards(b.speechDb, a.speechDb, t.speechDb) },
-    { id: 'peak', before: b.peakDb, after: a.peakDb, unit: 'dbfs', dir: peakDir(b.peakDb, a.peakDb) },
-    { id: 'noise', before: b.pauseDb, after: a.pauseDb, unit: 'dbfs', dir: lowerBetter(b.pauseDb, a.pauseDb) },
-    { id: 'snr', before: b.snrDb, after: a.snrDb, unit: 'db', dir: lowerBetter(-b.snrDb, -a.snrDb) },
+    // a peak over the ceiling still distorts, however much lower it is than before
+    { id: 'peak', before: b.peakDb, after: a.peakDb, unit: 'dbfs', dir: a.peakDb > t.peakCeilDb + 0.05 ? 'over' : b.peakDb > t.peakCeilDb + 0.05 ? 'better' : peakDir(b.peakDb, a.peakDb) },
+    // pauses at digital silence are silence, not a number, and a voice over silence is not compared
+    { id: 'noise', before: b.pauseDb, after: a.pauseDb, unit: 'dbfs', dir: silent(b) && silent(a) ? 'same' : lowerBetter(b.pauseDb, a.pauseDb), ...note('silence', silent(b), silent(a)) },
+    { id: 'snr', before: b.snrDb, after: a.snrDb, unit: 'db', dir: silent(a) ? (silent(b) ? 'same' : 'better') : lowerBetter(-b.snrDb, -a.snrDb), ...note('none', silent(b), silent(a)) },
     { id: 'spread', before: b.spreadDb, after: a.spreadDb, unit: 'db', dir: lowerBetter(b.spreadDb, a.spreadDb) },
   ]
+  const [eb, ea] = [toneExcess(b.tone, t), toneExcess(a.tone, t)]
+  // a summary without a voice (not enough speech) has no tone at all: nothing is hidden there
+  const voiced = b.tone.some(Number.isFinite) && a.tone.some(Number.isFinite)
   b.tone.forEach((v, i) => {
     const w = a.tone[i]
+    if (!(t.weight[i] > 0)) return
+    // a band the room hides (no measurable voice there) says so instead of showing a number
+    if (Number.isNaN(v) && Number.isNaN(w) && voiced) return void rows.push({ id: 'band', band: i, before: 0, after: 0, unit: 'db', dir: 'same', beforeNote: 'hidden', afterNote: 'hidden' })
     if (!Number.isFinite(v) || !Number.isFinite(w) || Math.abs(w - v) < BAND_ROW_MIN_DB) return
+    // inside its tolerance before and after: nothing to tell
+    if (eb[i] === 0 && ea[i] === 0) return
     rows.push({ id: 'band', band: i, before: v, after: w, unit: 'db', dir: towards(v, w, t.shift[i] ?? 0) })
   })
   return rows.filter((r) => Number.isFinite(r.before) && Number.isFinite(r.after))

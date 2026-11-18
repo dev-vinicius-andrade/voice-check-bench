@@ -12,7 +12,7 @@ import { bandRange, reasonMsg } from './msgs'
 import { CHOP_OK_DB, REGRESS_TOL, scoreOf, toneOf, worseBecause } from './score'
 import { switchMove, type Kept, type Session } from './session'
 import { CHOP_MIN_GAIN_DB, DEAD_MIN_GAIN, GATE_OPENED_DB, NOISE_MIN_GAIN_DB, regate, replaceGates } from './stages'
-import { BAND_KEYS, toneExcess, toneJudge } from './targets'
+import { BAND_KEYS, nrLadder, toneExcess, toneJudge } from './targets'
 import { toneStage, type ToneNotes } from './toneStage'
 
 /** Noise Removal is tried on only when the voice over the pauses misses the target by this much, dB. */
@@ -44,8 +44,8 @@ export async function repairSwitches(s: Session): Promise<void> {
   }
 }
 
-/** Strengths a Noise Removal that was off is tried at, lightest first, inside the amount's cap. */
-const strengths = (s: Session): number[] => [...new Set([0, 5, 10, s.targets.caps.nrStep, s.targets.caps.nrMax])].filter((v) => v <= s.targets.caps.nrMax).sort((a, b) => a - b)
+/** Strengths a Noise Removal that was off is tried at, lightest first, inside the amount's cap (targets.ts nrLadder). */
+const strengths = (s: Session): number[] => nrLadder(s.targets.caps)
 
 /**
  * The voice over the pauses misses the target by NR_ON_MIN_MISS_DB, nothing is damaged, no Noise Removal is on and

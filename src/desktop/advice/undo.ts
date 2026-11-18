@@ -4,7 +4,7 @@
 // was changed since.
 import { currentOf, sameValue, withChange } from './chain'
 import { undoMsg } from './msgs'
-import type { ChainSlot, Change } from './types'
+import type { ChainSlot, Change, ValueChange } from './types'
 
 export interface AppliedChange {
   /** Unique in this stack: `<change id>#<n>` (the same advice can be applied again later). */
@@ -70,4 +70,21 @@ export function undo(state: UndoState, id: string): UndoResult {
     state: { ...state, chain: withChange(state.chain, inverse), applied: state.applied.filter((a) => a !== entry) },
     revert: inverse,
   }
+}
+
+export type RetargetResult = { ok: true; state: UndoState; applied: AppliedChange } | Exclude<UndoResult, { ok: true }>
+
+/**
+ * The applied value change `id` now goes to `c.to` (same slot and key; the live noise calibration steps one strength
+ * up a ladder as one entry): its inverse still puts back the value from before the first change, so Undo stays one
+ * step. Only while the value still equals the change's `to`, as for undo(); the stack order is kept.
+ */
+export function retarget(state: UndoState, id: string, c: ValueChange): RetargetResult {
+  const entry = state.applied.find((a) => a.id === id)
+  if (!entry || entry.change.kind !== 'value' || entry.change.slot !== c.slot || entry.change.key !== c.key || entry.inverse.kind !== 'value') return { ok: false, error: 'unknown' }
+  const current = currentOf(state.chain, c)
+  if (typeof current !== 'number') return { ok: false, error: 'missing' }
+  if (!sameValue(current, entry.change.to)) return { ok: false, error: 'conflict', expected: entry.change.to, current }
+  const applied: AppliedChange = { id, change: c, inverse: { ...entry.inverse, from: c.to } }
+  return { ok: true, state: { ...state, chain: withChange(state.chain, c), applied: state.applied.map((a) => (a === entry ? applied : a)) }, applied }
 }

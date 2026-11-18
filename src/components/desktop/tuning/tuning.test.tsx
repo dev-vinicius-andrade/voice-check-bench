@@ -53,8 +53,10 @@ function fakeBridge(dryAmp = 0) {
       status.slots[slot] = { ...s, params: s.params.map((p) => (p.id === id ? { ...p, normalized: Math.fround(value) } : p)) }
       return slotReply(slot)
     }),
+    // as the engine's ChainControl::set_bypass: the slot and the plugin's own bypass together
     audioSetBypass: vi.fn(async (slot: number, bypassed: boolean) => {
-      status.slots[slot] = { ...status.slots[slot], bypassed }
+      const s = status.slots[slot]
+      status.slots[slot] = { ...s, bypassed, params: s.params.map((p) => (p.isBypass ? { ...p, normalized: bypassed ? 1 : 0 } : p)) }
       return slotReply(slot)
     }),
     audioLoadState: vi.fn(async (slot: number) => slotReply(slot)),

@@ -115,6 +115,11 @@
           "times": "The gate was closing on the ends of your words: its Hold and Release get longer, so it stays open until a word is over.",
           "threshold": "The gate was cutting the starts of your quiet words: its Threshold goes down to {{to, number(maximumFractionDigits: 1)}} dB, safely under them, so it opens in time.",
           "floor": "The gate was still cutting into quiet words: its Dry goes to {{to, number(maximumFractionDigits: 1)}} dB, so what it turns down stays audible instead of being cut."
+        },
+        "peak": {
+          "attack": "Short spikes at the start of your words were getting through before the compressor reacted, and the make-up gain made them distort: its Attack goes to {{to, number(maximumFractionDigits: 1)}} ms so it catches them.",
+          "comp": "Your loudest moments were far above the rest of your voice and distorted: the compressor's Threshold goes to {{to, number(maximumFractionDigits: 1)}} dB and its Ratio up, so it holds them back.",
+          "strength": "Words starting out of complete silence made spikes that distorted: the noise removal's strength goes to {{to, number(maximumFractionDigits: 1)}} so the pauses are not cut to nothing."
         }
       },
       "unmet": {
@@ -127,7 +132,8 @@
           "capQuiet": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB under the target with the compressor's Wet as high as it goes: raise your mic gain.",
           "capLoud": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB over the target with the compressor's Wet as low as it goes: lower your mic gain.",
           "peaks": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB under the target: any louder and your loudest moments would clip.",
-          "held": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB away from the target: moving the compressor's Wet further made the rest measure worse (an effect after it reacts to the level), so it stays here. Adjust your mic gain instead."
+          "held": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB away from the target: moving the compressor's Wet further made the rest measure worse (an effect after it reacts to the level), so it stays here. Adjust your mic gain instead.",
+          "toneMoved": "Bringing your voice to the target level changed its tone a little (up to {{db, number(maximumFractionDigits: 1)}} dB in one range): the noise removal after your compressor reacts to how loud your voice reaches it. Listen to the result; if the tone is off, run this again from here."
         },
         "dead": "Your pauses still drop to dead silence. Another effect is cutting the sound: switch effects off one at a time to find it.",
         "chopped": "Quiet words are still being cut off. Another effect is cutting the sound: switch effects off one at a time to find it.",
@@ -156,7 +162,10 @@
         "room": {
           "loud": "Your room noise is loud: your voice is only {{snr, number(maximumFractionDigits: 1)}} dB above it in the recording itself. Effects can hide it, but lowering it at the source helps most: move closer to the mic, turn the mic gain down, and quiet or move away from what makes the noise (fan, PC, air conditioning)."
         },
-        "silentPauses": "Your pauses now go fully silent: that is Noise Removal taking the room out, and no word is cut. If it sounds unnatural, lower its strength a little."
+        "silentPauses": "Your pauses now go fully silent: that is Noise Removal taking the room out, and no word is cut. If it sounds unnatural, lower its strength a little.",
+        "peak": {
+          "over": "Your loudest moments still reach {{peak, number(maximumFractionDigits: 1)}} dBFS (they should stay under {{ceiling, number(maximumFractionDigits: 1)}}) and will distort or crackle. Nothing left in your chain can bring them down: lower your mic gain and record again."
+        }
       },
       "change": {
         "band": "{{plugin}} {{band}}: {{fromHz, number}} Hz, {{fromOct, number(maximumFractionDigits: 2)}} oct, {{fromDb, number(maximumFractionDigits: 1)}} dB → {{toHz, number}} Hz, {{toOct, number(maximumFractionDigits: 2)}} oct, {{toDb, number(maximumFractionDigits: 1)}} dB"
@@ -231,6 +240,8 @@
             "sharpS": "Sharp S sounds",
             "dull": "Dull",
             "tooQuiet": "Too quiet",
+            "tooLoud": "Too loud",
+            "crackling": "Crackling or distorting",
             "unevenVolume": "Uneven volume"
           },
           "amount": "Processing",
@@ -266,6 +277,17 @@
           "play": "Play",
           "pause": "Pause",
           "noAudio": "Playback isn't available here.",
+          "stop": "Stop",
+          "position": "Position in the recording",
+          "time": "{{elapsed}} / {{total}}",
+          "download": {
+            "before": "Download Before (WAV)",
+            "after": "Download After (WAV)",
+            "saving": "Saving the WAV file…",
+            "saved": "Saved to {{path}}",
+            "noFolder": "Your Downloads folder wasn't found, so the file wasn't saved.",
+            "writeFailed": "The file couldn't be saved in your Downloads folder. Check that the disk has space and try again."
+          },
           "metrics": {
             "title": "What changed",
             "label": "Before and after",
@@ -277,7 +299,13 @@
             "band": "Tone: {{band}} (distance from your target)",
             "better": "Better",
             "worse": "Worse",
-            "same": "About the same"
+            "same": "About the same",
+            "over": "Still distorts",
+            "note": {
+              "silence": "silence",
+              "none": "–",
+              "hidden": "hidden by room noise"
+            }
           },
           "bands": {
             "rumble": "rumble, 40–80 Hz",
@@ -314,7 +342,10 @@
           "retune": "Tune again",
           "cancelAdjust": "Cancel",
           "saved": "Saved. Wave Link now uses these settings.",
-          "fineTune": "Fine-tune live"
+          "changedMeanwhile": "Wave Link's settings changed after this recording was tuned, so nothing was written. Press Record again to tune from your settings as they are now.",
+          "fineTune": "Fine-tune live",
+          "calibrateHint": "Pauses still not quiet enough?",
+          "calibrate": "Calibrate noise live"
         }
       }
     },
@@ -437,6 +468,80 @@
         "dead": "Dead silence",
         "pct": "{{v}}%"
       },
+      "calibrate": {
+        "title": "Calibrate noise",
+        "lead": "Leave your mic on. Stay quiet for a few seconds while the app sets your noise removal and listens to your pauses after each change, then talk normally so it can check that no word is cut. You hear every change as it happens.",
+        "start": "Calibrate noise",
+        "again": "Calibrate again",
+        "cancel": "Stop and undo",
+        "needEngine": "Press Start first: the calibration listens to your mic through your effects.",
+        "hearOff": "Hear is Off. Put on your headphones and switch Hear to With effects to listen while the noise removal changes.",
+        "hearButton": "Hear with effects",
+        "phases": "Calibration steps",
+        "phase": {
+          "quiet": "Stay quiet",
+          "set": "Setting your effects",
+          "talk": "Talk normally"
+        },
+        "trying": "Trying: {{change}}",
+        "progress": "Calibration progress",
+        "settling": "Waiting for the change to take effect…",
+        "left": "{{sec}} s left",
+        "measuring": "Listening…",
+        "mic": "Mic",
+        "heard": "As heard",
+        "do": {
+          "quiet": "Stay quiet: the app is listening to your room.",
+          "quietSet": "Keep quiet: the app is setting your noise removal and listening to your pauses after each change.",
+          "talk": "Now talk normally, as if you were streaming.",
+          "talkAgain": "Keep talking: the noise removal was made gentler and your words are checked again."
+        },
+        "notice": {
+          "talkedQuiet": "That sounded like talking, so the room measurement started over. Stay quiet until the bar is full.",
+          "talkedSet": "That sounded like talking while a change was being measured. It is measured again: stay quiet a little longer.",
+          "noSpeech": "We didn't hear you talk. Talk normally for about 10 seconds, at your usual distance from the mic.",
+          "gap": "Some audio got lost on the way (the computer was busy), so this part is measured again.",
+          "cancelled": "Calibration stopped. Your effects are back as they were.",
+          "undone": "Calibration undone. Your effects are back as they were.",
+          "engineStopped": "The audio stopped, so the calibration stopped. Press Start and calibrate again.",
+          "backedOff": "Some of your words were cut, so the noise removal was made gentler. Keep talking to check again."
+        },
+        "reason": {
+          "nrOn": "Calibrate noise: Noise Removal was in your chain but not working, so it is switched on.",
+          "strength": "Calibrate noise: the lightest strength that makes your pauses silent.",
+          "firOff": "Calibrate noise: Noise Removal does the work now, so ReaFIR is switched off (it also took the low end of your voice).",
+          "gate": "Calibrate noise: the gate closes a few dB over your room, gently enough that the room doesn't pump.",
+          "words": "Calibrate noise: gentler, because it cut some of your words.",
+          "pumping": "Calibrate noise: a shallower floor, because the room went up and down between your words.",
+          "more": "Calibrate noise: more reduction, as you asked.",
+          "less": "Calibrate noise: less reduction, as you asked.",
+          "back": "Calibrate noise: back to how it was."
+        },
+        "note": {
+          "nothing": "Your chain has nothing that removes noise (no Elgato Noise Removal or ReaGate), so there is nothing to calibrate.",
+          "alreadySilent": "Your pauses are already silent: nothing to change.",
+          "notReached": "Your pauses didn't go fully silent within the strength your processing amount allows. They are as quiet as it got.",
+          "noHelp": "The noise removal didn't make your pauses quieter, so it was left as it was.",
+          "wouldCut": "Removing the noise cut your words even at the gentlest setting, so your effects were left as they were. Words come first.",
+          "wordsFirst": "Kept gentler so no word is cut: your pauses may not be fully silent.",
+          "noiseBetween": "The room still comes and goes between your words (about {{db, number}} dB).",
+          "moreCuts": "More reduction cut your words, so it went back one step.",
+          "morePumps": "More reduction made the room go up and down between your words, so it went back one step.",
+          "keptReafir": "Your pauses were only silent with ReaFIR on, so it stays on."
+        },
+        "result": {
+          "room": "Room noise on your mic: {{level}}",
+          "pauses": "Your pauses as heard: {{before}} → {{after}}",
+          "silence": "silence",
+          "wordsWhole": "No words cut.",
+          "cut": "Some words are still cut ({{pct}} % of your voice).",
+          "changes": "What changed",
+          "noChanges": "Nothing changed."
+        },
+        "more": "More reduction",
+        "less": "Less reduction",
+        "undo": "Undo calibration"
+      },
       "fileError": "Wave Link's settings couldn't be read, so saving is off. {{reason}}",
       "restore": "Restore backup",
       "save": "Save to Wave Link"
@@ -457,7 +562,7 @@
       "cancel": "Cancel",
       "close": "Close",
       "done": "Saved and checked: Wave Link has your new settings.",
-      "unchanged": "Nothing had to change: Wave Link already has these settings.",
+      "unchanged": "Wave Link already has these settings — nothing was written.",
       "notVerified": "Written, but the check after saving didn't confirm every value. Open Wave Link and look at your effects.",
       "restarted": "Wave Link was started again.",
       "notRunning": "Wave Link wasn't running; it uses these settings the next time it starts.",

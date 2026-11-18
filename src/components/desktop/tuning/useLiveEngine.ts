@@ -24,6 +24,8 @@ export interface LiveEngine {
   markChange(label: Msg): void
   /** The stream clock, ms since Start. */
   nowMs(): number
+  /** Every stream frame from now on (after the analysis took it); returns the unsubscribe. */
+  onFrame(listener: (f: AudioFrame) => void): () => void
 }
 
 /** Start/stop of the audio engine and the live analysis of its stream. Stops the engine on unmount. */
@@ -34,6 +36,7 @@ export function useLiveEngine(bridge: DesktopBridge, setError: (m: Msg | null) =
   const [update, setUpdate] = useState<LiveUpdate | null>(null)
   const [latencySamples, setLatency] = useState(0)
   const running = useRef(false)
+  const listeners = useRef(new Set<(f: AudioFrame) => void>())
 
   useEffect(
     () => () => {
@@ -49,6 +52,7 @@ export function useLiveEngine(bridge: DesktopBridge, setError: (m: Msg | null) =
       setLatency(f.latencySamples)
       const u = feed.push(f, useBench.getState().goal)
       if (u) setUpdate(u)
+      listeners.current.forEach((l) => l(f))
     },
     [feed],
   )
@@ -101,6 +105,11 @@ export function useLiveEngine(bridge: DesktopBridge, setError: (m: Msg | null) =
 
   const markChange = useCallback((label: Msg) => feed.markChange(label), [feed])
   const nowMs = useCallback(() => feed.nowMs, [feed])
+  const onFrameListener = useCallback((l: (f: AudioFrame) => void) => {
+    const set = listeners.current
+    set.add(l)
+    return () => void set.delete(l)
+  }, [])
 
-  return { state, status, update, latencySamples, start, stop, setMonitor, markChange, nowMs }
+  return { state, status, update, latencySamples, start, stop, setMonitor, markChange, nowMs, onFrame: onFrameListener }
 }

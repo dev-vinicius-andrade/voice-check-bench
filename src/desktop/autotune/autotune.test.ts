@@ -189,7 +189,8 @@ describe('result rows', () => {
     })
     expect(rows.map((r) => [r.id, r.dir])).toEqual([
       ['speech', 'better'],
-      ['peak', 'worse'],
+      // −0.5 dBFS is over the ceiling: it still distorts, whatever it was before
+      ['peak', 'over'],
       ['noise', 'better'],
       ['snr', 'better'],
       ['spread', 'same'],

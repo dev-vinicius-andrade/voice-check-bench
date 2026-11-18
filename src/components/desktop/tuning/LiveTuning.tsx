@@ -6,6 +6,7 @@ import { slotAt } from '../../../desktop/advice/chain'
 import { canonicalName } from '../../../wavelink/plugins'
 import { useMsg } from '../../common/MsgText'
 import { AdviceList } from './AdviceList'
+import { CalibrateCard } from './CalibrateCard'
 import { ApplyFeedback } from './ApplyFeedback'
 import { EffectsList } from './EffectsList'
 import { HistoryChart } from './HistoryChart'
@@ -18,7 +19,7 @@ import { TuningBar } from './TuningBar'
 import { useTuningSession } from './useTuningSession'
 import { YourSoundPanel } from './YourSoundPanel'
 
-/** The live tuning screen (SPEC "Desktop app (v2.0)" → Live tuning screen, approved mockup), top to bottom. */
+/** The live tuning screen (SPEC "Desktop app (v2.0)" → Live tuning screen, approved mockup, + "Calibrate noise live"), top to bottom. */
 export function LiveTuning() {
   const { t } = useTranslation()
   const tm = useMsg()
@@ -48,6 +49,7 @@ export function LiveTuning() {
         <Typography color="text.secondary">{t(running ? 'desktop.tune.talk' : 'desktop.tune.idle')}</Typography>
       )}
       <HistoryChart history={update?.history ?? { points: [], markers: [] }} />
+      <CalibrateCard cal={s.calibration} monitor={running ? (engine.status?.monitor ?? 'off') : null} onMonitor={(m) => void engine.setMonitor(m)} />
       <div className="grid items-start gap-4 md:grid-cols-2">
         <AdviceList
           advice={s.advice}

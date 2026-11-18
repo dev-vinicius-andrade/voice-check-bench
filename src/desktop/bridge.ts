@@ -179,6 +179,19 @@ export async function wavelinkRestore(path: string, force: boolean): Promise<WlF
   return call<WlFlowReport>('wavelink_restore', { path, force })
 }
 
+/** What saveWav does (screens take a fake in tests; it is not in `desktopBridge`). */
+export type SaveWav = (name: string, wav: ArrayBuffer) => Promise<string>
+
+/**
+ * Save a finished WAV file (bytes) as `name` (a plain `<name>.wav`) in the Downloads folder; resolves with the full
+ * path written (an existing name gets `-2`, `-3`…). Rejects with { code: invalidName | notWav | noFolder | writeFailed,
+ * message }. The bytes cross the IPC as the raw body, the name as the `x-file-name` header (desktop/src-tauri/src/download.rs).
+ */
+export async function saveWav(name: string, wav: ArrayBuffer): Promise<string> {
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke<string>('save_wav', new Uint8Array(wav), { headers: { 'x-file-name': name } })
+}
+
 /** The offline render commands in one object; code that renders takes a `RenderBridge` (a fake in tests). */
 export const renderBridge = {
   renderOpen,

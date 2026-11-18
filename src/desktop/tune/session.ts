@@ -19,6 +19,9 @@ export const STAGE_RENDERS: Readonly<Record<Exclude<TuneStage, 'baseline'>, numb
 /** Marks a run in which a deeper or tighter gate was measured to cut speech (Session.refused): the room stays louder for it. */
 export const GATE_DEEPER = 'deeper gate'
 
+/** The make-up Wet may come down this far for a voice over its target or peaks over the ceiling (0 dB is not a floor: a hot mic needs less than unity), dB. */
+export const WET_MIN_DB = -24
+
 /** The key of a switch move: the slot on (`to` 1) or off (`to` 0). */
 export const SWITCH_KEY = 'on'
 
@@ -70,6 +73,8 @@ export class Session {
   readonly mask: TakeMask
   /** The run's targets; a kept Noise Removal relaxes them (dead-silent pauses are its doing, ./switches.ts). */
   targets: TuneTargets
+  /** The largest tone change the final trim caused in a band, dB (0: none worth a note). */
+  trimToneDb = 0
   /** The targets allow dead silence only because a Noise Removal was switched on. */
   silentByRemover = false
   readonly maxRenders: number
@@ -103,7 +108,7 @@ export class Session {
     this.renderFn = init.render
     this.onProgress = init.onProgress
     const comp = slotsWith(init.chain, 'reacomp', 'wetDb').at(-1)
-    this.gain = comp ? { slot: comp, lo: Math.min(0, comp.values.wetDb), hi: Math.max(WET_CAP, comp.values.wetDb) } : null
+    this.gain = comp ? { slot: comp, lo: Math.min(WET_MIN_DB, comp.values.wetDb), hi: Math.max(WET_CAP, comp.values.wetDb) } : null
   }
 
   note(stage: TuneStage, event: TuneLogEvent, text: string, score?: TuneLogEntry['score']): void {
@@ -300,6 +305,7 @@ export class Session {
    * trim cannot repair counts. `judge`: the targets the score is taken against (the tone stage's: targets.ts toneJudge).
    * What the gates cut (score damage) is measured for both renders when the moves touch a ReaGate (the ungated chain is
    * rendered once per upstream state, counted); for other moves the kept render's value stands until checkCut.
+   * `levelOnly` (the final trim): kept when `check` agrees and the damage did not rise, whatever the tone or the room do.
    * `repair`: the move is only for the damage — kept when the damage points drop by MIN_GAIN and `check` agrees,
    * whatever it costs the other parts (no voice over the room is worth cut words).
    */
@@ -311,6 +317,7 @@ export class Session {
     asRendered = false,
     judge: TuneTargets = this.targets,
     repair = false,
+    levelOnly = false,
   ): Promise<Outcome> {
     const next = this.withMoves(stage, moves)
     if (!next) return 'same'
@@ -337,7 +344,10 @@ export class Session {
     const after = scoreOf(m, judge, asRendered ? null : this.trim(next))
     this.note(stage, 'render', `#${this.renders} ${describe(moves)}${Number.isFinite(m.cutShare) && this.gatesWorking(next).length ? ` · speech cut ${(100 * m.cutShare).toFixed(1)} %` : ''}`, after)
     const damaged = repair ? (after.damage <= before.damage - MIN_GAIN ? null : `damage ${before.damage.toFixed(1)} → ${after.damage.toFixed(1)}: not repaired`) : undefined
-    const why = check?.(this.m, m) ?? (repair ? damaged : worseBecause(before, after, part, this.m.silent, asRendered ? LEVEL_REGRESS_SHARE : REGRESS_SHARE))
+    // the final trim: the level, the peaks (its `check`) and what it does to the speech itself; a remover after the
+    // compressor reacts to level, and the tone or the room it moves for that may not veto the level
+    const hurt = levelOnly ? (after.damage > before.damage + REGRESS_TOL ? `damage got worse (${before.damage.toFixed(1)} → ${after.damage.toFixed(1)})` : null) : undefined
+    const why = check?.(this.m, m) ?? (levelOnly ? hurt : repair ? damaged : worseBecause(before, after, part, this.m.silent, asRendered ? LEVEL_REGRESS_SHARE : REGRESS_SHARE))
     if (why) {
       if (!repair && moves.some((mv) => mv.slot.kind === 'reagate') && Number.isFinite(m.cutShare) && after.damage > before.damage + REGRESS_TOL && cutsSpeech(m)) this.refused.add(GATE_DEEPER)
       this.rejected.add(asked)

@@ -26,6 +26,10 @@ export const BOTHER_WEIGHT = 2
 export const PEAK_MARGIN_DB = 1
 /** "Too quiet" picked: aim this much above the middle of the good range (still inside it), dB. */
 export const TOO_QUIET_EXTRA_DB = 2
+/** "Too loud" picked: aim this much under the middle of the good range (still inside it), dB. */
+export const TOO_LOUD_LESS_DB = 2
+/** "Crackling" picked (the sound breaks up on loud moments): this much more room under the peak ceiling, dB. */
+export const CRACKLE_HEADROOM_DB = 4
 
 /** Voice over pause noise the tuner wants: the clarity score stops penalising noise here, dB. */
 export const SNR_TARGET_DB = 30
@@ -58,6 +62,17 @@ const CAPS: Readonly<Record<ProcessingAmount, TuneCaps>> = {
   medium: { eqStepDb: AMOUNT_STEP_DB.medium, eqTotalDb: 3 * AMOUNT_STEP_DB.medium, nrStep: 20, nrMax: 40, gateDb: GATE_STEP_DB, ratio: 3 },
   strong: { eqStepDb: AMOUNT_STEP_DB.strong, eqTotalDb: 3 * AMOUNT_STEP_DB.strong, nrStep: 40, nrMax: 80, gateDb: GATE_STEP_DB * 2, ratio: 4 },
 }
+
+/** The caps of an amount (medium for an unknown one), before any limit. */
+export const capsOf = (amount: ProcessingAmount): TuneCaps => CAPS[amount] ?? CAPS.medium
+
+/**
+ * Strengths a Noise Removal that was off is tried at, lightest first: 0, 5, 10, one step and the amount's cap (counted
+ * from 0), inside that cap. The tuner's switch candidate (switches.ts) and the live noise calibration (../calibrate)
+ * walk the same ladder.
+ */
+export const nrLadder = (caps: Pick<TuneCaps, 'nrStep' | 'nrMax'>): number[] =>
+  [...new Set([0, 5, 10, caps.nrStep, caps.nrMax])].filter((v) => v <= caps.nrMax).sort((a, b) => a - b)
 
 export interface TuneTargets {
   style: VoiceStyle
@@ -122,7 +137,7 @@ const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.ma
  *   to digital silence (it cannot be edited back).
  * - style: the tone target (reference curve + the style's offsets).
  * - bothers: roomNoise → SNR target SNR_CAP (45 dB, where more stops counting); with amount strong (never for
- *   recording) pauses may go dead silent · tooQuiet → speech target +2 dB · unevenVolume → spread target −2 dB and one
+ *   recording) pauses may go dead silent · tooQuiet → speech target +2 dB · tooLoud → speech target −2 dB (both picked cancel) · crackling → peaks kept 4 dB lower · unevenVolume → spread target −2 dB and one
  *   more ratio step · boomy / thin / muffled / harsh / sharpS / dull / lacksClarity / lacksPresence / lacksBody / nasal / boxy → their bands (BOTHER_BANDS) are aimed BY_EAR_DB
  *   past the style target against the complaint, must come within 1 dB on that side (every other band: 3 dB) and
  *   count double in the tone score.
@@ -144,7 +159,7 @@ export function targetsOf(goals: TuneGoals, limit = 1): TuneTargets {
       else tolLow[band] = TONE_BOTHER_TOL_DB
     }
   }
-  const base = CAPS[goals.amount] ?? CAPS.medium
+  const base = capsOf(goals.amount)
   const uneven = has('unevenVolume')
   const caps: TuneCaps = {
     eqStepDb: base.eqStepDb * k,
@@ -156,8 +171,8 @@ export function targetsOf(goals: TuneGoals, limit = 1): TuneTargets {
   }
   return {
     style: goals.style,
-    speechDb: TARGET_SPEECH_DB + (has('tooQuiet') ? TOO_QUIET_EXTRA_DB : 0),
-    peakCeilDb: PEAK_WARN_DB - PEAK_MARGIN_DB,
+    speechDb: TARGET_SPEECH_DB + (has('tooQuiet') ? TOO_QUIET_EXTRA_DB : 0) - (has('tooLoud') ? TOO_LOUD_LESS_DB : 0),
+    peakCeilDb: PEAK_WARN_DB - PEAK_MARGIN_DB - (has('crackling') ? CRACKLE_HEADROOM_DB : 0),
     snrDb: has('roomNoise') ? SNR_CAP : (SNR_BY_USE[goals.use] ?? SNR_TARGET_DB),
     snrFloorDb: SNR_BY_USE[goals.use] ?? SNR_TARGET_DB,
     allowDeadSilence: has('roomNoise') && goals.amount === 'strong' && goals.use !== 'recording',

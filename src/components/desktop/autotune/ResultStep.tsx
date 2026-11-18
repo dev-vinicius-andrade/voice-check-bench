@@ -44,6 +44,15 @@ export function ResultStep({ take, result, save, onAdjust, onRecordAgain }: Resu
         <Alert severity="success" data-testid="autotune-saved">
           {t('desktop.autotune.ui.result.saved')}{' '}
           <Link href={screenToHash('desktopLive')}>{t('desktop.autotune.ui.result.fineTune')}</Link>
+          <Typography variant="body2" component="span" className="block" data-testid="autotune-calibrate-link">
+            {t('desktop.autotune.ui.result.calibrateHint')}{' '}
+            <Link href={screenToHash('desktopLive')}>{t('desktop.autotune.ui.result.calibrate')}</Link>
+          </Typography>
+        </Alert>
+      )}
+      {save.unchanged && (
+        <Alert severity="info" data-testid="autotune-unchanged">
+          {t('desktop.save.unchanged')}
         </Alert>
       )}
       {adjusting ? (

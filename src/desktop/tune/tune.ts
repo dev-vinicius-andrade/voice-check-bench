@@ -12,11 +12,12 @@ import { EQ_GRID_DB } from './eqModel'
 import { prepareTake, TUNE_SAMPLE_RATE } from './measure'
 import { BANDS } from '../../audio/reference'
 import { bandRange, unmetMsg } from './msgs'
+import { PEAK_HELD, PEAK_TOL_DB, peakStage } from './peakStage'
 import { CHOP_OK_DB, cutsSpeech, MIN_GAIN, scoreOf, summarize, toneOf } from './score'
 import { DEFAULT_MAX_RENDERS, GATE_DEEPER, Session, SWITCH_KEY, type Pending } from './session'
 import { compressionStage, levelStage, noiseStage, protectWords } from './stages'
 import { noiseRemovalOn, repairSwitches, roomTouchUp, toneWithSwitch } from './switches'
-import { targetsOf, toneExcess, type TuneTargets } from './targets'
+import { TONE_TOL_DB, targetsOf, toneExcess, type TuneTargets } from './targets'
 import type { ToneNotes } from './toneStage'
 import { engineChanges, valueChanges, type Bother, type TakeSummary, type TuneChange, type TuneGoals, type TuneInput, type TuneResult, type TuneResume } from './types'
 
@@ -29,6 +30,9 @@ export const UNMET_SPREAD_DB = 0.5
 export const LEVEL_ROOM_DB = 0.5
 /** A complaint is contradicted by the measurement from this far on the other side of the style target, dB. */
 export const CONTRADICT_DB = 1
+/** A band nobody complained about gets a line only when it is this far too strong, dB; and the tone gets at most this many lines. */
+export const UNMET_CLEAR_DB = 6
+export const UNMET_TONE_LINES = 3
 /** A raw take whose voice is less than this over its room gets the note about the room itself, dB. */
 export const LOUD_ROOM_SNR_DB = 20
 /** A band hides a higher one from this far over its target, dB. */
@@ -143,6 +147,8 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
     return out
   }
 
+  // a peak over the ceiling distorts: said first, with what is left to do about it
+  if (m.peakDb > t.peakCeilDb + PEAK_TOL_DB) out.push(unmetMsg('peak.over', { peak: m.peakDb, ceiling: t.peakCeilDb }))
   const err = t.speechDb - m.speechDb
   if (Math.abs(err) >= UNMET_LEVEL_DB) {
     const db = Math.abs(err)
@@ -150,7 +156,7 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
     const room = s.trim()
     const held = room !== null && (err < 0 ? room.down < -LEVEL_ROOM_DB : room.up > LEVEL_ROOM_DB)
     if (!s.gain) out.push(unmetMsg(err > 0 ? 'level.noToolQuiet' : 'level.noToolLoud', { db }))
-    else if (err > 0 && t.peakCeilDb - m.peakDb < 1) out.push(unmetMsg('level.peaks', { db }))
+    else if (err > 0 && (t.peakCeilDb - m.peakDb < 1 || s.refused.has(PEAK_HELD))) out.push(unmetMsg('level.peaks', { db }))
     else if (held) out.push(unmetMsg('level.held', { db }))
     else out.push(unmetMsg(err < 0 ? 'level.capLoud' : 'level.capQuiet', { db }))
   }
@@ -158,6 +164,7 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
   const zeros = m.deadSilence > CHOPPED_ZERO || m.gateSwitches > OVER_SWITCH_WARN
   const chopped = m.wordLossDb > CHOP_OK_DB
   // a Noise Removal the tuner switched on makes its pauses fully silent by itself: said as what it is
+  if (s.trimToneDb > 0) out.push(unmetMsg('level.toneMoved', { db: s.trimToneDb }))
   const dead = zeros && !t.allowDeadSilence
   if (zeros && s.silentByRemover) out.push(unmetMsg('silentPauses'))
   if (dead) out.push(unmetMsg('dead'))
@@ -176,7 +183,20 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
   const dev = toneOf(m, t)
   const excess = toneExcess(dev, t)
   const contra = contradictions(dev, t)
-  const off = excess.map((e, b) => ({ e, b })).filter(({ e, b }) => t.weight[b] > 0 && (e >= UNMET_TONE_DB || contra.has(b)))
+  // What is worth a line: a band the person's complaints point at, or one that is clearly too strong (the EQ or the
+  // mic position can do something about that; a voice that simply has little of a band is not theirs to fix). Of the
+  // "already measures high / low" lines only the strongest of each kind, and at most UNMET_TONE_LINES in all.
+  const picked = (b: number): boolean => t.shift[b] !== 0 || t.tolHigh[b] < TONE_TOL_DB || t.tolLow[b] < TONE_TOL_DB
+  const clear = (b: number): boolean => dev[b] + t.shift[b] > 0 && excess[b] >= UNMET_CLEAR_DB
+  const strongest = new Map<string, number>()
+  for (const [b, msg] of contra) if (!strongest.has(msg.key) || Math.abs(dev[b]) > Math.abs(dev[strongest.get(msg.key) as number])) strongest.set(msg.key, b)
+  const lines = new Set(strongest.values())
+  const off = excess
+    .map((e, b) => ({ e, b }))
+    .filter(({ e, b }) => t.weight[b] > 0 && (contra.has(b) ? lines.has(b) : e >= UNMET_TONE_DB && (picked(b) || clear(b))))
+    .sort((x, y) => Number(contra.has(y.b)) - Number(contra.has(x.b)) || y.e * t.weight[y.b] - x.e * t.weight[x.b])
+    .slice(0, UNMET_TONE_LINES)
+    .sort((x, y) => x.b - y.b)
   if (off.some(({ e }) => e >= UNMET_TONE_DB) && tone.noEq) out.push(unmetMsg('tone.noEq'))
   else {
     for (const { b } of off) {
@@ -233,13 +253,19 @@ export async function tune(input: TuneInput): Promise<TuneResult> {
   }
 
   const s = new Session({ chain: input.chain, mask, targets, render: input.render, maxRenders, onProgress: input.onProgress })
+  // Pauses a Noise Removal turns fully silent are its doing, whoever switched it on: not damage, and not something
+  // that may veto a level move (it makes more of them at a lower level). Cut speech and lost words still are.
+  if (!targets.allowDeadSilence && s.live('noiseRemoval', 'strength').length) {
+    s.targets = { ...targets, allowDeadSilence: true }
+    s.silentByRemover = true
+  }
   const base = await s.render('baseline', s.set)
   s.audio = base.audio
   s.m = base.m
   // what a gate that already works cuts, for the before / after of the result (one more render, only then)
   if (!base.m.silent) await s.checkCut('baseline')
-  const before = summarize(base.m, targets)
-  s.note('baseline', 'render', `#1 the chain as it is: speech ${base.m.speechDb.toFixed(1)} dBFS, pauses ${base.m.pauseDb.toFixed(1)} dBFS`, scoreOf(base.m, targets, s.trim()))
+  const before = summarize(base.m, s.targets)
+  s.note('baseline', 'render', `#1 the chain as it is: speech ${base.m.speechDb.toFixed(1)} dBFS, pauses ${base.m.pauseDb.toFixed(1)} dBFS`, scoreOf(base.m, s.targets, s.trim()))
 
   // retune: start from the previous result when it still beats the untouched chain under this run's goals
   const given = input.start ?? []
@@ -250,8 +276,8 @@ export async function tune(input: TuneInput): Promise<TuneResult> {
     const reuse = same && input.startRender?.length === base.audio.length ? input.startRender : undefined
     if (reuse || s.left('baseline') > 0) {
       const from = reuse ? s.measured(reuse) : await s.render('baseline', start)
-      const a = scoreOf(base.m, targets, s.trim())
-      const b = scoreOf(from.m, targets, s.trim(start))
+      const a = scoreOf(base.m, s.targets, s.trim())
+      const b = scoreOf(from.m, s.targets, s.trim(start))
       if (b.total <= a.total - MIN_GAIN) {
         s.set = start
         s.audio = from.audio
@@ -279,6 +305,8 @@ export async function tune(input: TuneInput): Promise<TuneResult> {
   if (s.refused.has(GATE_DEEPER)) await noiseRemovalOn(s)
   // a shallower floor or a remover moved the level once more
   if (s.set !== gate) await levelStage(s, 'trim')
+  // peaks are a hard limit: nothing ends over the ceiling while a lower make-up gain can prevent it
+  await peakStage(s)
 
   return { changes: s.result(), before, after: summarize(s.m, s.targets), processed: s.audio, renders: s.renders, unmet: unmetOf(s, tone), log: s.log, goals, limit }
 }

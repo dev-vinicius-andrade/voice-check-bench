@@ -10,6 +10,7 @@ import { useAdviceFeedback } from './useAdviceFeedback'
 import { useAudioDevices } from './useAudioDevices'
 import { useChainState } from './useChainState'
 import { useLiveEngine } from './useLiveEngine'
+import { useNoiseCalibration } from './useNoiseCalibration'
 import { useRestoreFlow } from './useRestoreFlow'
 import { useSaveFlow } from './useSaveFlow'
 import { useToneTrend } from './useToneTrend'
@@ -35,6 +36,7 @@ export function useTuningSession() {
   const held = engine.update?.held ?? null
   const notBeforeMs = adviceNotBefore(chain.lastChangeMs)
   const trend = useToneTrend(held, notBeforeMs, goal.style)
+  const calibration = useNoiseCalibration(engine, chain, prefs.prefs.amount)
 
   const start = async (): Promise<void> => {
     const status = await engine.start(devices.inputId, devices.outputId)
@@ -62,7 +64,7 @@ export function useTuningSession() {
     return advise(held, live, goal, opts).filter((a) => !done.has(sig(a)))
   }, [held, live, goal, applied, notBeforeMs, prefs.prefs, tone, evidenceSec, blocked])
 
-  return { error, setError, fileError, devices, engine, chain, goal, prefs, feedback, advice, save, restore, start }
+  return { error, setError, fileError, devices, engine, chain, goal, prefs, feedback, advice, save, restore, start, calibration }
 }
 
 export type TuningSession = ReturnType<typeof useTuningSession>

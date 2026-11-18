@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { slotAt, withChange } from './chain'
 import { chain } from './testFixtures'
 import type { Change, ChainSlot, SwitchChange, ValueChange } from './types'
-import { apply, emptyUndo, setChain, undo, type UndoState } from './undo'
+import { apply, emptyUndo, retarget, setChain, undo, type UndoState } from './undo'
 
 const title = { key: 'desktop.advice.title.tooLoud' }
 const set = (slot: number, key: string, from: number, to: number, id = `tooLoud:${slot}:${key}`): ValueChange => ({ id, reason: 'tooLoud', titleMsg: title, kind: 'value', slot, key, from, to })
@@ -105,5 +105,25 @@ describe('undo stack', () => {
     expect(apply(emptyUndo(chain()), set(3, 'nope', 0, 1))).toEqual({ ok: false, error: 'missing' })
     const gone = setChain(a.state, a.state.chain.filter((s) => s.index !== 3))
     expect(undo(gone, a.id)).toEqual({ ok: false, error: 'missing' })
+  })
+
+  it('retarget moves an applied value on as one entry; undo still puts back the value from before it', () => {
+    const { state, id } = applied(emptyUndo(chain()), set(3, 'wetDb', 6, 2))
+    const r = retarget(state, id, set(3, 'wetDb', 6, 4))
+    if (!r.ok) throw new Error(r.error)
+    expect(val(r.state, 3, 'wetDb')).toBe(4)
+    expect(r.state.applied).toHaveLength(1)
+    expect(r.applied.inverse).toMatchObject({ from: 4, to: 6 })
+    const u = undo(r.state, id)
+    if (!u.ok) throw new Error(u.error)
+    expect(val(u.state, 3, 'wetDb')).toBe(6)
+  })
+
+  it('retarget refuses a value changed since, another key and an unknown id', () => {
+    const { state, id } = applied(emptyUndo(chain()), set(3, 'wetDb', 6, 2))
+    const moved = setChain(state, withChange(state.chain, set(3, 'wetDb', 2, 5)))
+    expect(retarget(moved, id, set(3, 'wetDb', 6, 4))).toMatchObject({ ok: false, error: 'conflict', expected: 2, current: 5 })
+    expect(retarget(state, id, set(3, 'ratio', 6, 4))).toMatchObject({ ok: false, error: 'unknown' })
+    expect(retarget(state, 'nope', set(3, 'wetDb', 6, 4))).toMatchObject({ ok: false, error: 'unknown' })
   })
 })

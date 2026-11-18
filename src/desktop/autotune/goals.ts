@@ -23,6 +23,8 @@ export const BOTHERS: readonly Bother[] = [
   'sharpS',
   'dull',
   'tooQuiet',
+  'tooLoud',
+  'crackling',
   'unevenVolume',
 ]
 

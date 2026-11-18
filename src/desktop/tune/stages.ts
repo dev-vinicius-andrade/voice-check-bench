@@ -6,11 +6,13 @@ import { sameValue } from '../advice/chain'
 import type { ChainSlot } from '../advice/types'
 import type { Measured } from './measure'
 import { reasonMsg } from './msgs'
-import { CHOP_OK_DB, cutsSpeech, LEVEL_TOL_DB, MIN_GAIN, pumps, scoreOf, type ScorePart } from './score'
+import { CHOP_OK_DB, cutsSpeech, LEVEL_TOL_DB, MIN_GAIN, pumps, scoreOf, toneOf, type ScorePart } from './score'
 import { GATE_DEEPER, type Move, type Outcome, type Session } from './session'
 import type { TuneTargets } from './targets'
 import type { TuneStage } from './types'
 
+/** The final trim says so when it moved a tone band by more than this (a level-dependent effect after the gain), dB. */
+export const TRIM_TONE_NOTE_DB = 2
 /** A level move must bring the speech this much closer to the target, dB. */
 export const LEVEL_MIN_GAIN_DB = 0.5
 /** A noise move must win this much voice-over-pause SNR, dB (the doubled-gate fix: 1 dB). */
@@ -39,6 +41,8 @@ const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.m
  * chain answered with less than the dB asked (a limiter, a later effect), a second pass corrects by the measured
  * slope. A working ReaGate after that gain stage moves its threshold by the same dB (followers). A render that lost
  * the voice altogether is not a level problem: nothing is tried.
+ * The final trim (`trim`) is judged on the level, the peaks and the damage to the speech only: a Noise Removal after
+ * the compressor reacts to level, and the tone or room it moves for that does not veto the trim (it is noted).
  */
 export async function levelStage(s: Session, stage: 'level' | 'trim'): Promise<void> {
   const t = s.targets
@@ -77,7 +81,11 @@ export async function levelStage(s: Session, stage: 'level' | 'trim'): Promise<v
       titleMsg: reasonMsg('level.gateFollows', { db: Math.abs(to - wet) }),
       metric: 'speechDb',
     }))
-    if ((await s.tryMoves(stage, [move, ...follow], 'level', check, true)) !== 'kept') return
+    const tone = toneOf(m, t)
+    if ((await s.tryMoves(stage, [move, ...follow], 'level', check, true, undefined, false, stage === 'trim')) !== 'kept') return
+    // a remover after the compressor reacts to level: what the trim did to the tone is said, not weighed
+    const moved = Math.max(0, ...toneOf(s.m, t).map((d, b) => (Number.isFinite(d) && Number.isFinite(tone[b]) && t.weight[b] > 0 ? Math.abs(d - tone[b]) : 0)))
+    if (stage === 'trim' && moved > TRIM_TONE_NOTE_DB) s.trimToneDb = Math.max(s.trimToneDb, moved)
     const got = (s.m.speechDb - m.speechDb) / (to - wet)
     slope = got > 0.2 && got < 1.5 ? got : 1
   }
@@ -322,7 +330,8 @@ export async function noiseStage(s: Session): Promise<void> {
     if (r === 'budget') return
     if (r !== 'kept') failed.add(id)
   }
-  if (dead(s.m) || chopped(s.m)) return
+  // a render without a voice has no voice over the room to raise
+  if (s.m.silent || dead(s.m) || chopped(s.m)) return
 
   if (nr && (await strengthen(s, nr)) === 'budget') return
 

@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
+import type { DesktopBridge } from '../../src/desktop/bridge'
 import type { TuneBridge } from '../../src/desktop/tune/renderer'
 
 interface Pending {
@@ -12,7 +13,7 @@ interface Pending {
   reject: (e: unknown) => void
 }
 
-export interface CliBridge extends TuneBridge {
+export interface CliBridge extends TuneBridge, Pick<DesktopBridge, 'wavelinkPreview' | 'wavelinkExport'> {
   /** Wall time the plugins spent in `run`, ms, summed since the last reset. */
   runMs: number
   runs: number
@@ -77,6 +78,9 @@ export function cliBridge(exe: string, settings: string): CliBridge {
     renderExportStates: () => call('export_states'),
     renderClose: () => call('close'),
     wavelinkRead: () => call('wavelink_read'),
+    // the app's commands with the app's argument names, on the copy only (render_cli refuses the real file)
+    wavelinkPreview: (changes) => call('wavelink_preview', { changes }),
+    wavelinkExport: (changes, expectedHash, force) => call('wavelink_export', { changes, expectedHash, force }),
     quit: async () => {
       await call('quit').catch(() => undefined)
       rmSync(dir, { recursive: true, force: true })

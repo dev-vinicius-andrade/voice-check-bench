@@ -54,6 +54,8 @@ const SETS: [string, TuneGoals][] = [
   ['light', { use: 'streaming', style: 'natural', bothers: [], amount: 'light' }],
   ['clarity-presence', { use: 'streaming', style: 'natural', bothers: ['lacksClarity', 'lacksPresence'], amount: 'medium' }],
   ['nasal-boxy-body', { use: 'streaming', style: 'natural', bothers: ['nasal', 'boxy', 'lacksBody'], amount: 'medium' }],
+  ['tooloud', { use: 'streaming', style: 'natural', bothers: ['tooLoud'], amount: 'medium' }],
+  ['crackling', { use: 'streaming', style: 'natural', bothers: ['crackling'], amount: 'medium' }],
 ]
 
 const f = (v: number, d = 1): string => (Number.isFinite(v) ? v.toFixed(d) : String(v))
@@ -67,7 +69,7 @@ function checks(r: TuneResult): string[] {
   const unmet = r.unmet.map((u) => u.key)
   const out: string[] = []
   const mark = (ok: boolean, text: string): void => void out.push(`${ok ? 'OK  ' : 'FAIL'} ${text}`)
-  mark(a.peakDb <= PEAK_WARN_DB, `peak ${f(a.peakDb)} dBFS ≤ ${PEAK_WARN_DB}`)
+  mark(a.peakDb <= t.peakCeilDb + 0.05, `peak ${f(a.peakDb)} dBFS ≤ ceiling ${f(t.peakCeilDb)} (${f(a.peakDb - a.speechDb)} dB over the speech level)`)
   const off = a.speechDb - t.speechDb
   mark(Math.abs(off) <= 1.5 || unmet.some((k) => k.includes('.level.')), `speech ${f(a.speechDb)} vs target ${t.speechDb} (${f(off)} dB)${Math.abs(off) > 1.5 ? ' — unmet says why' : ''}`)
   const dead = a.deadSilence > CHOPPED_ZERO || a.gateSwitches > OVER_SWITCH_WARN
@@ -117,6 +119,9 @@ function report(name: string, r: TuneResult, chain: readonly ChainSlot[], wallMs
 async function main(): Promise<void> {
   const wav = decodeWav(readFileSync(takePath))
   const take = resample(wav.samples, wav.sampleRate, SR)
+  // --gain <dB>: a louder (or quieter) take, clamped like a recording would be
+  const gainDb = Number(opt('--gain', '0'))
+  if (gainDb) for (let i = 0; i < take.length; i++) take[i] = Math.max(-1, Math.min(1, take[i] * 10 ** (gainDb / 20)))
   const bridge = cliBridge(exe, resolve(settings as string))
   if (args.includes('--nr-on')) {
     const open = bridge.renderOpen
