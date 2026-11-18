@@ -2,19 +2,23 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { fmtHz, fmtNum } from '../../../../i18n/format'
-import type { ToneCut, ToneRow } from './useToneCuts'
+import type { ToneRow } from './useToneCuts'
 
-interface ToneListProps {
-  rows: readonly ToneRow[]
+/** A row of the list with whatever the screen keeps of a cut (the live chain's entries, the result step's values). */
+export type ToneListRow<C extends { n: number }> = Omit<ToneRow, 'cut'> & { cut: C | null }
+
+interface ToneListProps<C extends { n: number }> {
+  rows: readonly ToneListRow<C>[]
+  /** Not everything has been heard yet ("Listening…" instead of "none"). */
   listening: boolean
   /** A ReaEQ is on (Cut can be offered). */
   canCut: boolean
-  onCut: (row: ToneRow) => void
-  onUndo: (cut: ToneCut) => void
+  onCut: (row: ToneListRow<C>) => void
+  onUndo: (cut: C) => void
 }
 
 /** Steady tones under the plot: "Steady tone at 923 Hz · 30 dB over its surroundings" with Cut, or the cut made and its Undo. */
-export function ToneList({ rows, listening, canCut, onCut, onUndo }: ToneListProps) {
+export function ToneList<C extends { n: number }>({ rows, listening, canCut, onCut, onUndo }: ToneListProps<C>) {
   const { t } = useTranslation()
   if (rows.length === 0) {
     return (

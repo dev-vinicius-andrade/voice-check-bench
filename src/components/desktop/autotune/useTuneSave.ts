@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { allChanges, type ManualEdit } from '../../../desktop/autotune/manualEq'
 import type { DesktopBridge } from '../../../desktop/bridge'
 import type { TuneResult } from '../../../desktop/tune'
 import type { WlChainEntry, WlFlowReport } from '../../../desktop/types'
@@ -25,13 +26,21 @@ export interface TuneSave {
   reset(): void
 }
 
+const NO_EDITS: readonly ManualEdit[] = []
+
 /**
- * "Save to Wave Link" of a tune result: the session's exportChanges → the live screen's preview / confirm / export
- * flow. A file changed since the recording was tuned (Wave Link, or a save from this screen) is said in this screen's
+ * "Save to Wave Link" of a tune result with the hand edits on top (`allChanges`): the session's exportChanges → the
+ * live screen's preview / confirm / export flow. The outcome is that of these changes: an edit clears "saved". A file changed since the recording was tuned (Wave Link, or a save from this screen) is said in this screen's
  * words: the live screen's "press Stop and Start" does not exist here.
  */
-export function useTuneSave(bridge: DesktopBridge, run: TuneRun, result: TuneResult | null): TuneSave {
+export function useTuneSave(bridge: DesktopBridge, run: TuneRun, result: TuneResult | null, edits: readonly ManualEdit[] = NO_EDITS): TuneSave {
   const [outcome, setOutcome] = useState<SaveOutcome | null>(null)
+  const [savedEdits, setSavedEdits] = useState(edits)
+  // other hand edits than when the outcome was said: it no longer says anything about them
+  if (savedEdits !== edits) {
+    setSavedEdits(edits)
+    setOutcome(null)
+  }
   // the file's hash after this screen's own last save of this session's snapshot: a save after "adjust" checks
   // against it, not against the hash read before the first save (that one would fail as "changed meanwhile")
   const [written, setWritten] = useState<{ from: string; hash: string } | null>(null)
@@ -40,7 +49,7 @@ export function useTuneSave(bridge: DesktopBridge, run: TuneRun, result: TuneRes
     bridge,
     async () => {
       if (!result || !snap) throw new Error('nothing to save')
-      const changes = await run.exportChanges(result.changes)
+      const changes = await run.exportChanges(allChanges(result.changes, edits))
       return { plan: { changes, unsaved: [] }, hash: written?.from === snap.hash ? written.hash : snap.hash }
     },
     (report) => {

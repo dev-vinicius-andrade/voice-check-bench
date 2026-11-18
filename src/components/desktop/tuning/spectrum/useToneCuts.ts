@@ -22,7 +22,7 @@ export interface ToneRow {
 
 /** The same tone when within this many octaves (its frequency wanders a little). */
 const SAME_TONE_OCT = 1 / 12
-const near = (a: number, b: number): boolean => Math.abs(Math.log2(a / b)) < SAME_TONE_OCT
+export const sameTone = (a: number, b: number): boolean => Math.abs(Math.log2(a / b)) < SAME_TONE_OCT
 
 /** The changes of a cut, in order, each with its exact change line on the chain as it is by then. */
 function cutAdvice(slot: ChainSlot, plan: NotchPlan, tone: SpectrumTone): Advice[] {
@@ -52,7 +52,7 @@ export function useToneCuts(chain: Pick<ChainState, 'applied' | 'applyBatch'>, s
   const live = new Set(chain.applied.map((a) => a.appliedId))
   const cuts = made.map((c) => ({ ...c, ids: c.ids.filter((id) => live.has(id)) })).filter((c) => c.ids.length > 0)
 
-  const rows: ToneRow[] = tones.map((tone) => ({ tone, cut: cuts.find((c) => near(c.tone.freqHz, tone.freqHz)) ?? null, plan: slot ? notchPlan(points, tone) : null }))
+  const rows: ToneRow[] = tones.map((tone) => ({ tone, cut: cuts.find((c) => sameTone(c.tone.freqHz, tone.freqHz)) ?? null, plan: slot ? notchPlan(points, tone) : null }))
   for (const c of cuts) if (!rows.some((r) => r.cut === c)) rows.push({ tone: c.tone, cut: c, plan: null })
 
   const cut = (tone: SpectrumTone): void => {
@@ -60,7 +60,7 @@ export function useToneCuts(chain: Pick<ChainState, 'applied' | 'applyBatch'>, s
     if (!slot || !plan) return
     const batch: BatchOp[] = cutAdvice(slot, plan, tone).map((advice) => ({ op: 'apply', advice }))
     const ids = chain.applyBatch(batch).filter((id): id is string => id !== null)
-    if (ids.length) setMade((list) => [...list.filter((c) => !near(c.tone.freqHz, tone.freqHz)), { tone: { ...tone }, n: plan.n, ids }])
+    if (ids.length) setMade((list) => [...list.filter((c) => !sameTone(c.tone.freqHz, tone.freqHz)), { tone: { ...tone }, n: plan.n, ids }])
     onSelect(plan.n)
   }
 

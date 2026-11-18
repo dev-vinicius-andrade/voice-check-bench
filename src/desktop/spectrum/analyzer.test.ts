@@ -60,7 +60,59 @@ const nearestPoint = (freqs: Float32Array, hz: number): number => {
   return best
 }
 
+/** Speech-like bursts over white noise, low-passed hard at 11 kHz (eight 2nd-order sections): nothing above 12 kHz. */
+function bandLimited(sec: number, seed = 6): Float32Array {
+  const rnd = prng(seed)
+  let y = voiceLike({ sampleRate: SR, sec, seed, speechDb: -20, noiseDb: -Infinity, leadSec: 1 })
+  for (let i = 0; i < y.length; i++) y[i] += (rnd() * 2 - 1) * 0.02
+  const w = (2 * Math.PI * 11000) / SR
+  const alpha = Math.sin(w) / (2 * Math.SQRT1_2)
+  const c = Math.cos(w)
+  const a0 = 1 + alpha
+  const b0 = (1 - c) / 2 / a0, b1 = (1 - c) / a0, a1 = (-2 * c) / a0, a2 = (1 - alpha) / a0
+  for (let s = 0; s < 8; s++) {
+    const o = new Float32Array(y.length)
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0
+    for (let i = 0; i < y.length; i++) {
+      const v = b0 * y[i] + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2
+      x2 = x1
+      x1 = y[i]
+      y2 = y1
+      y1 = v
+      o[i] = v
+    }
+    y = o
+  }
+  return y
+}
+
+/** The plot points from 13 kHz up stay at the plot's floor (−100 dB) and do not rise toward the 20 kHz edge. */
+function flatTop(freqs: Float32Array, db: Float32Array): void {
+  const from = freqs.findIndex((f) => f >= 13000)
+  const top = Array.from(db.subarray(from))
+  expect(top.length).toBeGreaterThan(10)
+  expect(Math.max(...top)).toBeLessThan(-100)
+  const last = top[top.length - 1]
+  expect(last).toBeLessThanOrEqual(top[0])
+  expect(last).toBeLessThanOrEqual(Math.min(...top.slice(0, -1)) + 1)
+}
+
 describe('createSpectrumAnalyzer: plot spectrum', () => {
+  it('nothing above 12 kHz: the points up to 20 kHz stay at the floor, no rise at the edge', () => {
+    const a = createSpectrumAnalyzer()
+    const x = bandLimited(6)
+    for (const [k, f] of frames(x).entries()) {
+      a.push(f)
+      if (k >= 5 && k % 7 === 0) {
+        const s = a.read()
+        flatTop(s.freqsHz, s.processedDb)
+        flatTop(s.freqsHz, s.rawDb)
+      }
+    }
+    const s = a.read()
+    expect(s.processedDb[nearestPoint(s.freqsHz, 1000)]).toBeGreaterThan(-80)
+  })
+
   it('starts at the floor with SPECTRUM_POINTS log-spaced points', () => {
     const s = createSpectrumAnalyzer().read()
     expect(s.freqsHz).toHaveLength(SPECTRUM_POINTS)

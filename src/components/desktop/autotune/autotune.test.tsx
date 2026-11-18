@@ -93,7 +93,11 @@ async function tuned(changes: TuneChange[] = [CHANGE]) {
 }
 
 let audio: FakeAudio
-beforeAll(() => i18n.changeLanguage('en'))
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+  // the result step's spectrum draws on a canvas, which jsdom does not have
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+})
 beforeEach(() => {
   audio = installFakeAudio()
 })

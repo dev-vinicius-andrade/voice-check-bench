@@ -54,13 +54,19 @@ export class ToneTracker {
   private readonly avgDb: Float64Array
   private readonly scratch = new Float64Array(2 * TONE_NEIGHBOURS + 1)
   private found: ToneFound[] = []
+  /** Frames arrived since `found` was last worked out: tones() and levelAt() work it out first (same result, once). */
+  private stale = false
 
-  constructor(readonly sampleRate: number) {
+  /** `windowSec`: seconds of frames kept (TONE_WINDOW_SEC live; a recorded take keeps all of itself). */
+  constructor(
+    readonly sampleRate: number,
+    windowSec = TONE_WINDOW_SEC,
+  ) {
     this.binHz = sampleRate / TONE_FFT
     this.lowBin = Math.max(PEAK_SPAN, Math.ceil(TONE_MIN_HZ / this.binHz))
     this.highBin = Math.min(TONE_FFT / 2 - PEAK_SPAN, Math.floor(TONE_MAX_HZ / this.binHz))
     this.nBins = Math.min(TONE_FFT / 2 + 1, this.highBin + TONE_NEIGHBOURS + 2)
-    const cap = Math.max(MIN_TONE_FRAMES, Math.round((TONE_WINDOW_SEC * sampleRate) / TONE_HOP))
+    const cap = Math.max(MIN_TONE_FRAMES, Math.round((windowSec * sampleRate) / TONE_HOP))
     this.frames = Array.from({ length: cap }, () => new Float32Array(this.nBins))
     this.minFrames = Math.min(cap, Math.max(MIN_TONE_FRAMES, Math.ceil((MIN_TONE_SEC * sampleRate - TONE_FFT) / TONE_HOP) + 1))
     this.avg = new Float64Array(this.nBins)
@@ -77,6 +83,7 @@ export class ToneTracker {
     this.head = 0
     this.count = 0
     this.found = []
+    this.stale = false
     this.analysed++
   }
 
@@ -90,11 +97,13 @@ export class ToneTracker {
 
   /** Tones of the latest frame, strongest first (empty until MIN_TONE_SEC of frames). */
   tones(): readonly ToneFound[] {
+    this.refresh()
     return this.found
   }
 
   /** Level of the window's average at a frequency, dBFS (the peak within ±1 bin, interpolated); FLOOR_DB when empty. */
   levelAt(freqHz: number): number {
+    this.refresh()
     const k = Math.round(freqHz / this.binHz)
     if (!this.count || k < 1 || k >= this.nBins - 1) return powDb(0)
     let m = k
@@ -108,8 +117,15 @@ export class ToneTracker {
     for (let k = 0; k < this.nBins; k++) f[k] = p[k]
     this.head = (this.head + 1) % this.frames.length
     if (this.count < this.frames.length) this.count++
-    this.found = this.count >= this.minFrames ? this.detect() : []
+    this.stale = true
     this.analysed++
+  }
+
+  /** The tones of the latest frame (empty until MIN_TONE_SEC of frames), worked out when frames came in since. */
+  private refresh(): void {
+    if (!this.stale) return
+    this.stale = false
+    this.found = this.count >= this.minFrames ? this.detect() : []
   }
 
   private detect(): ToneFound[] {

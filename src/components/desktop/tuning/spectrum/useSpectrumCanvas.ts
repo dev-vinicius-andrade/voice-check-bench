@@ -6,7 +6,7 @@ import { GRID_HZ, plotBox, SPEC_GRID_DB, xOfHz, yOfDbfs, type PlotBox } from './
 /** At most this many redraws per second. */
 const FPS = 15
 
-interface Colors {
+export interface Colors {
   grid: string
   heard: string
   raw: string
@@ -23,16 +23,18 @@ function colorsOf(el: Element, fallback: Colors): Colors {
   }
 }
 
-function line(ctx: CanvasRenderingContext2D, b: PlotBox, freqs: Float32Array, db: Float32Array): void {
+/** The curve through the points; `join` continues the current subpath (a lineTo to the first point, not a moveTo). */
+function line(ctx: CanvasRenderingContext2D, b: PlotBox, freqs: Float32Array, db: Float32Array, join = false): void {
   for (let i = 0; i < freqs.length; i++) {
     const x = xOfHz(b, freqs[i])
     const y = yOfDbfs(b, db[i])
-    if (i === 0) ctx.moveTo(x, y)
+    if (i === 0 && !join) ctx.moveTo(x, y)
     else ctx.lineTo(x, y)
   }
 }
 
-function draw(ctx: CanvasRenderingContext2D, b: PlotBox, analyzer: SpectrumAnalyzer, c: Colors): void {
+/** One frame: the grid, the area under "as heard" (closed along the plot's bottom), its line, the mic alone's line. */
+export function drawSpectrum(ctx: CanvasRenderingContext2D, b: PlotBox, analyzer: SpectrumAnalyzer, c: Colors): void {
   const { freqsHz, rawDb, processedDb } = analyzer.read()
   ctx.lineWidth = 1
   ctx.strokeStyle = c.grid
@@ -50,10 +52,10 @@ function draw(ctx: CanvasRenderingContext2D, b: PlotBox, analyzer: SpectrumAnaly
   ctx.stroke()
   if (freqsHz.length === 0) return
   const bottom = b.top + b.height
-  // as heard: a faint area with a line on top
+  // as heard: a faint area with a line on top; one subpath bottom-left → curve → bottom-right, closed along the bottom
   ctx.beginPath()
   ctx.moveTo(xOfHz(b, freqsHz[0]), bottom)
-  line(ctx, b, freqsHz, processedDb)
+  line(ctx, b, freqsHz, processedDb, true)
   ctx.lineTo(xOfHz(b, freqsHz[freqsHz.length - 1]), bottom)
   ctx.closePath()
   ctx.globalAlpha = 0.18
@@ -98,7 +100,7 @@ export function useSpectrumCanvas(analyzer: SpectrumAnalyzer, w: number, h: numb
       last = now
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
-      draw(ctx, b, analyzer, colorsOf(el, { grid, heard, raw }))
+      drawSpectrum(ctx, b, analyzer, colorsOf(el, { grid, heard, raw }))
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)

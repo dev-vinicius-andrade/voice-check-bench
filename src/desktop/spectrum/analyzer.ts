@@ -37,23 +37,7 @@ export function createSpectrumAnalyzer(): SpectrumAnalyzer {
   }
 
   const updateTones = (r: Side, p: Side): void => {
-    const binHz = r.tones.sampleRate / TONE_FFT
-    const near = (a: number, b: number): boolean => Math.abs(a - b) <= Math.max(MERGE_SHARE * Math.max(a, b), MERGE_BINS * binHz)
-    const all: (ToneFound & { raw: boolean })[] = [...r.tones.tones().map((t) => ({ ...t, raw: true })), ...p.tones.tones().map((t) => ({ ...t, raw: false }))].sort((a, b) => b.overDb - a.overDb)
-    const merged: (SpectrumTone & { processedLevel: number | null })[] = []
-    for (const t of all) {
-      const hit = merged.find((m) => near(m.freqHz, t.freqHz))
-      if (hit) {
-        if (t.raw) hit.inRaw = true
-        else {
-          hit.inProcessed = true
-          hit.processedLevel ??= t.levelDb
-        }
-        continue
-      }
-      merged.push({ freqHz: t.freqHz, levelDb: 0, overDb: t.overDb, inRaw: t.raw, inProcessed: !t.raw, processedLevel: t.raw ? null : t.levelDb })
-    }
-    out.tones = merged.slice(0, MAX_TONES).map(({ processedLevel, ...t }) => ({ ...t, levelDb: processedLevel ?? p.tones.levelAt(t.freqHz) }))
+    out.tones = mergeTones(r.tones, p.tones)
   }
 
   return {
@@ -79,4 +63,28 @@ export function createSpectrumAnalyzer(): SpectrumAnalyzer {
     read: () => out,
     reset,
   }
+}
+
+/**
+ * The steady tones of the mic alone (`r`) and as heard (`p`) as one list: sightings closer than MERGE_SHARE /
+ * MERGE_BINS are one tone, strongest (overDb) first, at most MAX_TONES, with the level as heard.
+ */
+export function mergeTones(r: ToneTracker, p: ToneTracker): SpectrumTone[] {
+  const binHz = r.sampleRate / TONE_FFT
+  const near = (a: number, b: number): boolean => Math.abs(a - b) <= Math.max(MERGE_SHARE * Math.max(a, b), MERGE_BINS * binHz)
+  const all: (ToneFound & { raw: boolean })[] = [...r.tones().map((t) => ({ ...t, raw: true })), ...p.tones().map((t) => ({ ...t, raw: false }))].sort((a, b) => b.overDb - a.overDb)
+  const merged: (SpectrumTone & { processedLevel: number | null })[] = []
+  for (const t of all) {
+    const hit = merged.find((m) => near(m.freqHz, t.freqHz))
+    if (hit) {
+      if (t.raw) hit.inRaw = true
+      else {
+        hit.inProcessed = true
+        hit.processedLevel ??= t.levelDb
+      }
+      continue
+    }
+    merged.push({ freqHz: t.freqHz, levelDb: 0, overDb: t.overDb, inRaw: t.raw, inProcessed: !t.raw, processedLevel: t.raw ? null : t.levelDb })
+  }
+  return merged.slice(0, MAX_TONES).map(({ processedLevel, ...t }) => ({ ...t, levelDb: processedLevel ?? p.levelAt(t.freqHz) }))
 }

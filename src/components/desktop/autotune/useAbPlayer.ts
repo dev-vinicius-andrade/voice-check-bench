@@ -114,6 +114,23 @@ export function useAbPlayer(before: Float32Array, after: Float32Array, sampleRat
     setPlaying(true)
   }
 
+  // new samples for the side that plays (a new render of After): the sound switches to them at the same position;
+  // paused, the next Play builds its buffer from them (startAt)
+  const played = useRef({ before, after })
+  const restart = useRef<(s: AbSide) => void>(() => undefined)
+  useEffect(() => {
+    restart.current = (s) => {
+      if (!now.current || s !== side) return
+      halt()
+      startAt(s)
+    }
+  })
+  useEffect(() => {
+    const was = played.current
+    played.current = { before, after }
+    for (const s of ['before', 'after'] as const) if (was[s] !== played.current[s]) restart.current(s)
+  }, [before, after])
+
   const toggle = (): void => {
     if (now.current) {
       halt()

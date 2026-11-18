@@ -18,6 +18,7 @@ import {
   yOfDbfs,
   yOfGain,
 } from './plotScale'
+import { drawSpectrum } from './useSpectrumCanvas'
 
 const box = plotBox(800, 260)
 
@@ -87,5 +88,60 @@ describe('plot scale', () => {
     expect(hzTick(50, num)).toBe('50')
     expect(hzTick(1000, num)).toBe('1k')
     expect(hzTick(10000, num)).toBe('10k')
+  })
+})
+
+describe('drawSpectrum', () => {
+  /** A 2D context that records the path calls of each fill and stroke. */
+  function recorder() {
+    let path: [string, number, number][] = []
+    const fills: [string, number, number][][] = []
+    const strokes: [string, number, number][][] = []
+    const ctx = {
+      lineWidth: 1,
+      strokeStyle: '',
+      fillStyle: '',
+      globalAlpha: 1,
+      beginPath: () => void (path = []),
+      moveTo: (x: number, y: number) => void path.push(['M', x, y]),
+      lineTo: (x: number, y: number) => void path.push(['L', x, y]),
+      closePath: () => void path.push(['Z', NaN, NaN]),
+      fill: () => void fills.push(path),
+      stroke: () => void strokes.push(path),
+    }
+    return { ctx: ctx as unknown as CanvasRenderingContext2D, fills, strokes }
+  }
+
+  it('fills the area under "as heard" down to the plot floor: curve → bottom-right → bottom-left, one subpath', () => {
+    const b = plotBox(800, 260)
+    const bottom = b.top + b.height
+    const freqsHz = plotFreqs()
+    // −78 dB at the low end sloping down to the floor at the high end (the shape that showed the diagonal edge)
+    const processedDb = freqsHz.map((_, i) => -78 - (40 * i) / (freqsHz.length - 1))
+    const analyzer = { push: () => undefined, reset: () => undefined, read: () => ({ freqsHz, rawDb: processedDb, processedDb, tones: [] }) }
+    const r = recorder()
+    drawSpectrum(r.ctx, b, analyzer, { grid: 'g', heard: 'h', raw: 'r' })
+    expect(r.fills).toHaveLength(1)
+    const p = r.fills[0]
+    // a single subpath: one moveTo, at its start
+    expect(p.filter(([c]) => c === 'M')).toHaveLength(1)
+    expect(p[0]).toEqual(['M', b.left, bottom])
+    // then the curve itself, every point
+    expect(p[1]).toEqual(['L', b.left, yOfDbfs(b, -78)])
+    expect(p.filter(([c]) => c === 'L')).toHaveLength(freqsHz.length + 1)
+    // then down to the bottom-right corner and closed (back along the bottom to bottom-left)
+    const [last, close] = p.slice(-2)
+    expect(last[0]).toBe('L')
+    expect(last[1]).toBeCloseTo(b.left + b.width, 6)
+    expect(last[2]).toBe(bottom)
+    expect(close[0]).toBe('Z')
+    // the two lines are open curves of the points, starting with a moveTo
+    const curves = r.strokes.slice(1)
+    expect(curves).toHaveLength(2)
+    for (const c of curves) {
+      expect(c[0][0]).toBe('M')
+      expect(c).toHaveLength(freqsHz.length)
+      expect(c.some(([k]) => k === 'Z')).toBe(false)
+    }
   })
 })

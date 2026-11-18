@@ -396,6 +396,24 @@
           "fineTune": "Fine-tune live",
           "calibrateHint": "Pauses still not quiet enough?",
           "calibrate": "Calibrate noise live"
+        },
+        "spectrum": {
+          "title": "Spectrum",
+          "help": "Drag a point to change the EQ: your recording is rendered again and After plays the change.",
+          "aria": "Spectrum of your recording from 20 Hz to 20 kHz: before and after, with the ReaEQ curve and its bands.",
+          "readout": "{{hz}} · {{level}} after",
+          "legend": {
+            "before": "Before",
+            "after": "After"
+          },
+          "noEq": "No ReaEQ is switched on in your effects, so there is no curve to change here.",
+          "rendering": "Rendering your recording with your changes…",
+          "mine": {
+            "title": "Your changes",
+            "undo": "Undo my changes"
+          },
+          "changedByYou": "changed by you afterwards",
+          "measuredBefore": "Measured before your own changes."
         }
       }
     },

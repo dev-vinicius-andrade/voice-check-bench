@@ -397,6 +397,24 @@
           "fineTune": "Ajuste fino ao vivo",
           "calibrateHint": "As pausas ainda não estão silenciosas o bastante?",
           "calibrate": "Calibrar ruído ao vivo"
+        },
+        "spectrum": {
+          "title": "Espectro",
+          "help": "Arraste um ponto para mudar o EQ: a gravação é renderizada de novo e Depois toca a mudança.",
+          "aria": "Espectro da sua gravação de 20 Hz a 20 kHz: antes e depois, com a curva do ReaEQ e as bandas dele.",
+          "readout": "{{hz}} · {{level}} depois",
+          "legend": {
+            "before": "Antes",
+            "after": "Depois"
+          },
+          "noEq": "Nenhum ReaEQ está ligado nos seus efeitos, então não há curva para mudar aqui.",
+          "rendering": "Renderizando sua gravação com as suas mudanças…",
+          "mine": {
+            "title": "Suas mudanças",
+            "undo": "Desfazer minhas mudanças"
+          },
+          "changedByYou": "mudado por você depois",
+          "measuredBefore": "Medido antes das suas mudanças."
         }
       }
     },

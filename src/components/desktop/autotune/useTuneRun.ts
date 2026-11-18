@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { errorMsg } from '../../../desktop/errors'
-import { retune, tune, type Bother, type TuneChange, type TuneGoals, type TuneResult, type TuneStage } from '../../../desktop/tune'
+import { retune, tune, type Bother, type TuneGoals, type TuneResult, type TuneStage } from '../../../desktop/tune'
 import type { TuneBridge, TuneSession } from '../../../desktop/tune/renderer'
+import type { ChainSlot, Change, ValueChange } from '../../../desktop/advice/types'
 import type { WlChainChange, WlSnapshot } from '../../../desktop/types'
 import type { Msg } from '../../../plain/types'
 
@@ -18,8 +19,12 @@ export interface TuneRun {
   state: TuneRunState
   /** The Settings.json read right before the session opened (Save's hash and entries). */
   snapshot: WlSnapshot | null
-  /** Wave Link changes for these tuned changes, from the open session (rejects when none is open). */
-  exportChanges(changes: readonly TuneChange[]): Promise<WlChainChange[]>
+  /** The open session's baseline chain (null until a session opened, and after cancel). */
+  chain: ChainSlot[] | null
+  /** Wave Link changes for these changes (a result's, hand edits included), from the open session (rejects when none is open). */
+  exportChanges(changes: readonly (Change & { also?: readonly ValueChange[] })[]): Promise<WlChainChange[]>
+  /** Renders the take with `changes` on top of the baseline through the open session (rejects when none is open). */
+  render(changes: readonly Change[]): Promise<Float32Array>
   run(take: Float32Array, goals: TuneGoals): Promise<void>
   /** Tune again from the current result with what the person said. */
   adjust(feedback: readonly Bother[] | 'tooProcessed'): Promise<void>
@@ -31,6 +36,7 @@ export interface TuneRun {
 export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
   const [state, setState] = useState<TuneRunState>({ step: 'idle' })
   const [snapshot, setSnapshot] = useState<WlSnapshot | null>(null)
+  const [chain, setChain] = useState<ChainSlot[] | null>(null)
   const session = useRef<{ take: Float32Array; s: TuneSession } | null>(null)
   const runId = useRef(0)
   const take = useRef<Float32Array | null>(null)
@@ -65,6 +71,7 @@ export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
             return
           }
           setSnapshot(snap)
+          setChain(s.chain)
           session.current = { take: t, s }
         }
         const current = session.current
@@ -91,11 +98,13 @@ export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
   const cancel = (): void => {
     runId.current++
     closeSession()
+    setChain(null)
     setState({ step: 'idle' })
   }
 
-  const exportChanges = (changes: readonly TuneChange[]): Promise<WlChainChange[]> =>
+  const exportChanges: TuneRun['exportChanges'] = (changes) =>
     session.current ? session.current.s.exportChanges(changes) : Promise.reject(new Error('no tune session'))
+  const render: TuneRun['render'] = (changes) => (session.current ? session.current.s.render(changes) : Promise.reject(new Error('no tune session')))
 
-  return { state, snapshot, exportChanges, run, adjust, cancel }
+  return { state, snapshot, chain, exportChanges, render, run, adjust, cancel }
 }

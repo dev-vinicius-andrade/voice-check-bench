@@ -6,6 +6,7 @@ import { analyze, digitalSilence, FLOOR_DB, SPEECH_MARGINS } from '../../audio/a
 import { adb, db, median, pct, powerSpec } from '../../audio/dsp'
 import { BANDS, QUIET_SEC } from '../../audio/reference'
 import { isAnalysisError, type Analysis, type VoiceStyle } from '../../types'
+import { steadyTonesOf } from '../spectrum/steady'
 import { N_BANDS, styleOffsets } from './targets'
 
 export const TUNE_SAMPLE_RATE = 48000
@@ -49,6 +50,18 @@ export const CUT_MIN_FRAMES = 2
 export const MASK_DB = 3
 export const NOISE_FLOOR_SHARE = 0.1
 export const MIN_PAUSE_WINDOWS = 3
+/**
+ * Steady tones in the tone measure. A steady narrow tone of the RAW take (a whistle of the mic chain, coil whine, a
+ * hum's harmonic: steadyTonesOf, the spectrum plot's own tone tracker over the whole take) is not voice: its FFT_N
+ * bins, the tone's bin ± TONE_CUT_BINS, are left out of every cell sum of the tone measure (speech and pause windows,
+ * the raw take's mask test and every render alike). The tones come from the raw take only, so a render with the tone
+ * cut and one with it are measured on the same bins. Width: the Hann window's main lobe is ±2 bins; 2 bins more keep
+ * all but −47.5 dB of the tone's power out (±2 alone: −33 dB; a 27 dB whistle would still show) and cover the
+ * tracker's 2.9 Hz resolution and a tone drifting a few Hz. At 48 kHz: ±23 Hz.
+ * The cell keeps its own density: its sum is scaled back to all its bins (bins / bins kept); a cell with none left
+ * takes its band's mean density; a band with none left carries no measurable voice (masked).
+ */
+export const TONE_CUT_BINS = 4
 /**
  * Pumping: a gate that turns the room down in the pauses and lets it back between the words. Counted when the room is
  * audible in the ungated chain (its voice less than PUMP_AUDIBLE_SNR_DB over its pauses), as the dB the gate takes off
@@ -132,8 +145,12 @@ export interface TakeMask {
   rawFine: Float32Array
   /** The frequency of a mains hum in the raw take's pauses (the strongest peak of humPeaks), Hz; NaN without one. */
   humHz: number
-  /** Cell of each FFT bin (−1: outside the bands). */
+  /** Steady tones of the raw take (steadyTonesOf), Hz, strongest first; empty without one. Their bins: TONE_CUT_BINS. */
+  steadyHz: number[]
+  /** Cell of each FFT bin (−1: outside the bands, or a steady tone's bin). */
   binCell: Int16Array
+  /** Per cell, its bins and the bins left after the steady tones' (TONE_CUT_BINS); null when no bin is left out. */
+  cellFill: CellFill | null
   /** Centre frequency of each cell, Hz. */
   cellHz: number[]
   /** The raw take's analysis. */
@@ -195,8 +212,17 @@ function frameLevels(x: Float32Array, win: number, frames: number): Float64Array
   return fr
 }
 
-/** Cell layout of the 8192-point spectrum: each band's bins (the same bins analyze() sums) split into log cells. */
-function cellLayout(sampleRate: number): { binCell: Int16Array; cellHz: number[] } {
+/** Bins of each cell, and those left after the steady tones' (TONE_CUT_BINS). */
+export interface CellFill {
+  bins: Int16Array
+  kept: Int16Array
+}
+
+/**
+ * Cell layout of the 8192-point spectrum: each band's bins (the same bins analyze() sums) split into log cells; the
+ * bins of the steady tones at `steadyHz` (± TONE_CUT_BINS) belong to no cell. `cellFill` null when no bin is left out.
+ */
+function cellLayout(sampleRate: number, steadyHz: readonly number[] = []): { binCell: Int16Array; cellHz: number[]; cellFill: CellFill | null } {
   const binHz = sampleRate / FFT_N
   const binCell = new Int16Array(FFT_N / 2 + 1).fill(-1)
   const cellHz: number[] = []
@@ -208,7 +234,50 @@ function cellLayout(sampleRate: number): { binCell: Int16Array; cellHz: number[]
       binCell[i] = bi * CELLS_PER_BAND + k
     }
   })
-  return { binCell, cellHz }
+  const bins = new Int16Array(N_CELLS)
+  for (const c of binCell) if (c >= 0) bins[c]++
+  let cut = false
+  for (const hz of steadyHz) {
+    const k = Math.round(hz / binHz)
+    for (let i = Math.max(0, k - TONE_CUT_BINS); i <= Math.min(binCell.length - 1, k + TONE_CUT_BINS); i++) {
+      if (binCell[i] >= 0) cut = true
+      binCell[i] = -1
+    }
+  }
+  if (!cut) return { binCell, cellHz, cellFill: null }
+  const kept = new Int16Array(N_CELLS)
+  for (const c of binCell) if (c >= 0) kept[c]++
+  return { binCell, cellHz, cellFill: { bins, kept } }
+}
+
+/** A band whose bins are all a steady tone's: no voice can be measured there. */
+const bandCut = (fill: CellFill | null, b: number): boolean => {
+  if (!fill) return false
+  let bins = 0
+  let kept = 0
+  for (let k = 0; k < CELLS_PER_BAND; k++) {
+    bins += fill.bins[b * CELLS_PER_BAND + k]
+    kept += fill.kept[b * CELLS_PER_BAND + k]
+  }
+  return bins > 0 && kept === 0
+}
+
+/** Cell sums over the bins kept, scaled back to all the cell's bins (TONE_CUT_BINS); a cell with none kept takes its band's mean density. */
+function refill(cells: Float64Array, fill: CellFill): void {
+  for (let b = 0; b < N_BANDS; b++) {
+    let sum = 0
+    let kept = 0
+    for (let k = 0; k < CELLS_PER_BAND; k++) {
+      sum += cells[b * CELLS_PER_BAND + k]
+      kept += fill.kept[b * CELLS_PER_BAND + k]
+    }
+    const density = kept ? sum / kept : 0
+    for (let k = 0; k < CELLS_PER_BAND; k++) {
+      const c = b * CELLS_PER_BAND + k
+      if (fill.kept[c] === fill.bins[c]) continue
+      cells[c] = fill.kept[c] ? (cells[c] * fill.bins[c]) / fill.kept[c] : density * fill.bins[c]
+    }
+  }
 }
 
 /**
@@ -216,7 +285,8 @@ function cellLayout(sampleRate: number): { binCell: Int16Array; cellHz: number[]
  * that clear the room noise by the first SPEECH_MARGINS entry giving 20 frames, voiced = within 12 dB of the speech
  * median, speech windows = 8192-point windows with ≥ 60 % speech frames. Pauses = frames of the quiet lead (0.6 s in,
  * 0.3 s before its end) and between the words that stay within PAUSE_MARGIN_DB of the room noise and are not next to
- * speech. Null when the take cannot be analysed (not enough speech).
+ * speech. Steady tones (steadyHz) are found once here; their bins stay out of the tone measure (TONE_CUT_BINS).
+ * Null when the take cannot be analysed (not enough speech).
  */
 export function prepareTake(take: Float32Array, sampleRate = TUNE_SAMPLE_RATE): TakeMask | null {
   const a = analyze(take, sampleRate)
@@ -278,10 +348,12 @@ export function prepareTake(take: Float32Array, sampleRate = TUNE_SAMPLE_RATE): 
     for (let f = Math.floor(st / win); f <= Math.floor((st + FFT_N - 1) / win); f++) if (f >= frames || !isPause[f]) all = false
     if (all) pauseWindows.push(st)
   }
-  const layout = cellLayout(sampleRate)
-  const voice = sumCells(take, windows, layout.binCell)
-  const room = sumCells(take, pauseWindows, layout.binCell)
+  const steadyHz = steadyTonesOf(take, sampleRate).map((t) => t.freqHz)
+  const layout = cellLayout(sampleRate, steadyHz)
+  const voice = sumCells(take, windows, layout)
+  const room = sumCells(take, pauseWindows, layout)
   const masked = Array.from({ length: N_BANDS }, (_, b) => {
+    if (bandCut(layout.cellFill, b)) return true
     if (pauseWindows.length < MIN_PAUSE_WINDOWS || !windows.length) return false
     let s = 0
     let n = 0
@@ -294,7 +366,7 @@ export function prepareTake(take: Float32Array, sampleRate = TUNE_SAMPLE_RATE): 
   const roomFrames = roomOnly(take, sampleRate, frames, speech, pause)
   const rawFine = fineLevels(take, sampleRate)
   const humHz = mainsHum(take, pauseWindows, sampleRate)
-  return { sampleRate, win, frames, rawLevels: fr, speech, loud, quiet, pause, seconds, windows, pauseWindows, masked, roomFrames, rawFine, humHz, ...layout, analysis: a }
+  return { sampleRate, win, frames, rawLevels: fr, speech, loud, quiet, pause, seconds, windows, pauseWindows, masked, roomFrames, rawFine, humHz, steadyHz, ...layout, analysis: a }
 }
 
 /**
@@ -426,9 +498,10 @@ export function topDb(mask: Pick<TakeMask, 'windows' | 'pauseWindows' | 'sampleR
   return { pause: top(mask.pauseWindows), speech: top(mask.windows) }
 }
 
-/** Summed power per cell over FFT windows. */
-function sumCells(x: Float32Array, starts: readonly number[], binCell: Int16Array): Float64Array {
+/** Summed power per cell over FFT windows (the steady tones' bins left out: refill). */
+function sumCells(x: Float32Array, starts: readonly number[], layout: Pick<TakeMask, 'binCell' | 'cellFill'>): Float64Array {
   const cells = new Float64Array(N_CELLS)
+  const { binCell } = layout
   for (const st of starts) {
     const p = powerSpec(x, st, FFT_N)
     for (let i = 0; i < p.length; i++) {
@@ -436,13 +509,14 @@ function sumCells(x: Float32Array, starts: readonly number[], binCell: Int16Arra
       if (c >= 0) cells[c] += p[i]
     }
   }
+  if (layout.cellFill) refill(cells, layout.cellFill)
   return cells
 }
 
 /** The speech spectrum of a render without the room: masked bands NaN, the render's pause spectrum taken off the rest. */
 function voiceCells(mask: TakeMask, audio: Float32Array): Float64Array {
-  const cells = sumCells(audio, mask.windows, mask.binCell)
-  const room = mask.pauseWindows.length >= MIN_PAUSE_WINDOWS ? sumCells(audio, mask.pauseWindows, mask.binCell) : null
+  const cells = sumCells(audio, mask.windows, mask)
+  const room = mask.pauseWindows.length >= MIN_PAUSE_WINDOWS ? sumCells(audio, mask.pauseWindows, mask) : null
   const k = mask.windows.length / Math.max(1, mask.pauseWindows.length)
   for (let c = 0; c < N_CELLS; c++) {
     if (mask.masked[Math.floor(c / CELLS_PER_BAND)]) cells[c] = NaN

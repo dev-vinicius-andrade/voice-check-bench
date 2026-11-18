@@ -8,17 +8,28 @@ import { useTranslation } from 'react-i18next'
 import type { SaveWav } from '../../../desktop/bridge'
 import { fmtClock } from '../../../i18n/format'
 import { TakeDownloads } from './TakeDownloads'
-import { useAbPlayer, type AbSide } from './useAbPlayer'
+import { useAbPlayer, type AbPlayer as AbPlayerState, type AbSide } from './useAbPlayer'
 
 const num = (v: number | readonly number[]): number => (typeof v === 'number' ? v : (v[0] ?? 0))
+
+interface AbPlayerProps {
+  before: Float32Array
+  after: Float32Array
+  saveWav?: SaveWav
+}
 
 /**
  * Before / After on the same take: Play / Pause, Stop (back to the start), a switch that keeps the position, a seek bar
  * with elapsed / total time, and a WAV download of each side.
  */
-export function AbPlayer({ before, after, saveWav }: { before: Float32Array; after: Float32Array; saveWav?: SaveWav }) {
+export function AbPlayer(props: AbPlayerProps) {
+  const p = useAbPlayer(props.before, props.after)
+  return <AbPlayerView {...props} p={p} />
+}
+
+/** The player's controls on a player state owned elsewhere (the result step shares it with the spectrum). */
+export function AbPlayerView({ before, after, saveWav, p }: AbPlayerProps & { p: AbPlayerState }) {
   const { t } = useTranslation()
-  const p = useAbPlayer(before, after)
   // while the thumb is dragged it shows where it is; the take moves there when it is let go
   const [scrub, setScrub] = useState<number | null>(null)
   const shown = scrub ?? p.position

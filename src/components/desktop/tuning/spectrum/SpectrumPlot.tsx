@@ -27,13 +27,16 @@ interface SpectrumPlotProps {
   bands: readonly EqPoint[] | null
   selected: number | null
   drag: EqDrag
+  /** i18n keys of the plot's label and hover readout ({{hz}}, {{level}}); the live screen's by default. */
+  ariaKey?: string
+  readoutKey?: string
 }
 
 /**
  * The plot: grid and spectra on a canvas (useSpectrumCanvas), then in SVG the axis labels, the EQ curve, the
  * steady-tone markers and the band handles; the hover readout (frequency, level as heard) in the corner.
  */
-export function SpectrumPlot({ frame, svg, size, box, freqs, analyzer, tones, bands, selected, drag }: SpectrumPlotProps) {
+export function SpectrumPlot({ frame, svg, size, box, freqs, analyzer, tones, bands, selected, drag, ariaKey = 'desktop.tune.spectrum.aria', readoutKey = 'desktop.tune.spectrum.readout' }: SpectrumPlotProps) {
   const { t } = useTranslation()
   const [hoverHz, setHoverHz] = useState<number | null>(null)
   const canvas = useSpectrumCanvas(analyzer, size.w, size.h)
@@ -63,7 +66,7 @@ export function SpectrumPlot({ frame, svg, size, box, freqs, analyzer, tones, ba
       <svg
         ref={svg}
         role="group"
-        aria-label={t('desktop.tune.spectrum.aria')}
+        aria-label={t(ariaKey)}
         className="absolute inset-0 block h-full w-full overflow-visible"
         style={{ fontFamily: 'inherit' }}
         onPointerMove={(e) => {
@@ -86,7 +89,7 @@ export function SpectrumPlot({ frame, svg, size, box, freqs, analyzer, tones, ba
           sx={{ top: box.top + 2, right: size.w - box.left - box.width + 6, fontVariantNumeric: 'tabular-nums' }}
         >
           {level !== null && level !== undefined && level > SILENT_DB
-            ? t('desktop.tune.spectrum.readout', { hz: fmtHz(hoverHz), level: fmtDbfs(level, 1) })
+            ? t(readoutKey, { hz: fmtHz(hoverHz), level: fmtDbfs(level, 1) })
             : fmtHz(hoverHz)}
         </Typography>
       )}

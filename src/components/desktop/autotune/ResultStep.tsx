@@ -10,36 +10,47 @@ import type { Bother, TuneResult } from '../../../desktop/tune'
 import { screenToHash } from '../../../hooks/useHashRoute'
 import { canonicalName } from '../../../wavelink/plugins'
 import { SaveDialog } from '../tuning/SaveDialog'
-import { AbPlayer } from './AbPlayer'
+import { AbPlayerView } from './AbPlayer'
 import { AdjustPanel } from './AdjustPanel'
 import { ChangesList } from './ChangesList'
 import { MetricTable } from './MetricTable'
+import { TakeSpectrumCard } from './spectrum/TakeSpectrumCard'
 import { UnmetList } from './UnmetList'
+import { useAbPlayer } from './useAbPlayer'
+import type { ManualEq } from './useManualEq'
 import type { TuneSave } from './useTuneSave'
 
 interface ResultStepProps {
   take: Float32Array
+  /** What is heard and measured: the tune result, with the hand edits rendered when there are any. */
   result: TuneResult
+  manual: ManualEq
   save: TuneSave
   onAdjust: (feedback: readonly Bother[] | 'tooProcessed') => void
   onRecordAgain: () => void
 }
 
-/** Step 4: Before / After on the same take, what changed and why, what it could not do; save, adjust or record again. */
-export function ResultStep({ take, result, save, onAdjust, onRecordAgain }: ResultStepProps) {
+/**
+ * Step 4: Before / After on the same take, its spectrum with the ReaEQ to change by hand, what changed and why, what it
+ * could not do; save, adjust or record again.
+ */
+export function ResultStep({ take, result, manual, save, onAdjust, onRecordAgain }: ResultStepProps) {
   const { t } = useTranslation()
   const [adjusting, setAdjusting] = useState(false)
   const rows = useMemo(() => metricRows(result), [result])
   const none = result.changes.length === 0
+  // one player for the controls and the spectrum (the plot follows where it is)
+  const player = useAbPlayer(take, result.processed)
   const nameOf = (i: number): string => canonicalName(save.entries.find((e) => e.index === i)?.name ?? '')
   return (
     <Paper component="section" className="grid gap-4 p-4" aria-labelledby="autotune-result-title">
       <Typography id="autotune-result-title" variant="h6" component="h2">{t('desktop.autotune.ui.result.title')}</Typography>
       {none && <Alert severity="success" data-testid="autotune-none">{t('desktop.autotune.ui.result.none')}</Alert>}
-      <AbPlayer before={take} after={result.processed} />
+      <AbPlayerView before={take} after={result.processed} p={player} />
+      <TakeSpectrumCard take={take} processed={result.processed} manual={manual} player={player} />
       {rows.length > 0 && <MetricTable rows={rows} />}
-      {!none && <ChangesList changes={result.changes} />}
-      <UnmetList unmet={result.unmet} />
+      {!none && <ChangesList changes={result.changes} edits={manual.edits} />}
+      <UnmetList unmet={result.unmet} edited={manual.edits.length > 0} />
       {save.saved && (
         <Alert severity="success" data-testid="autotune-saved">
           {t('desktop.autotune.ui.result.saved')}{' '}
@@ -66,8 +77,8 @@ export function ResultStep({ take, result, save, onAdjust, onRecordAgain }: Resu
       ) : (
         <div className="flex flex-wrap justify-end gap-2">
           <Button onClick={onRecordAgain}>{t('desktop.autotune.ui.result.again')}</Button>
-          <Button variant="outlined" onClick={() => setAdjusting(true)}>{t('desktop.autotune.ui.result.adjust')}</Button>
-          <Button variant="contained" onClick={() => void save.flow.open()} disabled={none || save.saved}>
+          <Button variant="outlined" onClick={() => setAdjusting(true)} disabled={manual.busy}>{t('desktop.autotune.ui.result.adjust')}</Button>
+          <Button variant="contained" onClick={() => void save.flow.open()} disabled={(none && manual.edits.length === 0) || save.saved || manual.busy}>
             {t('desktop.autotune.ui.result.save')}
           </Button>
         </div>

@@ -103,6 +103,36 @@ describe('A/B player controls', () => {
     expect(audio.sources[2].start).toHaveBeenCalledWith(0, 5)
   })
 
+  it('a new After render switches the sound at the same position, playing or paused', () => {
+    vi.useFakeTimers()
+    const tree = (after: Float32Array) => (
+      <ThemeProvider theme={theme}>
+        <AbPlayer before={BEFORE} after={after} />
+      </ThemeProvider>
+    )
+    const r = render(tree(AFTER))
+    fireEvent.click(button(U.play))
+    audio.ctx().currentTime = 6
+    tick()
+    const next = new Float32Array(SR * 25).fill(0.5)
+    r.rerender(tree(next))
+    expect(audio.sources[0].stop).toHaveBeenCalled()
+    expect(audio.sources).toHaveLength(2)
+    expect(audio.sources[1].start).toHaveBeenCalledWith(0, 6)
+    expect(audio.sources[1].buffer?.data[0]).toBe(0.5)
+    expect(button(U.pause)).toBeTruthy()
+    expect(time()).toBe('0:06 / 0:25')
+    audio.ctx().currentTime = 9
+    fireEvent.click(button(U.pause))
+    const last = new Float32Array(SR * 25).fill(0.25)
+    r.rerender(tree(last))
+    expect(audio.sources).toHaveLength(2)
+    expect(time()).toBe('0:09 / 0:25')
+    fireEvent.click(button(U.play))
+    expect(audio.sources[2].start).toHaveBeenCalledWith(0, 9)
+    expect(audio.sources[2].buffer?.data[0]).toBe(0.25)
+  })
+
   it('the end of the take goes back to the start', () => {
     vi.useFakeTimers()
     view()

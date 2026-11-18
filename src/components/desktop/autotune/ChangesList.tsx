@@ -4,12 +4,22 @@ import AccordionSummary from '@mui/material/AccordionSummary'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useTranslation } from 'react-i18next'
+import type { ManualEdit } from '../../../desktop/autotune/manualEq'
 import type { TuneChange } from '../../../desktop/tune'
 import { useMsg } from '../../common/MsgText'
 import { bandKey, effectValue } from './format'
 
-/** "N changes, each with its reason": the reason, the exact change in bold and what it measurably did. */
-export function ChangesList({ changes }: { changes: readonly TuneChange[] }) {
+/** A hand edit sets the change's own value or one of its `also` values (same slot and key). */
+const editedByHand = (c: TuneChange, edits: readonly ManualEdit[]): boolean => {
+  const hit = (slot: number, key: string): boolean => edits.some((e) => e.slot === slot && e.key === key)
+  return (c.kind === 'value' && hit(c.slot, c.key)) || (c.also ?? []).some((a) => hit(a.slot, a.key))
+}
+
+/**
+ * "N changes, each with its reason": the reason, the exact change in bold and what it measurably did. A change whose
+ * value was then set by hand (`edits`) has its line struck through, with a note.
+ */
+export function ChangesList({ changes, edits = [] }: { changes: readonly TuneChange[]; edits?: readonly ManualEdit[] }) {
   const { t } = useTranslation()
   const tm = useMsg()
   const none = t('desktop.autotune.ui.result.metrics.note.noBursts')
@@ -23,7 +33,14 @@ export function ChangesList({ changes }: { changes: readonly TuneChange[] }) {
           {changes.map((c) => (
             <li key={c.id}>
               <Typography variant="body2">{tm(c.titleMsg)}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>{tm(c.changeMsg)}</Typography>
+              {editedByHand(c, edits) ? (
+                <Typography variant="body2" data-testid="autotune-change-overridden">
+                  <s style={{ fontWeight: 700 }}>{tm(c.changeMsg)}</s>{' '}
+                  <Typography component="span" variant="caption" color="text.secondary">{t('desktop.autotune.ui.spectrum.changedByYou')}</Typography>
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>{tm(c.changeMsg)}</Typography>
+              )}
               <Typography variant="caption" color="text.secondary">
                 {t(`desktop.autotune.ui.result.effect.${c.effect.metric}`, {
                   before: effectValue(c.effect, c.effect.before, none),

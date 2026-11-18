@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { ThemeProvider } from '@mui/material/styles'
 import i18n from '../../../i18n'
 import en from '../../../i18n/locales/en/desktop.json'
+import type { ChainSlot } from '../../../desktop/advice/types'
 import { desktopBridge, type DesktopBridge } from '../../../desktop/bridge'
 import { INPUT_KEY, snapshot } from '../../../desktop/testChain'
 import type { TuneChange, TuneResult } from '../../../desktop/tune'
@@ -10,6 +11,7 @@ import { testTake } from '../../../desktop/tune/testTake'
 import type { WlChainChange, WlFlowReport, WlSnapshot } from '../../../desktop/types'
 import { theme } from '../../../theme'
 import { ResultStep } from './ResultStep'
+import { useManualEq } from './useManualEq'
 import type { TuneRun } from './useTuneRun'
 import { saveOutcome, useTuneSave } from './useTuneSave'
 
@@ -34,10 +36,13 @@ const report = (over: Partial<WlFlowReport>): WlFlowReport => ({
 })
 const UNWRITTEN = report({ backupPath: null, wasRunning: false, restarted: false, written: false, hash: 'h1', steps: ['checked'] })
 
+const NO_CHAIN: ChainSlot[] = []
+
 function Harness({ bridge, snap }: { bridge: DesktopBridge; snap: WlSnapshot }) {
-  const run: TuneRun = { state: { step: 'done', result: RESULT }, snapshot: snap, exportChanges: async () => WL, run: async () => undefined, adjust: async () => undefined, cancel: () => undefined }
-  const save = useTuneSave(bridge, run, RESULT)
-  return <ResultStep take={TAKE} result={RESULT} save={save} onAdjust={() => undefined} onRecordAgain={() => undefined} />
+  const run: TuneRun = { state: { step: 'done', result: RESULT }, snapshot: snap, chain: NO_CHAIN, exportChanges: async () => WL, render: async () => TAKE, run: async () => undefined, adjust: async () => undefined, cancel: () => undefined }
+  const manual = useManualEq(TAKE, run.chain, RESULT, run.render)
+  const save = useTuneSave(bridge, run, RESULT, manual.edits)
+  return <ResultStep take={TAKE} result={RESULT} manual={manual} save={save} onAdjust={() => undefined} onRecordAgain={() => undefined} />
 }
 
 function view(exportImpl: DesktopBridge['wavelinkExport'], snap = snapshot()) {
@@ -64,7 +69,11 @@ async function saveAndConfirm(): Promise<HTMLElement> {
   return dialog
 }
 
-beforeAll(() => i18n.changeLanguage('en'))
+beforeAll(async () => {
+  await i18n.changeLanguage('en')
+  // the result step's spectrum draws on a canvas, which jsdom does not have
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+})
 afterEach(cleanup)
 
 describe('saveOutcome', () => {

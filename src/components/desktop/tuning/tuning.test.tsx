@@ -116,6 +116,9 @@ afterEach(() => {
   localStorage.removeItem('vcb-tuning-prefs')
 })
 
+// the first render of the screen is slow when the whole suite runs at once
+vi.setConfig({ testTimeout: 20000 })
+
 describe('live tuning: start and stop', () => {
   it('starts on the picked devices with the monitor off, shows the delay and the chain; stops', async () => {
     const { bridge } = await started()

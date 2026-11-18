@@ -79,6 +79,14 @@ export class DisplaySpectrum {
     this.db.fill(FLOOR_DB)
   }
 
+  /**
+   * One power spectrum of DISPLAY_FFT points (bins 0..DISPLAY_FFT/2, framer.ts units) taken in directly, smoothed like
+   * a frame of push(). The first one after a reset is read as it is.
+   */
+  pushPower(p: Float64Array): void {
+    this.update(p)
+  }
+
   private update(p: Float64Array): void {
     const { lo, hi, at } = this.map
     const db = this.db
