@@ -1,0 +1,404 @@
+// @vitest-environment node
+// Switch candidates (ReaFIR off, Noise Removal on), a band's frequency / width moves, complaints the measurement
+// contradicts, and that all of it stays deterministic and inside the budget and the caps.
+import { describe, expect, it } from 'vitest'
+import { biquad } from '../../audio/eqCurve'
+import { canonicalName } from '../../wavelink/plugins'
+import { comp, eq, gate, noiseRemoval } from '../advice/testFixtures'
+import type { ChainSlot } from '../advice/types'
+import { EqCurves, eqHandles, planShaped, planTone, reshape, sameShape, SHAPE_BW, shapeVariants } from './eqModel'
+import { fakeRenderer, type FakeOptions } from './fakeRenderer'
+import { cutOf, fineLevels, measure, prepareTake } from './measure'
+import { cutsSpeech, scoreOf, worseBecause } from './score'
+import { DEFAULT_MAX_RENDERS, STAGE_RENDERS } from './session'
+import { targetsOf } from './targets'
+import { testTake, type TestTakeOptions } from './testTake'
+import { retune, tune } from './tune'
+import { engineChanges, valueChanges, type TuneGoals, type TuneInput, type TuneResult } from './types'
+
+const TIMEOUT = 60_000
+const GOOD_WET = 8.5
+const goalsOf = (g: Partial<TuneGoals> = {}): TuneGoals => ({ use: 'streaming', style: 'natural', bothers: [], amount: 'medium', ...g })
+const reafir = (on = true): ChainSlot => ({ index: 9, kind: 'reafir', name: 'ReaFir (ReaPlugs Edition)', on, values: {} })
+/** ReaFIR → (Noise Removal, switched off) → ReaEQ → ReaComp, in chain order. */
+const firChain = (nr = false): ChainSlot[] => [{ ...reafir(), index: -1 }, ...(nr ? [noiseRemoval(44, false)] : []), eq(), comp(GOOD_WET)]
+
+async function run(take: Partial<TestTakeOptions>, chain: ChainSlot[], goals: Partial<TuneGoals> = {}, extra: Partial<TuneInput> = {}, fake: FakeOptions = {}) {
+  const x = testTake({ speechDb: -21, noiseDb: -80, ...take })
+  const { render, calls } = fakeRenderer(x, chain, fake)
+  const input: TuneInput = { take: x, chain, render, goals: goalsOf(goals), ...extra }
+  const result = await tune(input)
+  return { result, calls, input, render, x }
+}
+
+const unmetKeys = (r: TuneResult): string[] => r.unmet.map((m) => m.key.replace('desktop.autotune.unmet.', ''))
+const switches = (r: TuneResult) => r.changes.filter((c) => c.kind === 'switch')
+const sameAudio = (a: Float32Array, b: Float32Array): boolean => a.length === b.length && a.every((v, i) => v === b[i])
+
+/** A noise profile that does not fit: every 10 ms block under `db` dBFS is cut out (quiet words with the room). */
+const eatsQuiet = (db: number) => (x: Float32Array, sr: number): void => {
+  const w = Math.round(0.01 * sr)
+  for (let s = 0; s < x.length; s += w) {
+    let e = 0
+    for (let i = s; i < Math.min(x.length, s + w); i++) e += x[i] * x[i]
+    if (10 * Math.log10(e / w + 1e-20) < db) x.fill(0, s, Math.min(x.length, s + w))
+  }
+}
+/** A ReaFIR that only takes the room down: blocks under `db` dBFS lose 20 dB, the voice is untouched. */
+const onlyRoom = (db: number) => (x: Float32Array, sr: number): void => {
+  const w = Math.round(0.01 * sr)
+  for (let s = 0; s < x.length; s += w) {
+    let e = 0
+    for (let i = s; i < Math.min(x.length, s + w); i++) e += x[i] * x[i]
+    if (10 * Math.log10(e / w + 1e-20) < db) for (let i = s; i < Math.min(x.length, s + w); i++) x[i] *= 0.1
+  }
+}
+
+describe('tune: ReaFIR off as a candidate', () => {
+  it('a ReaFIR that cuts the quiet words is switched off before anything else, and the result says why', async () => {
+    const { result: r, calls } = await run({ phraseDb: [0, 0, -12] }, firChain(), {}, {}, { reafir: eatsQuiet(-30) })
+    expect(r.before.wordLossDb).toBeGreaterThan(5)
+    expect(r.after.wordLossDb).toBeLessThanOrEqual(2)
+    const [off] = switches(r)
+    expect(off).toMatchObject({ kind: 'switch', on: false, slot: -1, stage: 'baseline' })
+    expect(off.titleMsg.key).toBe('desktop.autotune.reason.switch.reafirDamage')
+    expect(off.changeMsg).toEqual({ key: 'desktop.advice.change.off', params: { plugin: canonicalName(reafir().name) } })
+    expect(off.effect).toMatchObject({ metric: 'wordLossDb', before: r.before.wordLossDb, after: r.after.wordLossDb })
+    expect('from' in off || 'to' in off).toBe(false)
+    // it was the second render: the chain as it is, then the chain without it
+    expect(calls[1]).toMatchObject([{ kind: 'switch', slot: -1, on: false }])
+    expect(unmetKeys(r)).not.toContain('chopped')
+  }, TIMEOUT)
+
+  it('a ReaFIR that hollows out the lows of a healthy voice is switched off: both ends were rendered and the one without it measured better', async () => {
+    const { result: r, render } = await run({}, firChain())
+    // with it the boom is gone and no EQ band may add that much
+    expect(r.before.tone[1]).toBeLessThan(-8)
+    expect(switches(r)).toMatchObject([{ kind: 'switch', on: false, stage: 'noise' }])
+    expect(switches(r)[0].titleMsg).toEqual({ key: 'desktop.autotune.reason.switch.reafirTone', params: { lo: 80, hi: 160 } })
+    expect(Math.abs(r.after.tone[1])).toBeLessThan(3)
+    expect(r.after.score.tone).toBeLessThan(r.before.score.tone - 5)
+    expect(r.log.some((l) => l.event === 'keep' && /reafir\[-1\] off, with the tone tuned for it/.test(l.text))).toBe(true)
+    // the EQ moves tried with ReaFIR on are not part of the result
+    expect(sameAudio(await render(engineChanges(r.changes)), r.processed)).toBe(true)
+  }, TIMEOUT)
+
+  it('a ReaFIR that only takes the room down stays on: without it the tone is no better and the room is louder', async () => {
+    // a voice that is thin by itself: the EQ cannot repair it with or without ReaFIR
+    const { result: r, calls, render } = await run({ noiseDb: -45, tone: [0, -20, -9] }, firChain(), {}, {}, { reafir: onlyRoom(-38) })
+    expect(calls.some((c) => c.some((x) => x.kind === 'switch'))).toBe(true)
+    expect(switches(r)).toEqual([])
+    expect(r.log.some((l) => l.event === 'revert' && /reafir\[-1\] off, with the tone tuned for it/.test(l.text))).toBe(true)
+    expect(r.after.snrDb).toBeGreaterThanOrEqual(r.before.snrDb - 0.5)
+    // back on the first branch exactly: its changes render to the result's audio
+    expect(sameAudio(await render(engineChanges(r.changes)), r.processed)).toBe(true)
+    expect(unmetKeys(r)).toContain('tone.limitLow')
+  }, TIMEOUT)
+
+  it('a tone the EQ reaches with ReaFIR on never asks the question: no switch is rendered', async () => {
+    const { result: r, calls } = await run({ tone: [0, 0, 5] }, firChain(), {}, {}, { reafir: onlyRoom(-60) })
+    expect(calls.some((c) => c.some((x) => x.kind === 'switch'))).toBe(false)
+    expect(r.after.score.tone).toBeLessThan(3)
+  }, TIMEOUT)
+})
+
+describe('tune: Noise Removal on as a candidate', () => {
+  const nrChain = (): ChainSlot[] => [noiseRemoval(44, false), eq(), comp(GOOD_WET)]
+
+  it('a noisy room and a Noise Removal sitting switched off: on, at a strength counted from zero inside the amount cap', async () => {
+    const { result: r } = await run({ noiseDb: -45 }, nrChain())
+    expect(r.before.snrDb).toBeLessThan(27)
+    expect(switches(r)).toMatchObject([{ kind: 'switch', on: true, slot: 0, stage: 'noise' }])
+    expect(switches(r)[0].titleMsg.key).toBe('desktop.autotune.reason.switch.nrOn')
+    expect(switches(r)[0].changeMsg.key).toBe('desktop.advice.change.on')
+    const strength = valueChanges(r.changes).find((c) => c.key === 'strength')
+    expect(strength?.from).toBe(44)
+    expect(strength?.to).toBeGreaterThan(0)
+    expect(strength?.to).toBeLessThanOrEqual(targetsOf(goalsOf()).caps.nrMax)
+    expect(strength?.titleMsg.key).toMatch(/reason\.noise\.(onStrength|strength)$/)
+    expect(r.after.snrDb).toBeGreaterThan(r.before.snrDb + 2)
+    expect(r.after.deadSilence).toBeLessThan(0.05)
+    expect(r.after.wordLossDb).toBeLessThanOrEqual(2)
+  }, TIMEOUT)
+
+  it('a remover that costs the voice its tone is switched back off after one try, and the result says the room is still there', async () => {
+    // whenever it is on, 640 Hz–2.5 kHz loses 12 dB (the real one behind the compressor took 7)
+    const dulls = (x: Float32Array, chain: readonly ChainSlot[]): void => {
+      if (!chain.some((s) => s.kind === 'noiseRemoval' && s.on)) return
+      const c = biquad({ type: 'Band', freq: 1250, gain: -12, bw: 2 }, 48000)
+      let x1 = 0, x2 = 0, y1 = 0, y2 = 0
+      for (let i = 0; i < x.length; i++) {
+        const y0 = (c.b0 * x[i] + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2) / c.a0
+        x2 = x1
+        x1 = x[i]
+        y2 = y1
+        y1 = y0
+        x[i] = y0
+      }
+    }
+    const { result: r, calls } = await run({ noiseDb: -50 }, nrChain(), {}, {}, { post: dulls })
+    const tries = calls.filter((c) => c.some((x) => x.kind === 'switch' && x.on))
+    // strength 0 removes nothing in the fake (tried, too little); the next one removes the room and dulls the voice: stop
+    expect(tries.length).toBe(2)
+    expect(switches(r)).toEqual([])
+    expect(valueChanges(r.changes).some((c) => c.key === 'strength')).toBe(false)
+    expect(unmetKeys(r)).toContain('noise.limit')
+  }, TIMEOUT)
+
+  it('a quiet room never switches it on', async () => {
+    const { result: r, calls } = await run({ noiseDb: -70 }, nrChain())
+    expect(calls.some((c) => c.some((x) => x.kind === 'switch'))).toBe(false)
+    expect(switches(r)).toEqual([])
+  }, TIMEOUT)
+})
+
+describe('tune: a band moves to where the voice needs it', () => {
+  /** A hump at 160–320 Hz right next to a hole at 80–160 Hz (a close mic behind a low-cut). */
+  const HUMP = { tone: [0, -8, 9] }
+
+  it('a hump next to a hole: the cut is placed on the hump and narrowed, the hole is not deepened', async () => {
+    const { result: r } = await run(HUMP, [eq(), comp(GOOD_WET)], { bothers: ['lacksClarity'] })
+    expect(r.before.tone[2]).toBeGreaterThan(8)
+    expect(r.after.tone[2]).toBeLessThan(r.before.tone[2] - 4)
+    expect(r.after.tone[1]).toBeGreaterThan(r.before.tone[1] - 1.5)
+    const band = r.changes.find((c) => c.changeMsg.key === 'desktop.autotune.change.band')
+    expect(band?.kind).toBe('value')
+    expect(band?.also?.length).toBeGreaterThan(0)
+    expect(band?.titleMsg).toEqual({ key: 'desktop.autotune.reason.tone.shape.high', params: { lo: 160, hi: 320 } })
+    const p = band?.changeMsg.params as Record<string, number>
+    // within an octave of where it was, a sane width, a cut, inside the medium step
+    expect(Math.abs(Math.log2(p.toHz / p.fromHz))).toBeLessThanOrEqual(1)
+    expect(p.toOct).toBeGreaterThanOrEqual(SHAPE_BW[0])
+    expect(p.toOct).toBeLessThanOrEqual(SHAPE_BW[1])
+    expect(p.toDb).toBeLessThan(p.fromDb)
+    expect(p.toDb).toBeGreaterThanOrEqual(-4)
+    // every engine value of the band is there: the line's numbers are what gets set
+    const flat = valueChanges(r.changes).filter((c) => c.slot === band?.slot && c.key.startsWith(`${(band as { key: string }).key.split('.')[0]}.`))
+    expect(flat.find((c) => c.key.endsWith('.gainDb'))?.to ?? p.fromDb).toBe(p.toDb)
+    expect(Math.round(flat.find((c) => c.key.endsWith('.freqHz'))?.to ?? p.fromHz)).toBe(p.toHz)
+  }, TIMEOUT)
+
+  it('gains alone could not: with the same budget a plan without shape moves leaves the hump higher', () => {
+    const x = testTake({ speechDb: -21, noiseDb: -80, ...HUMP })
+    const mask = prepareTake(x)
+    if (!mask) throw new Error('no take')
+    const t = targetsOf(goalsOf({ bothers: ['lacksClarity'] }))
+    const home = eqHandles([eq()], t.caps.eqStepDb, () => false)
+    const curves = new EqCurves(home, mask.cellHz, 48000)
+    const cells = measure(mask, x).cells
+    const start = home.map((h) => h.base)
+    const ones = home.map(() => 1)
+    const flat = planTone(curves, cells, start, ones, t, t.caps.eqTotalDb)
+    const variants = (i: number, bands: readonly number[]) => shapeVariants(home[i], bands).map((v) => reshape(home[i], v.freqHz, v.bwOct, () => false))
+    const shaped = planShaped(curves, cells, start, ones, t, t.caps.eqTotalDb, variants)
+    const warmth = (c: EqCurves, g: readonly number[]): number => c.delta(start, g, ones, curves).slice(12, 18).reduce((s, v) => s + v, 0) / 6
+    const boom = (c: EqCurves, g: readonly number[]): number => c.delta(start, g, ones, curves).slice(6, 12).reduce((s, v) => s + v, 0) / 6
+    expect(warmth(shaped.curves, shaped.gains)).toBeLessThan(warmth(curves, flat) - 1.5)
+    expect(boom(shaped.curves, shaped.gains)).toBeGreaterThan(-1.5)
+    // caps: every band's whole curve within the step, all of them within the total, at most two shapes moved
+    const moved = shaped.gains.map((g, i) => shaped.curves.movedDb(i, g))
+    for (const m of moved) expect(m).toBeLessThanOrEqual(t.caps.eqStepDb + 1e-6)
+    expect(moved.reduce((s, m) => s + m, 0)).toBeLessThanOrEqual(t.caps.eqTotalDb + 1e-6)
+    const reshaped = shaped.curves.handles.filter((h) => !sameShape(h))
+    expect(reshaped.length).toBeGreaterThan(0)
+    expect(reshaped.length).toBeLessThanOrEqual(2)
+    for (const h of reshaped) {
+      expect(Math.abs(Math.log2(h.freqHz / h.baseFreqHz))).toBeLessThanOrEqual(1 + 1e-9)
+      expect(h.type === 'Band' ? h.bwOct >= SHAPE_BW[0] && h.bwOct <= SHAPE_BW[1] : h.bwOct === h.baseBwOct).toBe(true)
+    }
+    // a shelf stays a shelf
+    expect(shaped.curves.handles.map((h) => h.type)).toEqual(home.map((h) => h.type))
+  })
+
+  it('a moved band counts by how far its curve moved: light moves less than medium, and a take the gains fix moves no shape', async () => {
+    const light = await run(HUMP, [eq(), comp(GOOD_WET)], { bothers: ['lacksClarity'], amount: 'light' })
+    const medium = await run(HUMP, [eq(), comp(GOOD_WET)], { bothers: ['lacksClarity'] })
+    for (const c of valueChanges(light.result.changes).filter((x) => x.key.endsWith('.gainDb'))) expect(Math.abs(c.to - c.from)).toBeLessThanOrEqual(2)
+    expect(light.result.after.tone[2]).toBeGreaterThan(medium.result.after.tone[2] + 0.5)
+    const easy = await run({ tone: [0, 0, 4] }, [eq(), comp(GOOD_WET)])
+    expect(valueChanges(easy.result.changes).filter((c) => /\.(freqHz|bwOct)$/.test(c.key))).toEqual([])
+  }, TIMEOUT)
+
+  it('"too processed" brings a moved band halfway back as a whole and the retune still renders what it reports', async () => {
+    const first = await run(HUMP, [eq(), comp(GOOD_WET)], { bothers: ['lacksClarity'] })
+    const resume = retune(first.result, 'tooProcessed')
+    const second = await tune({ ...first.input, ...resume })
+    expect(second.after.tone[2]).toBeGreaterThan(first.result.after.tone[2])
+    expect(sameAudio(await first.render(engineChanges(second.changes)), second.processed)).toBe(true)
+  }, TIMEOUT)
+})
+
+describe('tune: a complaint the measurement contradicts', () => {
+  it('"lacks presence" on a voice whose presence measures high: not lifted, and the result names what hides it', async () => {
+    const { result: r } = await run({ tone: [0, 0, 9, 0, 0, 0, 4] }, [eq(), comp(GOOD_WET)], { bothers: ['lacksPresence'], amount: 'light' })
+    const said = r.unmet.find((m) => m.key === 'desktop.autotune.unmet.tone.hidden')
+    expect(said?.params).toMatchObject({ lo: 2500, hi: 5000, maskLo: 160, maskHi: 320 })
+    expect(Number(said?.params?.db)).toBeGreaterThan(1)
+    expect(Number(said?.params?.maskDb)).toBeGreaterThanOrEqual(4)
+    // the 3.5 kHz band is not pushed up against the measurement's word, and nothing says only "still above target" there
+    expect(valueChanges(r.changes).some((c) => c.key === 'band4.gainDb' && c.to > c.from)).toBe(false)
+    expect(r.unmet.some((m) => m.key.endsWith('tone.limitHigh') && m.params?.lo === 2500)).toBe(false)
+  }, TIMEOUT)
+
+  it('nothing loud under it: it says the band already measures high; "boomy" on a thin voice says it already measures low', async () => {
+    const high = await run({ tone: [0, 0, 0, 0, 0, 0, 3] }, [eq(), comp(GOOD_WET)], { bothers: ['lacksPresence'] })
+    expect(high.result.unmet.find((m) => m.key.endsWith('tone.alreadyHigh'))?.params).toMatchObject({ lo: 2500, hi: 5000 })
+    expect(high.result.changes).toEqual([])
+    const low = await run({ tone: [0, -5, -4] }, [eq(), comp(GOOD_WET)], { bothers: ['boomy'] })
+    expect(low.result.unmet.filter((m) => m.key.endsWith('tone.alreadyLow')).map((m) => m.params?.lo)).toEqual([80, 160])
+    // boomy never lifts the lows, so nothing was done there: that is said, not hidden
+    expect(valueChanges(low.result.changes).filter((c) => /^band[12]\.gainDb$/.test(c.key))).toEqual([])
+  }, TIMEOUT)
+
+  it('a complaint the measurement agrees with says nothing of the kind', async () => {
+    const { result: r } = await run({ tone: [0, 0, 0, 0, 0, 0, -5] }, [eq(), comp(GOOD_WET)], { bothers: ['lacksPresence'] })
+    expect(r.unmet.some((m) => /tone\.(hidden|already)/.test(m.key))).toBe(false)
+    expect(r.after.tone[6]).toBeGreaterThan(r.before.tone[6] + 2)
+  }, TIMEOUT)
+})
+
+describe('tune: switches and shapes stay deterministic and inside the budget', () => {
+  const noisyFir = { noiseDb: -47, phraseDb: [0, -8], tone: [0, 0, 8, 0, 0, 0, 4] }
+
+  it('same inputs, same result', async () => {
+    const a = await run(noisyFir, firChain(true), { bothers: ['lacksClarity', 'roomNoise'] })
+    const b = await run(noisyFir, firChain(true), { bothers: ['lacksClarity', 'roomNoise'] })
+    expect(b.result.changes).toEqual(a.result.changes)
+    expect(b.result.renders).toBe(a.result.renders)
+    expect(b.result.unmet).toEqual(a.result.unmet)
+    expect(sameAudio(a.result.processed, b.result.processed)).toBe(true)
+  }, TIMEOUT)
+
+  it('never more renders than the budget, each stage inside its share, and the result is what its changes render', async () => {
+    expect(1 + Object.values(STAGE_RENDERS).reduce((s, v) => s + v, 0)).toBeLessThanOrEqual(DEFAULT_MAX_RENDERS)
+    for (const maxRenders of [undefined, 9, 6, 4, 2]) {
+      const seen: string[] = []
+      const { result: r, calls, render } = await run(noisyFir, firChain(true), { bothers: ['lacksClarity', 'roomNoise'] }, { maxRenders, onProgress: (stage) => void seen.push(stage) })
+      expect(r.renders, `budget ${maxRenders}`).toBeLessThanOrEqual(maxRenders ?? DEFAULT_MAX_RENDERS)
+      expect(calls.length).toBe(r.renders)
+      for (const [stage, share] of Object.entries(STAGE_RENDERS)) expect(seen.filter((x) => x === stage).length, stage).toBeLessThanOrEqual(share)
+      expect(sameAudio(await render(engineChanges(r.changes)), r.processed), `budget ${maxRenders}`).toBe(true)
+      if (maxRenders !== undefined && maxRenders <= 4) expect(unmetKeys(r)).toContain('budget')
+    }
+  }, TIMEOUT)
+})
+
+describe('tune: what a tone fix may cost the room', () => {
+  // no compression after the EQ, so what the cut takes off the voice it takes off the voice over the room
+  const flat = (): ChainSlot[] => [eq(), { ...comp(GOOD_WET), values: { ...comp(GOOD_WET).values, ratio: 1 } }]
+  const HUMP = [0, 0, 14]
+
+  it('"room noise" is a wish for the noise stage, not a veto on the tone: the hump is cut while the voice stays at the use’s own target over the room', async () => {
+    const t = targetsOf(goalsOf({ bothers: ['roomNoise'] }))
+    expect([t.snrDb, t.snrFloorDb]).toEqual([45, 30])
+    expect(targetsOf(goalsOf({ use: 'calls', bothers: ['roomNoise'] })).snrFloorDb).toBe(25)
+    const { result: r } = await run({ noiseDb: -58, tone: HUMP }, flat(), { bothers: ['roomNoise'] })
+    const plain = await run({ noiseDb: -58, tone: HUMP }, flat())
+    // the same tone fix as without the complaint, although it costs 2–3 dB of voice over the room
+    expect(valueChanges(r.changes).filter((c) => c.stage === 'tone')).toEqual(valueChanges(plain.result.changes).filter((c) => c.stage === 'tone'))
+    expect(r.after.tone[2]).toBeLessThan(r.before.tone[2] - 3)
+    expect(r.after.snrDb).toBeLessThan(r.before.snrDb - 1.5)
+    expect(r.after.snrDb).toBeGreaterThanOrEqual(t.snrFloorDb)
+    // the wish is still reported as not reached (nothing in this chain removes noise), without blaming the EQ
+    expect(unmetKeys(r)).toContain('noise.noTool')
+    expect(unmetKeys(r)).not.toContain('tone.room')
+    expect(unmetKeys(plain.result)).not.toContain('noise.noTool')
+  }, TIMEOUT)
+
+  it('a fix that would take the voice further under the use’s own target is not kept, with or without the complaint, and the result says why', async () => {
+    for (const bothers of [[], ['roomNoise']] as const) {
+      const { result: r, calls } = await run({ noiseDb: -51, tone: HUMP }, flat(), { bothers: [...bothers] })
+      expect(r.before.snrDb).toBeLessThan(30)
+      expect(calls.length).toBeGreaterThan(1)
+      expect(valueChanges(r.changes).filter((c) => c.stage === 'tone')).toEqual([])
+      const said = r.unmet.find((m) => m.key === 'desktop.autotune.unmet.tone.room')
+      expect(Number(said?.params?.db)).toBeGreaterThanOrEqual(1)
+      expect(Number(said?.params?.db)).toBeLessThan(12)
+      expect(unmetKeys(r)).toContain('tone.limitHigh')
+    }
+  }, TIMEOUT)
+})
+
+describe('retune: a result with a switch', () => {
+  it('starts from the switched chain and keeps the switch while it still measures better; "too processed" leaves it be', async () => {
+    const first = await run({}, firChain())
+    expect(switches(first.result)).toHaveLength(1)
+    const more = await tune({ ...first.input, ...retune(first.result, ['harsh']) })
+    expect(switches(more)).toMatchObject([{ kind: 'switch', on: false, slot: -1 }])
+    // the previous render was reused: the retune did not render the start again
+    expect(more.renders).toBeLessThanOrEqual(first.result.renders)
+    expect(sameAudio(await first.render(engineChanges(more.changes)), more.processed)).toBe(true)
+    const lighter = retune(first.result, 'tooProcessed')
+    expect((lighter.start ?? []).filter((c) => c.kind === 'switch')).toEqual(switches(first.result))
+    const less = await tune({ ...first.input, ...lighter })
+    expect(switches(less)).toHaveLength(1)
+    expect(Math.abs(less.after.tone[1])).toBeLessThan(3)
+  }, TIMEOUT)
+})
+
+describe('speech cut by a gate: measured against the ungated chain, never traded for the room', () => {
+  const SR = 48000
+  /** The take with every syllable's first `ms` held `db` down: what a gate opening late does. */
+  function chopped(x: Float32Array, ms: number, db: number): Float32Array {
+    const mask = prepareTake(x)
+    if (!mask) throw new Error('no take')
+    const out = x.slice()
+    const speech = new Set(mask.speech)
+    const n = Math.round((ms / 1000) * SR)
+    for (const f of mask.speech) {
+      if (speech.has(f - 1)) continue
+      for (let i = f * mask.win; i < f * mask.win + n; i++) out[i] *= 10 ** (db / 20)
+    }
+    return out
+  }
+
+  it('cutOf: nothing for the same audio, clearly bad for chopped word starts, a shallow floor counts little and is no cut event', () => {
+    const x = testTake({ speechDb: -21, noiseDb: -50 })
+    const mask = prepareTake(x)
+    if (!mask) throw new Error('no take')
+    const open = fineLevels(x, SR)
+    expect(cutOf(mask, x, open)).toEqual({ share: 0, events: 0 })
+    // a plain gain is not a cut (the open gate's own gain is taken out)
+    expect(cutOf(mask, x.map((v) => v * 0.5), open).share).toBe(0)
+    const hard = cutOf(mask, chopped(x, 60, -20), open)
+    expect(100 * hard.share).toBeGreaterThan(3)
+    expect(hard.events).toBeGreaterThan(5)
+    const soft = cutOf(mask, chopped(x, 60, -6), open)
+    expect(soft.events).toBe(0)
+    expect(soft.share).toBeLessThan(hard.share / 4)
+    expect(cutsSpeech({ cutShare: hard.share, cutEvents: hard.events })).toBe(true)
+    expect(cutsSpeech({ cutShare: 0.002, cutEvents: 0.9 })).toBe(false)
+  })
+
+  it('the keep rule: no gain on the room pays for cut words', () => {
+    const t = targetsOf(goalsOf({ bothers: ['roomNoise'] }))
+    const x = testTake({ speechDb: -21, noiseDb: -45 })
+    const mask = prepareTake(x)
+    if (!mask) throw new Error('no take')
+    const noisy = { ...measure(mask, x), cutShare: 0, cutEvents: 0 }
+    // 20 dB more voice over the room, for word starts cut 3 times every 10 s
+    const gated = { ...noisy, pauseDb: noisy.pauseDb - 20, snrDb: noisy.snrDb + 20, cutShare: 0.03, cutEvents: 3 }
+    const [before, after] = [scoreOf(noisy, t), scoreOf(gated, t)]
+    expect(after.noise).toBeLessThan(before.noise - 25)
+    expect(after.damage).toBeGreaterThan(before.damage + 15)
+    expect(worseBecause(before, after, 'noise')).toMatch(/damage got worse/)
+    // not measured (no ungated render yet): it does not count either way
+    expect(scoreOf({ ...gated, cutShare: NaN, cutEvents: NaN }, t).damage).toBe(before.damage)
+  })
+
+  it('a gate that chops the quiet phrases is found on the chain as it is and made gentle until it does not, whatever the room', async () => {
+    // behind the compressor, threshold inside the speech: every other phrase (14 dB quieter) is held down
+    const chain: ChainSlot[] = [eq(), comp(GOOD_WET), { ...gate({ thresholdDb: -18, dryDb: -20 }), index: 4 }]
+    const { result: r, render } = await run({ noiseDb: -48, phraseDb: [0, -14] }, chain, { bothers: ['roomNoise'] })
+    expect(100 * r.before.cutSpeech).toBeGreaterThan(5)
+    expect(r.before.cutEvents).toBeGreaterThan(2)
+    expect(100 * r.after.cutSpeech).toBeLessThanOrEqual(1)
+    expect(r.after.cutEvents).toBeLessThanOrEqual(1)
+    const moved = valueChanges(r.changes).filter((c) => c.slot === 4)
+    expect(moved.length).toBeGreaterThan(0)
+    expect(sameAudio(await render(engineChanges(r.changes)), r.processed)).toBe(true)
+    // the room is still there and the result says why, in the words for it
+    if (r.after.snrDb < 44) expect(unmetKeys(r).some((k) => k === 'noise.wouldCut' || k === 'noise.limit')).toBe(true)
+    expect(unmetKeys(r)).not.toContain('cut')
+  }, TIMEOUT)
+})

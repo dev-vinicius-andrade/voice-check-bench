@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { b64decode, readBank } from '../../wavelink/fxp'
-import type { ValueChange } from '../advice/types'
+import type { SwitchChange, ValueChange } from '../advice/types'
 import { chainOf, eqStateValues, PARAM_MAPS } from '../slots'
 import { engineSlots, entries, INPUT_KEY, snapshot } from '../testChain'
 import type { AudioExportedState, AudioSlot, WlSnapshot } from '../types'
@@ -15,6 +15,8 @@ function wetMap() {
 const WET = wetMap()
 
 const change = (slot: number, key: string, to: number): ValueChange => ({ id: `t:${slot}:${key}`, reason: 'tone', titleMsg: { key: 'x' }, kind: 'value', slot, key, from: NaN, to })
+
+const flip = (slot: number, on: boolean): SwitchChange => ({ id: `t:${slot}:on`, reason: 'tone', titleMsg: { key: 'x' }, kind: 'switch', slot, on })
 
 /** A render session over the test chain: records every command, renders the take × a gain read from ReaComp Wet. */
 function fakeBridge(snap: WlSnapshot = snapshot()) {
@@ -180,5 +182,63 @@ describe('openTuneSession', () => {
     expect(out[0].inputKey).toBe(INPUT_KEY)
     await s.close()
     expect(calls.at(-1)).toBe('close')
+  })
+
+  it('a slot switched off is bypassed for that render and back on for the next; Save writes its BypassState', async () => {
+    const { bridge, calls } = fakeBridge()
+    const s = await openTuneSession(bridge, take)
+    await s.render([flip(1, false), change(3, 'wetDb', 12)])
+    expect(calls.filter((c) => c.startsWith('bypass'))).toEqual(['bypass 1 true'])
+    // the bypass goes out before the run it is for
+    expect(calls.indexOf('bypass 1 true')).toBeLessThan(calls.indexOf('run'))
+    await s.render([flip(1, false)])
+    expect(calls.filter((c) => c.startsWith('bypass'))).toEqual(['bypass 1 true'])
+    await s.render([])
+    expect(calls.filter((c) => c.startsWith('bypass'))).toEqual(['bypass 1 true', 'bypass 1 false'])
+    const out = await s.exportChanges([flip(1, false)])
+    expect(out).toEqual([{ inputKey: INPUT_KEY, index: 1, bypassed: true }])
+    expect(await s.exportChanges([])).toEqual([])
+  })
+
+  it('a Noise Removal on its own bypass switched on: taken off that bypass, its strength set, and Save writes the state that carries both', async () => {
+    const { bridge, calls } = fakeBridge()
+    const open = bridge.renderOpen
+    bridge.renderOpen = async () => {
+      const st = await open()
+      return { ...st, slots: st.slots.map((x) => (x.index === 0 ? { ...x, params: x.params.map((p) => (p.isBypass ? { ...p, normalized: 1 } : p)) } : x)) }
+    }
+    // the plugin's state carries its own bypass, as the real one's does
+    let own: boolean | null = null
+    const setBypass = bridge.renderSetBypass
+    bridge.renderSetBypass = async (slot, bypassed) => {
+      if (slot === 0) own = bypassed
+      return setBypass(slot, bypassed)
+    }
+    const exportStates = bridge.renderExportStates
+    bridge.renderExportStates = async () => (await exportStates()).map((e) => (e.index === 0 && own !== null ? { ...e, parameterState: `${e.parameterState}|bypass:${own}` } : e))
+    const s = await openTuneSession(bridge, take)
+    expect(s.chain[0]).toMatchObject({ kind: 'noiseRemoval', on: false })
+    await s.render([flip(0, true), change(0, 'strength', 20)])
+    expect(calls.slice(0, 3)).toEqual(['bypass 0 false', `param 0 ${VAD_ID} 0.2`, 'run'])
+    // the switch alone is a change too: Wave Link already lists the plugin as on, the state is what differs
+    const out = await s.exportChanges([flip(0, true)])
+    expect(out.map((c) => c.index)).toEqual([0])
+    expect(out[0].parameterState).toContain('bypass:false')
+    expect(out[0].bypassed).toBeUndefined()
+    // switched back for a result without it: off again, and nothing of it is written
+    expect(await s.exportChanges([change(3, 'wetDb', 12)])).toMatchObject([{ index: 3 }])
+    expect(calls.filter((c) => c.startsWith('bypass')).at(-1)).toBe('bypass 0 true')
+  })
+
+  it('the frequency, width and gain of a band travel as one ReaEQ state (a result change with `also`)', async () => {
+    const { bridge, calls, states } = fakeBridge()
+    const s = await openTuneSession(bridge, take)
+    const band = { ...change(2, 'band2.gainDb', -4), also: [change(2, 'band2.freqHz', 220), change(2, 'band2.bwOct', 1)] }
+    await s.render([band])
+    expect(calls).toEqual(['state 2', 'run'])
+    expect(eqStateValues(states.get(2) ?? '')).toMatchObject({ 'band2.gainDb': expect.closeTo(-4, 4), 'band2.freqHz': 220, 'band2.bwOct': 1 })
+    const out = await s.exportChanges([band])
+    expect(out.map((c) => c.index)).toEqual([2])
+    expect(eqStateValues(out[0].parameterState ?? '')).toMatchObject({ 'band2.freqHz': 220, 'band2.bwOct': 1 })
   })
 })

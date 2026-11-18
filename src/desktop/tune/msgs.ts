@@ -16,6 +16,12 @@ export const unmetMsg = (key: string, params?: Msg['params']): Msg => msg(`unmet
 export const toneReasonMsg = (band: number, side: 'high' | 'low', db: number): Msg => reasonMsg(`tone.${side}.${BAND_KEYS[band]}`, { db })
 
 /**
+ * Tone reason of a band that was moved (frequency, width) onto a BANDS index: too much of it there (`high`, the cut
+ * lands on it) or too little (`low`, the lift lands on it).
+ */
+export const shapeReasonMsg = (band: number, side: 'high' | 'low'): Msg => reasonMsg(`tone.shape.${side}`, bandRange(band))
+
+/**
  * The message with its `db` param (the size of the whole move) and its `to` param (the value it ends at) set, when it
  * has them: a later stage may move the same value again (a gate threshold following the make-up gain).
  */

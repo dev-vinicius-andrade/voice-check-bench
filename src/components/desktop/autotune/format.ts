@@ -18,6 +18,7 @@ export function effectValue(e: TuneEffect, v: number): string {
     case 'tone':
       return fmtDb(v)
     case 'deadSilence':
+    case 'cutSpeech':
       return `${fmtNum(v * 100, 1)} %`
     default:
       return fmtDb(v, 1, false)

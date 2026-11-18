@@ -7,7 +7,7 @@ import { chain as guideChain } from '../advice/testFixtures'
 import { fakeRenderer } from './fakeRenderer'
 import { DEFAULT_MAX_RENDERS } from './session'
 import { tune } from './tune'
-import type { TakeSummary, TuneGoals, TuneResult } from './types'
+import { engineChanges, type TakeSummary, type TuneGoals, type TuneResult } from './types'
 
 interface NodeFs {
   existsSync(p: URL): boolean
@@ -68,7 +68,8 @@ function report(name: string, r: TuneResult): string {
     `--- ${name}: ${r.renders} renders`,
     `before ${line(r.before)}`,
     `after  ${line(r.after)}`,
-    ...r.changes.map((c) => `change [${c.stage}] slot ${c.slot} ${c.key} ${c.from} → ${c.to} (${c.effect.metric}${c.effect.band ?? ''} ${f(c.effect.before)} → ${f(c.effect.after)})`),
+    ...engineChanges(r.changes).map((c) => `change slot ${c.slot} ${c.kind === 'switch' ? (c.on ? 'on' : 'off') : `${c.key} ${c.from} → ${c.to}`}`),
+    ...r.changes.map((c) => `effect [${c.stage}] ${c.id} (${c.effect.metric}${c.effect.band ?? ''} ${f(c.effect.before)} → ${f(c.effect.after)})`),
     ...r.unmet.map((u) => `unmet ${u.key.replace('desktop.autotune.unmet.', '')} ${JSON.stringify(u.params ?? {})}`),
     ...r.log.map((l) => `  [${l.stage}] ${l.event}: ${l.text}`),
   ].join('\n')

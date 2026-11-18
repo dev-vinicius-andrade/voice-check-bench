@@ -1,6 +1,8 @@
 // Runs "Tune from a recording" on the person's REAL Wave Link chain with a recorded take, without the app:
 // the TS tuner (src/desktop/tune) drives the headless render session (desktop/src-tauri/examples/render_cli.rs).
 //
+// The goal sets are in SETS (default, complaints, amounts); --only runs one.
+//
 //   cargo build --release --example render_cli            (in desktop/src-tauri)
 //   npx tsx tools/tune-real/run.ts --settings <COPY of Settings.json> --out <dir> [--take _test/control-2-cm-raw.wav]
 //                                  [--exe <render_cli.exe>] [--only <goal set name>] [--nr-on]
@@ -16,12 +18,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { OVER_SWITCH_WARN, PEAK_WARN_DB } from '../../src/audio/diagnose'
 import { CHOPPED_ZERO } from '../../src/plain/refine'
-import { openTuneSession } from '../../src/desktop/tune/renderer'
+import { chainWith, openTuneSession } from '../../src/desktop/tune/renderer'
 import { ownBypassOn } from '../../src/desktop/slots'
 import { CHOP_OK_DB } from '../../src/desktop/tune/score'
 import { BAND_KEYS, targetsOf } from '../../src/desktop/tune/targets'
 import { tune } from '../../src/desktop/tune/tune'
-import type { TakeSummary, TuneGoals, TuneResult } from '../../src/desktop/tune/types'
+import { engineChanges, type TakeSummary, type TuneGoals, type TuneResult } from '../../src/desktop/tune/types'
 import type { ChainSlot } from '../../src/desktop/advice/types'
 import { cliBridge } from './cliBridge'
 import { decodeWav, encodeWav16, resample } from './wav'
@@ -50,11 +52,13 @@ const SETS: [string, TuneGoals][] = [
   ['tooquiet-uneven', { use: 'streaming', style: 'natural', bothers: ['tooQuiet', 'unevenVolume'], amount: 'medium' }],
   ['roomnoise-strong', { use: 'streaming', style: 'natural', bothers: ['roomNoise'], amount: 'strong' }],
   ['light', { use: 'streaming', style: 'natural', bothers: [], amount: 'light' }],
+  ['clarity-presence', { use: 'streaming', style: 'natural', bothers: ['lacksClarity', 'lacksPresence'], amount: 'medium' }],
+  ['nasal-boxy-body', { use: 'streaming', style: 'natural', bothers: ['nasal', 'boxy', 'lacksBody'], amount: 'medium' }],
 ]
 
 const f = (v: number, d = 1): string => (Number.isFinite(v) ? v.toFixed(d) : String(v))
 const summary = (s: TakeSummary): string =>
-  `speech ${f(s.speechDb)} · peak ${f(s.peakDb)} (clipped ${s.clipped}) · pauses ${f(s.pauseDb)} · SNR ${f(s.snrDb)} · spread ${f(s.spreadDb)} · dead ${f(100 * s.deadSilence)} % / ${f(s.gateSwitches)} per 10 s · word loss ${f(s.wordLossDb)} · score ${f(s.score.total)} (L ${f(s.score.level)} N ${f(s.score.noise)} T ${f(s.score.tone)} C ${f(s.score.consistency)} D ${f(s.score.damage)})`
+  `speech ${f(s.speechDb)} · peak ${f(s.peakDb)} (clipped ${s.clipped}) · pauses ${f(s.pauseDb)} · SNR ${f(s.snrDb)} · spread ${f(s.spreadDb)} · dead ${f(100 * s.deadSilence)} % / ${f(s.gateSwitches)} per 10 s · word loss ${f(s.wordLossDb)} · speech cut ${f(100 * s.cutSpeech)} % / ${f(s.cutEvents)} per 10 s · score ${f(s.score.total)} (L ${f(s.score.level)} N ${f(s.score.noise)} T ${f(s.score.tone)} C ${f(s.score.consistency)} D ${f(s.score.damage)})`
 const toneLine = (s: TakeSummary): string => s.tone.map((d, i) => `${BAND_KEYS[i]} ${f(d)}`).join(' · ')
 
 function checks(r: TuneResult): string[] {
@@ -85,10 +89,11 @@ function report(name: string, r: TuneResult, chain: readonly ChainSlot[], wallMs
     `  - tone: ${toneLine(r.before)}`,
     `- after: ${summary(r.after)}`,
     `  - tone: ${toneLine(r.after)}`,
+    ...chainWith(chain, r.changes).filter((c) => c.kind === 'reagate').map((g) => `  - gate [${g.index}] ${g.on ? '' : '(off) '}threshold ${f(g.values.thresholdDb)} dB · hold ${f(g.values.holdMs, 0)} ms · release ${f(g.values.releaseMs, 0)} ms · Wet ${f(g.values.wetDb)} · Dry ${f(g.values.dryDb)}`),
     '',
     '| stage | change | for | measured |',
     '|---|---|---|---|',
-    ...r.changes.map((c) => `| ${c.stage} | ${slotName(c.slot)} ${c.key} ${f(c.from, 2)} → ${f(c.to, 2)} | ${c.titleMsg.key.replace('desktop.autotune.reason.', '')} | ${c.effect.metric}${c.effect.band === undefined ? '' : ` (${BAND_KEYS[c.effect.band]})`} ${f(c.effect.before)} → ${f(c.effect.after)} |`),
+    ...r.changes.map((c) => `| ${c.stage} | ${slotName(c.slot)} ${engineChanges([c]).map((x) => (x.kind === 'switch' ? (x.on ? 'ON' : 'OFF') : `${x.key} ${f(x.from, 2)} → ${f(x.to, 2)}`)).join(', ')} | ${c.titleMsg.key.replace('desktop.autotune.reason.', '')} | ${c.effect.metric}${c.effect.band === undefined ? '' : ` (${BAND_KEYS[c.effect.band]})`} ${f(c.effect.before)} → ${f(c.effect.after)} |`),
     ...(r.changes.length ? [] : ['| — | no change | | |']),
     '',
     `Unmet: ${r.unmet.length ? r.unmet.map((u) => `${u.key.replace('desktop.autotune.unmet.', '')} ${u.params ? JSON.stringify(u.params) : ''}`).join(' · ') : 'none'}`,

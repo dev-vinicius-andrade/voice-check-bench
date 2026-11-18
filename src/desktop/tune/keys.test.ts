@@ -31,6 +31,15 @@ const ALL: Readonly<Record<string, readonly string[]>> = {
   'reason.dead.threshold': ['db'],
   'reason.noise.strength': ['snr'],
   'reason.noise.threshold': ['to'],
+  'reason.noise.onStrength': ['to'],
+  'reason.words.times': [],
+  'reason.words.threshold': ['to'],
+  'reason.words.floor': ['to'],
+  'reason.switch.reafirDamage': [],
+  'reason.switch.reafirTone': ['lo', 'hi'],
+  'reason.switch.nrOn': ['snr'],
+  'reason.tone.shape.high': ['lo', 'hi'],
+  'reason.tone.shape.low': ['lo', 'hi'],
   ...Object.fromEntries(toneKeys.map((k) => [k, ['db']])),
   'reason.comp.ratio': ['spread', 'to'],
   'reason.comp.threshold': ['spread', 'to'],
@@ -45,6 +54,8 @@ const ALL: Readonly<Record<string, readonly string[]>> = {
   'unmet.level.held': ['db'],
   'unmet.dead': [],
   'unmet.chopped': [],
+  'unmet.cut': ['pct', 'events'],
+  'unmet.noise.wouldCut': ['snr', 'target'],
   'unmet.noise.noTool': ['snr', 'target'],
   'unmet.noise.limit': ['snr', 'target'],
   'unmet.tone.noEq': [],
@@ -52,6 +63,10 @@ const ALL: Readonly<Record<string, readonly string[]>> = {
   'unmet.tone.sharpS': ['db'],
   'unmet.tone.limitHigh': ['lo', 'hi', 'db'],
   'unmet.tone.limitLow': ['lo', 'hi', 'db'],
+  'unmet.tone.hidden': ['lo', 'hi', 'db', 'maskLo', 'maskHi', 'maskDb'],
+  'unmet.tone.alreadyHigh': ['lo', 'hi', 'db'],
+  'unmet.tone.alreadyLow': ['lo', 'hi', 'db'],
+  'unmet.tone.room': ['db'],
   'unmet.spread.noComp': ['spread', 'target'],
   'unmet.spread.limit': ['spread', 'target'],
   'unmet.budget': ['renders'],
@@ -93,6 +108,12 @@ describe('desktop.autotune keys', () => {
       expect(problems).toEqual([])
     })
 
+    it(`${name}: the one-line change of a moved ReaEQ band has its string`, () => {
+      const s = lookup(root, `${P}change.band`)
+      expect(s).toBeDefined()
+      expect(placeholders(s ?? '').sort()).toEqual(['band', 'fromDb', 'fromHz', 'fromOct', 'plugin', 'toDb', 'toHz', 'toOct'])
+    })
+
     it(`${name}: no reason / unmet string the tuner never returns`, () => {
       const tree = (root as unknown as { desktop: { autotune: Tree } }).desktop.autotune
       const have = [...flatten(tree.reason as Tree, 'reason'), ...flatten(tree.unmet as Tree, 'unmet')]
@@ -106,6 +127,8 @@ describe('desktop.autotune keys', () => {
       [{ speechDb: -34, noiseDb: -48, tone: [0, 7, 4, 0, 0, 0, -5, 5, 0], phraseDb: [0, -10, -2, -12] }, [noiseRemoval(20), gate({ thresholdDb: -60 }), eq(), comp(0)], { bothers: ['boomy', 'roomNoise', 'unevenVolume', 'sharpS', 'muffled'] }],
       [{ speechDb: -10, noiseDb: -45, tone: [0, -20, -7, 5] }, [gate({ thresholdDb: -40, dryDb: 0 }), comp(12)], { bothers: ['thin'] }, 3],
       [{ speechDb: -21, noiseDb: -60, phraseDb: [0, -14] }, [noiseRemoval(85), gate({ thresholdDb: -45, dryDb: -100 }), eq()], {}],
+      // a ReaFIR that empties the lows, a Noise Removal sitting switched off in a noisy room, complaints the take contradicts
+      [{ speechDb: -21, noiseDb: -47, tone: [0, 0, 8, 0, 0, 3, 4] }, [{ index: 9, kind: 'reafir', name: 'ReaFir (ReaPlugs Edition)', on: true, values: {} }, noiseRemoval(44, false), eq(), comp(8.5)], { bothers: ['lacksPresence', 'lacksClarity', 'thin'], amount: 'light' }],
     ]
     const msgs: Msg[] = []
     for (const [takeOpts, chain, g, maxRenders] of runs) {

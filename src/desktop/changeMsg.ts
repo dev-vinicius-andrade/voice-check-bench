@@ -19,6 +19,25 @@ export const FIELD_LABELS: Readonly<Record<string, string>> = {
 
 const msg = (key: string, params: Msg['params']): Msg => ({ key: `desktop.advice.change.${key}`, params })
 
+/** A ReaEQ band as its change line shows it. */
+export interface BandLine {
+  hz: number
+  oct: number
+  db: number
+}
+
+/**
+ * The one line of a ReaEQ band whose frequency or width moved (with or without its gain), for "Tune from a
+ * recording": "ReaEQ Band 2: 250 Hz, 2 oct, 0 dB → 220 Hz, 1 oct, −5 dB" (desktop.autotune.change.band).
+ */
+export function bandChangeMsg(slot: ChainSlot, n: number, from: BandLine, to: BandLine): Msg {
+  const type = eqTypeName(slot.values[`band${n}.type`] ?? -1)
+  return {
+    key: 'desktop.autotune.change.band',
+    params: { plugin: canonicalName(slot.name), band: type === 'Band' || type === 'Other' ? `Band ${n}` : type, fromHz: Math.round(from.hz), fromOct: from.oct, fromDb: from.db, toHz: Math.round(to.hz), toOct: to.oct, toDb: to.db },
+  }
+}
+
 export function changeLineMsg(slot: ChainSlot, c: Change): Msg {
   const plugin = canonicalName(slot.name)
   if (c.kind === 'switch') return msg(c.on ? 'on' : 'off', { plugin })

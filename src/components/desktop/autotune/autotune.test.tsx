@@ -7,7 +7,7 @@ import { testFrames } from '../../../desktop/autotune/testRecording'
 import { encodeWav, framesOf } from '../../../desktop/autotune/testWav'
 import { desktopBridge, type DesktopBridge } from '../../../desktop/bridge'
 import { INPUT_KEY, snapshot } from '../../../desktop/testChain'
-import type { TuneChange, TuneInput, TuneResult, TuneStage } from '../../../desktop/tune'
+import { STAGE_RENDERS, type TuneChange, type TuneInput, type TuneResult, type TuneStage } from '../../../desktop/tune'
 import type { TuneSession } from '../../../desktop/tune/renderer'
 import { testTake } from '../../../desktop/tune/testTake'
 import type { AudioFrame, WlChainChange, WlFlowReport } from '../../../desktop/types'
@@ -26,7 +26,7 @@ const SR = 48000
 const TAKE = testTake({ quietSec: 3, speechSec: 22 })
 
 const summary = (speechDb: number, pauseDb: number, boom = 3): TuneResult['before'] => ({
-  speechDb, peakDb: -8, clipped: 0, pauseDb, snrDb: speechDb - pauseDb, tone: [0, boom, 0, 0, 0, 0, 0, 0, 0], spreadDb: 9, deadSilence: 0, gateSwitches: 0, wordLossDb: 0,
+  speechDb, peakDb: -8, clipped: 0, pauseDb, snrDb: speechDb - pauseDb, tone: [0, boom, 0, 0, 0, 0, 0, 0, 0], spreadDb: 9, deadSilence: 0, gateSwitches: 0, wordLossDb: 0, cutSpeech: 0, cutEvents: 0,
   score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
 })
 const CHANGE: TuneChange = {
@@ -181,7 +181,7 @@ describe('step 3: tuning', () => {
       return resultOf([CHANGE], input.goals)
     })
     fireEvent.click(screen.getByRole('button', { name: U.goals.tune }))
-    await waitFor(() => expect(screen.getByTestId('autotune-stage-noise').textContent).toContain('Pass 1 of 4'))
+    await waitFor(() => expect(screen.getByTestId('autotune-stage-noise').textContent).toContain(`Pass 1 of ${STAGE_RENDERS.noise}`))
     expect(f.open).toHaveBeenCalledWith(f.bridge, expect.any(Float32Array))
     expect((f.open.mock.calls[0] as unknown[])[1]).toHaveLength(25 * SR)
     expect(screen.getByTestId('autotune-stage-level').textContent).toContain(U.tuning.done)
@@ -212,6 +212,32 @@ describe('step 3: tuning', () => {
 })
 
 describe('step 4: listen and save', () => {
+  it('lists a switched-off effect and a moved EQ band as one line each (a switch has no numbers, a band has all of its own)', async () => {
+    const off: TuneChange = {
+      id: 'tune:5:on', reason: 'tone', kind: 'switch', slot: 5, on: false, stage: 'noise',
+      titleMsg: { key: 'desktop.autotune.reason.switch.reafirTone', params: { lo: 80, hi: 160 } },
+      changeMsg: { key: 'desktop.advice.change.off', params: { plugin: 'ReaFIR' } },
+      effect: { metric: 'tone', band: 2, before: 12.4, after: 2.2 },
+    }
+    const band: TuneChange = {
+      id: 'tune:6:band3.gainDb', reason: 'tone', kind: 'value', slot: 6, key: 'band3.gainDb', from: -1.5, to: -4.5, stage: 'tone',
+      titleMsg: { key: 'desktop.autotune.reason.tone.shape.high', params: { lo: 160, hi: 320 } },
+      changeMsg: { key: 'desktop.autotune.change.band', params: { plugin: 'ReaEQ', band: 'Band 3', fromHz: 450, fromOct: 1.2, fromDb: -1.5, toHz: 226, toOct: 0.5, toDb: -4.5 } },
+      effect: { metric: 'tone', band: 2, before: 11, after: 2.2 },
+      also: [{ id: 'tune:6:band3.freqHz', reason: 'tone', kind: 'value', slot: 6, key: 'band3.freqHz', from: 450, to: 226, titleMsg: { key: 'x' } }],
+    }
+    const f = await tuned([off, band])
+    const changes = screen.getByTestId('autotune-changes')
+    expect(within(changes).getByText('2 changes, each with its reason')).toBeTruthy()
+    expect(within(changes).getAllByRole('listitem', { hidden: true })).toHaveLength(2)
+    expect(within(changes).getByText('ReaFIR off')).toBeTruthy()
+    expect(within(changes).getByText(/ReaFIR was changing the tone of your voice.*80–160 Hz/)).toBeTruthy()
+    expect(within(changes).getByText('ReaEQ Band 3: 450 Hz, 1.2 oct, -1.5 dB → 226 Hz, 0.5 oct, -4.5 dB')).toBeTruthy()
+    // Save hands the result's changes over as they are: the session writes the switch and the band's other values
+    fireEvent.click(screen.getByRole('button', { name: U.result.save }))
+    await waitFor(() => expect(f.session.exportChanges).toHaveBeenCalledWith([off, band]))
+  })
+
   it('lists the changes with their reasons, the metrics and up to 4 unmet goals', async () => {
     await tuned()
     expect(screen.getByTestId('autotune-metric-speech').textContent).toContain(U.result.metrics.better)

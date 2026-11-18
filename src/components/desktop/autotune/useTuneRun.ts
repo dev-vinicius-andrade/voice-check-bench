@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { errorMsg } from '../../../desktop/errors'
-import { retune, tune, type Bother, type TuneGoals, type TuneResult, type TuneStage } from '../../../desktop/tune'
+import { retune, tune, type Bother, type TuneChange, type TuneGoals, type TuneResult, type TuneStage } from '../../../desktop/tune'
 import type { TuneBridge, TuneSession } from '../../../desktop/tune/renderer'
-import type { ValueChange } from '../../../desktop/advice/types'
 import type { WlChainChange, WlSnapshot } from '../../../desktop/types'
 import type { Msg } from '../../../plain/types'
 
@@ -20,7 +19,7 @@ export interface TuneRun {
   /** The Settings.json read right before the session opened (Save's hash and entries). */
   snapshot: WlSnapshot | null
   /** Wave Link changes for these tuned changes, from the open session (rejects when none is open). */
-  exportChanges(changes: readonly ValueChange[]): Promise<WlChainChange[]>
+  exportChanges(changes: readonly TuneChange[]): Promise<WlChainChange[]>
   run(take: Float32Array, goals: TuneGoals): Promise<void>
   /** Tune again from the current result with what the person said. */
   adjust(feedback: readonly Bother[] | 'tooProcessed'): Promise<void>
@@ -95,7 +94,7 @@ export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
     setState({ step: 'idle' })
   }
 
-  const exportChanges = (changes: readonly ValueChange[]): Promise<WlChainChange[]> =>
+  const exportChanges = (changes: readonly TuneChange[]): Promise<WlChainChange[]> =>
     session.current ? session.current.s.exportChanges(changes) : Promise.reject(new Error('no tune session'))
 
   return { state, snapshot, exportChanges, run, adjust, cancel }

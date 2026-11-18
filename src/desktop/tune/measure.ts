@@ -25,6 +25,22 @@ export const MIN_PAUSE_FRAMES = 10
 /** Speech frames at or under this level: the render lost the voice altogether, dBFS. */
 export const SILENT_DB = FLOOR_DB + 15
 
+/**
+ * Chopping measured directly (cutOf): the render against the same chain with its gates passing everything, in
+ * CUT_FRAME_SEC frames over the speech and CUT_PAD_SEC before and after it (word onsets and tails). A frame that
+ * carries voice (CUT_VOICE_DB over the room in the ungated render) is cut when the gated render sits more than CUT_DB
+ * under the ungated one; a cut event is CUT_MIN_FRAMES such frames in a row.
+ */
+export const CUT_FRAME_SEC = 0.01
+export const CUT_PAD_SEC = 0.15
+export const CUT_DB = 3
+/** A frame this far under the ungated render counts in full (a gate closed to Dry −20); between CUT_DB and this, by its depth. */
+export const CUT_FULL_DB = 20
+/** A cut event is frames this far under the ungated render: a floor of Dry −6 turns the voice down, it does not cut it. */
+export const CUT_EVENT_DB = 8
+export const CUT_VOICE_DB = 6
+export const CUT_MIN_FRAMES = 2
+
 /** The fixed frames of a take, from the raw recording. */
 export interface TakeMask {
   sampleRate: number
@@ -69,6 +85,12 @@ export interface Measured {
   quietPeakDb: number
   /** The voice is gone (speech at SILENT_DB or under): nothing but the level and the damage can be judged. */
   silent: boolean
+  /**
+   * Speech cut by a gate (cutOf), filled in by the session when it has the ungated render of the same chain: share of
+   * the voice frames that are cut (0..1) and cut events per 10 s. NaN while not measured.
+   */
+  cutShare: number
+  cutEvents: number
   /** Summed speech power per cell (N_CELLS). */
   cells: Float64Array
 }
@@ -228,8 +250,74 @@ export function measure(mask: TakeMask, audio: Float32Array): Measured {
     pausePeakDb: mask.pause.length >= MIN_PAUSE_FRAMES ? peakPct(audio, mask.win, mask.pause, 0.9) : NaN,
     quietPeakDb: peakPct(audio, mask.win, mask.quiet, 0.1),
     silent: !(speechDb > SILENT_DB),
+    cutShare: NaN,
+    cutEvents: NaN,
     cells,
   }
+}
+
+/** Level of each CUT_FRAME_SEC frame, dBFS (floored at FLOOR_DB). */
+export function fineLevels(x: Float32Array, sampleRate: number): Float32Array {
+  const w = Math.round(CUT_FRAME_SEC * sampleRate)
+  const out = new Float32Array(Math.floor(x.length / w))
+  for (let f = 0; f < out.length; f++) {
+    let s = 0
+    for (let i = f * w; i < (f + 1) * w; i++) s += x[i] * x[i]
+    out[f] = Math.max(FLOOR_DB, adb(Math.sqrt(s / w)))
+  }
+  return out
+}
+
+/**
+ * How much speech a gate cuts: `gated` is a render, `open` the fineLevels of the same chain rendered with its gates
+ * passing everything. Over the speech frames of the raw take and CUT_PAD_SEC around them, the frames that carry voice
+ * in the ungated render (CUT_VOICE_DB over its pause level) are compared: one is cut when the gated render sits more
+ * than CUT_DB under the ungated one, after the gain the open gate adds (the median difference over the loud half of
+ * the speech). `share`: cut voice frames / voice frames, each cut frame weighted by its depth (CUT_DB → 0,
+ * CUT_FULL_DB → 1: a word start held 6 dB down is heard far less than one held 20 dB down); `events`: runs of
+ * CUT_MIN_FRAMES frames more than CUT_EVENT_DB under, per 10 s of that region. The whole-take word loss (median gain of the quiet quarter) cannot see a word start or tail cut for 50 ms.
+ */
+export function cutOf(mask: TakeMask, gated: Float32Array, open: Float32Array): { share: number; events: number } {
+  const per = Math.round(FRAME_SEC / CUT_FRAME_SEC)
+  const g = fineLevels(gated, mask.sampleRate)
+  const n = Math.min(g.length, open.length)
+  const pad = Math.round(CUT_PAD_SEC / FRAME_SEC)
+  const region = new Uint8Array(mask.frames)
+  for (const f of mask.speech) for (let k = Math.max(0, f - pad); k <= Math.min(mask.frames - 1, f + pad); k++) region[k] = 1
+  const fine = (frames: readonly number[], of: (i: number) => number): number[] => {
+    const out: number[] = []
+    for (const f of frames) for (let j = 0; j < per && f * per + j < n; j++) out.push(of(f * per + j))
+    return out
+  }
+  const room = mask.pause.length >= MIN_PAUSE_FRAMES ? median(fine(mask.pause, (i) => open[i])) : -Infinity
+  const diffs = fine(mask.loud, (i) => g[i] - open[i])
+  const gain = diffs.length ? median(diffs) : 0
+  let voice = 0
+  let cut = 0
+  let events = 0
+  let run = 0
+  let frames = 0
+  for (let f = 0; f < mask.frames; f++) {
+    if (!region[f]) {
+      run = 0
+      continue
+    }
+    for (let j = 0; j < per && f * per + j < n; j++) {
+      const i = f * per + j
+      frames++
+      if (!(open[i] >= room + CUT_VOICE_DB)) {
+        run = 0
+        continue
+      }
+      voice++
+      const depth = open[i] + gain - g[i]
+      if (depth > CUT_DB) cut += Math.min(1, (depth - CUT_DB) / (CUT_FULL_DB - CUT_DB))
+      if (depth > CUT_EVENT_DB) {
+        if (++run === CUT_MIN_FRAMES) events++
+      } else run = 0
+    }
+  }
+  return { share: voice ? cut / voice : 0, events: frames ? (events / (frames * CUT_FRAME_SEC)) * 10 : 0 }
 }
 
 /** Speech energy of each band, dB, from the cells (analyze()'s band sums; `rel` is these minus the body band). */

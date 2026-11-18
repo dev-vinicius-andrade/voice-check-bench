@@ -1,8 +1,9 @@
 // Test-only: a small deterministic stand-in for the real plugin chain. Each effect answers in the right direction,
-// nothing more: a noise remover and a gate working on short blocks, RBJ biquads for ReaEQ, a feed-forward compressor.
+// nothing more: a noise remover and a gate working on short blocks, RBJ biquads for ReaEQ, a feed-forward compressor,
+// and a ReaFIR that is a steep low-cut (what the real chain's did to the voice) unless a test gives its own.
 import { biquad } from '../../audio/eqCurve'
-import { eqBands } from '../advice/chain'
-import type { ChainSlot, ValueChange } from '../advice/types'
+import { eqBands, withChange } from '../advice/chain'
+import type { ChainSlot, Change } from '../advice/types'
 import type { TuneRender } from './types'
 
 export interface FakeOptions {
@@ -11,6 +12,34 @@ export interface FakeOptions {
   eqGain?: (slot: number, band: number, gainDb: number) => number
   /** Extra processing after the chain (a limiter, a broken effect). */
   post?: (x: Float32Array, chain: readonly ChainSlot[]) => void
+  /** What a switched-on ReaFIR does (default: lowCut at REAFIR_CUT_HZ). */
+  reafir?: (x: Float32Array, sampleRate: number) => void
+}
+
+/** Corner of the default fake ReaFIR's low-cut, Hz: it empties 80–160 Hz and leaves 160–320 Hz. */
+export const REAFIR_CUT_HZ = 170
+
+/** A 24 dB / octave high-pass (two RBJ biquads), in place. */
+export function lowCut(x: Float32Array, sr: number, hz: number): void {
+  const w = (2 * Math.PI * hz) / sr
+  const cos = Math.cos(w)
+  const alpha = Math.sin(w) / Math.SQRT2
+  const b0 = (1 + cos) / 2 / (1 + alpha)
+  const b1 = -(1 + cos) / (1 + alpha)
+  const a1 = (-2 * cos) / (1 + alpha)
+  const a2 = (1 - alpha) / (1 + alpha)
+  for (let pass = 0; pass < 2; pass++) {
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0
+    for (let i = 0; i < x.length; i++) {
+      const x0 = x[i]
+      const y0 = b0 * x0 + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2
+      x2 = x1
+      x1 = x0
+      y2 = y1
+      y1 = y0
+      x[i] = y0
+    }
+  }
 }
 
 const amp = (db: number): number => (db <= -100 ? 0 : 10 ** (db / 20))
@@ -95,21 +124,19 @@ function comp(x: Float32Array, sr: number, v: Record<string, number>): void {
  * A render for tune(): the take through the chain with the changes applied on top, clamped to ±1 like a real output.
  * `calls` records every change list it was asked to render.
  */
-export function fakeRenderer(take: Float32Array, chain: readonly ChainSlot[], opts: FakeOptions = {}): { render: TuneRender; calls: ValueChange[][] } {
+export function fakeRenderer(take: Float32Array, chain: readonly ChainSlot[], opts: FakeOptions = {}): { render: TuneRender; calls: Change[][] } {
   const sr = opts.sampleRate ?? 48000
   const eqGain = opts.eqGain ?? ((_slot: number, _band: number, g: number): number => g)
-  const calls: ValueChange[][] = []
+  const reafir = opts.reafir ?? ((x: Float32Array, rate: number): void => lowCut(x, rate, REAFIR_CUT_HZ))
+  const calls: Change[][] = []
   const render: TuneRender = (changes) => {
     calls.push([...changes])
-    const live = chain.map((s) => ({ ...s, values: { ...s.values } }))
-    for (const c of changes) {
-      const slot = live.find((s) => s.index === c.slot)
-      if (slot) slot.values[c.key] = c.to
-    }
+    const live = changes.reduce<ChainSlot[]>((c, x) => withChange(c, x), [...chain])
     const x = take.slice()
     for (const s of live) {
       if (!s.on) continue
-      if (s.kind === 'noiseRemoval') noiseRemoval(x, sr, s.values.strength ?? 0)
+      if (s.kind === 'reafir') reafir(x, sr)
+      else if (s.kind === 'noiseRemoval') noiseRemoval(x, sr, s.values.strength ?? 0)
       else if (s.kind === 'reagate') gate(x, sr, s.values)
       else if (s.kind === 'reaeq') eq(x, sr, s, eqGain)
       else if (s.kind === 'reacomp') comp(x, sr, s.values)

@@ -67,6 +67,11 @@ export interface TuneTargets {
   peakCeilDb: number
   /** Wanted voice over pause noise, dB. */
   snrDb: number
+  /**
+   * The use's own voice-over-room target, dB (what `snrDb` is without "room noise" picked). The 45 dB of "room
+   * noise" is a wish for the noise stage; a tone fix may cost voice over the room down to this (toneJudge).
+   */
+  snrFloorDb: number
   /** Pauses may drop to digital silence (the person asked for as much removal as possible). */
   allowDeadSilence: boolean
   /** Wanted level spread, dB. */
@@ -92,6 +97,14 @@ const BOTHER_BANDS: Readonly<Partial<Record<Bother, readonly (readonly [band: nu
   harsh: [[6, 1]],
   sharpS: [[7, 1]],
   dull: [[7, -1], [8, -1]],
+  // clarity = consonant definition (1.25–2.5 k) over what masks it: the low-mids (160–640)
+  lacksClarity: [[5, -1], [3, 1], [2, 1]],
+  lacksPresence: [[6, -1]],
+  // body = the chest of the voice (160–320) and its core (640–1.25 k); "thin" is the lows below that
+  lacksBody: [[2, -1], [4, -1]],
+  // nasal honk sits in 640–1.25 k; boxy (small-room, cardboard) in 320–640
+  nasal: [[4, 1]],
+  boxy: [[3, 1]],
 }
 
 const SNR_BY_USE: Readonly<Record<TuneUse, number>> = { streaming: SNR_TARGET_DB, calls: SNR_TARGET_CALLS_DB, recording: SNR_TARGET_DB }
@@ -110,7 +123,7 @@ const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.ma
  * - style: the tone target (reference curve + the style's offsets).
  * - bothers: roomNoise → SNR target SNR_CAP (45 dB, where more stops counting); with amount strong (never for
  *   recording) pauses may go dead silent · tooQuiet → speech target +2 dB · unevenVolume → spread target −2 dB and one
- *   more ratio step · boomy / thin / muffled / harsh / sharpS / dull → their bands (BOTHER_BANDS) are aimed BY_EAR_DB
+ *   more ratio step · boomy / thin / muffled / harsh / sharpS / dull / lacksClarity / lacksPresence / lacksBody / nasal / boxy → their bands (BOTHER_BANDS) are aimed BY_EAR_DB
  *   past the style target against the complaint, must come within 1 dB on that side (every other band: 3 dB) and
  *   count double in the tone score.
  *   Opposite complaints on one band cancel the shift and keep the tight tolerance on both sides.
@@ -146,6 +159,7 @@ export function targetsOf(goals: TuneGoals, limit = 1): TuneTargets {
     speechDb: TARGET_SPEECH_DB + (has('tooQuiet') ? TOO_QUIET_EXTRA_DB : 0),
     peakCeilDb: PEAK_WARN_DB - PEAK_MARGIN_DB,
     snrDb: has('roomNoise') ? SNR_CAP : (SNR_BY_USE[goals.use] ?? SNR_TARGET_DB),
+    snrFloorDb: SNR_BY_USE[goals.use] ?? SNR_TARGET_DB,
     allowDeadSilence: has('roomNoise') && goals.amount === 'strong' && goals.use !== 'recording',
     spreadDb: (SPREAD_BY_USE[goals.use] ?? SPREAD_TARGET_DB) - (uneven ? UNEVEN_TIGHTER_DB : 0),
     shift,
@@ -155,6 +169,15 @@ export function targetsOf(goals: TuneGoals, limit = 1): TuneTargets {
     caps,
   }
 }
+
+/**
+ * The targets the tone stage is judged against (its plans, and the branch without ReaFIR): the same, with the voice
+ * over the room wanted only up to the use's own target. With "room noise" picked, every dB under 45 dB cost the tone
+ * stage 1.5 points, so no cut of the loudest part of a voice was ever kept (it lowers the whole voice against the
+ * room) and the person in the noisy room kept the muddy voice. The noise stage still aims at `snrDb`, and the result
+ * still says when the wish was not reached.
+ */
+export const toneJudge = (t: TuneTargets): TuneTargets => (t.snrDb > t.snrFloorDb ? { ...t, snrDb: t.snrFloorDb } : t)
 
 /**
  * How far each band is outside its tolerance (0 inside), dB, from the deviations against the style target.

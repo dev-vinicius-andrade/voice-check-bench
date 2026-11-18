@@ -73,7 +73,8 @@
         },
         "noise": {
           "strength": "Your pauses carried room noise (your voice was only {{snr, number(maximumFractionDigits: 1)}} dB above it): the noise removal gets stronger.",
-          "threshold": "The gate stayed open between your words: its Threshold goes up to {{to, number(maximumFractionDigits: 1)}} dB so it closes in the pauses."
+          "threshold": "The gate stayed open between your words: its Threshold goes up to {{to, number(maximumFractionDigits: 1)}} dB so it closes in the pauses.",
+          "onStrength": "Noise Removal starts at strength {{to, number(maximumFractionDigits: 1)}}: the lightest setting that brought the room down without cutting into your voice."
         },
         "tone": {
           "high": {
@@ -95,11 +96,25 @@
             "presence": "Your voice sounded dull or far away (2.5–5 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
             "sibilance": "Your voice lacked crispness (5–10 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
             "air": "Your voice lacked air (10–16 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB."
+          },
+          "shape": {
+            "high": "Too much {{lo, number}}–{{hi, number}} Hz in your voice: this EQ band is moved onto it and made as wide as the problem, so the cut lands there and not on the healthy parts next to it.",
+            "low": "Too little {{lo, number}}–{{hi, number}} Hz in your voice: this EQ band is moved onto it and made as wide as the gap, so the lift lands where your voice is missing it."
           }
         },
         "comp": {
           "ratio": "Your volume swung {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments: the compressor's Ratio goes to {{to, number(maximumFractionDigits: 1)}}:1 so it evens them out more.",
           "threshold": "Your volume swung {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments: the compressor's Threshold goes down to {{to, number(maximumFractionDigits: 1)}} dB so it starts working earlier."
+        },
+        "switch": {
+          "reafirDamage": "ReaFIR was removing parts of your voice along with the noise (words cut off or dropped to silence): it is switched off. The test run without it measured your voice whole again.",
+          "reafirTone": "ReaFIR was changing the tone of your voice, not only the noise ({{lo, number}}–{{hi, number}} Hz was out of balance): it is switched off, and the test run without it measured closer to your target.",
+          "nrOn": "Your pauses still carried room noise (your voice was only {{snr, number(maximumFractionDigits: 1)}} dB above it) and Elgato Noise Removal was sitting in your chain switched off: it is switched on."
+        },
+        "words": {
+          "times": "The gate was closing on the ends of your words: its Hold and Release get longer, so it stays open until a word is over.",
+          "threshold": "The gate was cutting the starts of your quiet words: its Threshold goes down to {{to, number(maximumFractionDigits: 1)}} dB, safely under them, so it opens in time.",
+          "floor": "The gate was still cutting into quiet words: its Dry goes to {{to, number(maximumFractionDigits: 1)}} dB, so what it turns down stays audible instead of being cut."
         }
       },
       "unmet": {
@@ -118,20 +133,29 @@
         "chopped": "Quiet words are still being cut off. Another effect is cutting the sound: switch effects off one at a time to find it.",
         "noise": {
           "noTool": "Your voice is only {{snr, number(maximumFractionDigits: 1)}} dB above the room noise ({{target, number(maximumFractionDigits: 1)}} wanted) and nothing in your chain can reduce it: add Elgato Noise Removal, or move closer to the mic.",
-          "limit": "Your voice is still only {{snr, number(maximumFractionDigits: 1)}} dB above the room noise ({{target, number(maximumFractionDigits: 1)}} wanted). More removal would cut into your voice or go past the amount you chose: move closer to the mic or quiet the room."
+          "limit": "Your voice is still only {{snr, number(maximumFractionDigits: 1)}} dB above the room noise ({{target, number(maximumFractionDigits: 1)}} wanted). More removal would cut into your voice or go past the amount you chose: move closer to the mic or quiet the room.",
+          "wouldCut": "Your voice is {{snr, number(maximumFractionDigits: 1)}} dB above the room noise ({{target, number(maximumFractionDigits: 1)}} wanted). More noise reduction would start cutting your words, so the gate stays gentle: quiet the room or move closer to the mic."
         },
         "tone": {
           "noEq": "Your chain has no EQ switched on, so the tone can't be changed: add ReaEQ.",
           "noBand": "No band in your ReaEQ reaches {{lo, number}}–{{hi, number}} Hz: add a band there.",
           "sharpS": "Your S sounds are still {{db, number(maximumFractionDigits: 1)}} dB too strong. The EQ bands in your chain barely reach them (5–10 kHz): switch on a De-Esser, or add a ReaEQ band around 6–7 kHz.",
           "limitHigh": "{{lo, number}}–{{hi, number}} Hz is still {{db, number(maximumFractionDigits: 1)}} dB above your target. The EQ can't take more off without overdoing it or hurting other parts of your voice.",
-          "limitLow": "{{lo, number}}–{{hi, number}} Hz is still {{db, number(maximumFractionDigits: 1)}} dB under your target. The EQ can't add more without overdoing it or lifting room noise."
+          "limitLow": "{{lo, number}}–{{hi, number}} Hz is still {{db, number(maximumFractionDigits: 1)}} dB under your target. The EQ can't add more without overdoing it or lifting room noise.",
+          "hidden": "What you describe points at too little {{lo, number}}–{{hi, number}} Hz, but that part already measures {{db, number(maximumFractionDigits: 1)}} dB above your target, so it was not lifted further. What hides it is too much {{maskLo, number}}–{{maskHi, number}} Hz ({{maskDb, number(maximumFractionDigits: 1)}} dB over your target): taking that down is what brings it out.",
+          "alreadyHigh": "What you describe points at too little {{lo, number}}–{{hi, number}} Hz, but that part already measures {{db, number(maximumFractionDigits: 1)}} dB above your target, so it was not lifted further. If it still sounds missing, try another sound style or a different mic position.",
+          "alreadyLow": "What you describe points at too much {{lo, number}}–{{hi, number}} Hz, but that part already measures {{db, number(maximumFractionDigits: 1)}} dB under your target, so it was not cut further. If it still sounds too strong, try another sound style or a different mic position.",
+          "room": "The EQ changes that would fix this were tested and not kept: with them your voice stood {{db, number(maximumFractionDigits: 1)}} dB less above the room noise, which costs more than the tone wins. The part of your voice that is too strong is also what carries it over the room. Quiet the room or move closer to the mic, then run this again."
         },
         "spread": {
           "noComp": "Your volume swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted) and no compressor is switched on: switch ReaComp on.",
           "limit": "Your volume still swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted). More compression didn't help or would lift the room noise: keep the same distance to the mic."
         },
-        "budget": "Stopped after {{renders, number}} test runs. Run it again to keep going from here."
+        "budget": "Stopped after {{renders, number}} test runs. Run it again to keep going from here.",
+        "cut": "The gate still cuts the starts or ends of some words ({{pct, number(maximumFractionDigits: 1)}} % of your speech, about {{events, number(maximumFractionDigits: 1)}} times every 10 seconds) and making it gentler did not stop it. Switch ReaGate off, or quiet the room and run this again."
+      },
+      "change": {
+        "band": "{{plugin}} {{band}}: {{fromHz, number}} Hz, {{fromOct, number(maximumFractionDigits: 2)}} oct, {{fromDb, number(maximumFractionDigits: 1)}} dB → {{toHz, number}} Hz, {{toOct, number(maximumFractionDigits: 2)}} oct, {{toDb, number(maximumFractionDigits: 1)}} dB"
       },
       "ui": {
         "nav": {
@@ -193,7 +217,12 @@
             "roomNoise": "Room noise",
             "boomy": "Boomy",
             "muffled": "Muffled",
+            "boxy": "Boxy",
+            "nasal": "Nasal",
             "thin": "Thin",
+            "lacksBody": "Lacks body",
+            "lacksClarity": "Lacks clarity",
+            "lacksPresence": "Lacks presence",
             "harsh": "Harsh",
             "sharpS": "Sharp S sounds",
             "dull": "Dull",
@@ -266,7 +295,8 @@
             "tone": "Measured: {{band}} {{before}} → {{after}} from your target",
             "spreadDb": "Measured: steadiness {{before}} → {{after}}",
             "deadSilence": "Measured: dead silence {{before}} → {{after}} of the recording",
-            "wordLossDb": "Measured: quiet words cut by {{before}} → {{after}}"
+            "wordLossDb": "Measured: quiet words cut by {{before}} → {{after}}",
+            "cutSpeech": "Measured: speech cut by the gate {{before}} → {{after}}"
           },
           "none": "Your sound already meets these goals: nothing in your effects needs to change.",
           "unmet": "What it could not do",

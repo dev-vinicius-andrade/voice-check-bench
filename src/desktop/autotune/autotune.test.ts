@@ -76,10 +76,10 @@ describe('decodeWav', () => {
 describe('goals', () => {
   it('keeps known values, drops the rest, dedupes bothers in screen order', () => {
     expect(parseTuneGoals(null)).toEqual(DEFAULT_TUNE_GOALS)
-    expect(parseTuneGoals({ use: 'calls', style: 'warm', bothers: ['dull', 'roomNoise', 'dull', 'nasal', 3], amount: 'strong' })).toEqual({
+    expect(parseTuneGoals({ use: 'calls', style: 'warm', bothers: ['dull', 'roomNoise', 'dull', 'nasal', 'echo', 3], amount: 'strong' })).toEqual({
       use: 'calls',
       style: 'warm',
-      bothers: ['roomNoise', 'dull'],
+      bothers: ['roomNoise', 'nasal', 'dull'],
       amount: 'strong',
     })
     expect(parseTuneGoals({ use: 'radio', style: 'loud', bothers: 'boomy', amount: 9 })).toEqual(DEFAULT_TUNE_GOALS)
@@ -173,6 +173,8 @@ describe('result rows', () => {
     deadSilence: 0,
     gateSwitches: 0,
     wordLossDb: 0,
+    cutSpeech: 0,
+    cutEvents: 0,
     score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
     ...o,
   })

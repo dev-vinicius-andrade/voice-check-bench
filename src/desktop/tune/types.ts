@@ -5,13 +5,27 @@
 import type { Msg } from '../../plain/types'
 import type { VoiceStyle } from '../../types'
 import type { ProcessingAmount } from '../advice/prefs'
-import type { ChainSlot, ValueChange } from '../advice/types'
+import type { ChainSlot, Change, ValueChange } from '../advice/types'
 
 /** What the voice is for. It moves the noise and consistency targets (./targets.ts). */
 export type TuneUse = 'streaming' | 'calls' | 'recording'
 
 /** What bothers the person about their sound. Each one moves a target or allows a stronger tool (./targets.ts). */
-export type Bother = 'roomNoise' | 'boomy' | 'muffled' | 'thin' | 'harsh' | 'sharpS' | 'dull' | 'tooQuiet' | 'unevenVolume'
+export type Bother =
+  | 'roomNoise'
+  | 'boomy'
+  | 'muffled'
+  | 'thin'
+  | 'harsh'
+  | 'sharpS'
+  | 'dull'
+  | 'lacksClarity'
+  | 'lacksPresence'
+  | 'lacksBody'
+  | 'nasal'
+  | 'boxy'
+  | 'tooQuiet'
+  | 'unevenVolume'
 
 export interface TuneGoals {
   use: TuneUse
@@ -26,11 +40,11 @@ export interface TuneGoals {
 export type TuneStage = 'baseline' | 'level' | 'noise' | 'tone' | 'compression' | 'trim'
 
 /**
- * Renders the WHOLE take through the chain with these value changes applied on top of the chain as it started
- * (an empty list = the chain as it is). The output has the take's length and is aligned to it, sample for sample.
- * Expensive (seconds): the tuner counts every call against its budget.
+ * Renders the WHOLE take through the chain with these changes (values, and slots switched on or off) applied on top
+ * of the chain as it started (an empty list = the chain as it is). The output has the take's length and is aligned to
+ * it, sample for sample. Expensive (seconds): the tuner counts every call against its budget.
  */
-export type TuneRender = (changes: readonly ValueChange[]) => Promise<Float32Array>
+export type TuneRender = (changes: readonly Change[]) => Promise<Float32Array>
 
 /** Score of a rendered take in penalty points: 0 = nothing left to fix, lower is better (./score.ts). */
 export interface TuneScore {
@@ -72,10 +86,17 @@ export interface TakeSummary {
   gateSwitches: number
   /** How much less gain the quietest speech frames get than the loud ones, dB (above 2: words are being cut off). */
   wordLossDb: number
+  /**
+   * Speech cut by a gate at word starts and ends, measured against the same chain with its gates passing everything
+   * (./measure.ts cutOf): share of the voice frames (10 ms) that sit more than 3 dB under the ungated render, 0..1,
+   * and such cuts per 10 s. 0 without a working gate; NaN when it was not measured (no render left for it).
+   */
+  cutSpeech: number
+  cutEvents: number
   score: TuneScore
 }
 
-export type TuneMetric = 'speechDb' | 'peakDb' | 'snrDb' | 'tone' | 'spreadDb' | 'deadSilence' | 'wordLossDb'
+export type TuneMetric = 'speechDb' | 'peakDb' | 'snrDb' | 'tone' | 'spreadDb' | 'deadSilence' | 'wordLossDb' | 'cutSpeech'
 
 /** The metric a change was made for: its value right before the change and in the final render. */
 export interface TuneEffect {
@@ -87,15 +108,38 @@ export interface TuneEffect {
 }
 
 /**
- * One kept change. `titleMsg` is the reason in plain words (desktop.autotune.reason.*), `changeMsg` the exact change
- * line ("ReaComp Wet 6 → 14.5 dB"). `reason` is the nearest "Try this" reason, kept so the change is a ValueChange
- * the engine adapter already applies (compression changes use 'tooLoud'); `stage` says what the tuner did it for.
+ * One kept change, as the person reads it. `titleMsg` is the reason in plain words (desktop.autotune.reason.*),
+ * `changeMsg` the exact change line ("ReaComp Wet 6 → 14.5 dB", "ReaFIR off"). `reason` is the nearest "Try this"
+ * reason, kept so the change is a Change the engine adapter already applies (compression changes use 'tooLoud');
+ * `stage` says what the tuner did it for. It is a value change or a slot switched on / off (no from / to numbers).
+ * A ReaEQ band whose frequency or width moved is ONE change: the band's line ("ReaEQ Band 2: 250 Hz, 2 oct, 0 dB →
+ * 220 Hz, 1 oct, −5 dB"), with the band's other moved values in `also`. The engine takes them all: engineChanges().
  */
-export interface TuneChange extends ValueChange {
+export type TuneChange = Change & {
   stage: TuneStage
   changeMsg: Msg
   effect: TuneEffect
+  /** The other values of the same ReaEQ band that moved with this one (frequency, width, gain). */
+  also?: ValueChange[]
 }
+
+/** A value change of a result with what the result says about it. */
+export type TuneValueChange = ValueChange & Pick<TuneChange, 'stage' | 'changeMsg' | 'effect'>
+
+/** The value changes of a result, flat (a band's `also` values carry their change's stage, line and effect); no switches. */
+export const valueChanges = (changes: readonly TuneChange[]): TuneValueChange[] =>
+  changes.flatMap((c) => {
+    if (c.kind !== 'value') return []
+    const { also, ...own } = c
+    return [own, ...(also ?? []).map((a) => ({ ...a, stage: c.stage, changeMsg: c.changeMsg, effect: c.effect }))]
+  })
+
+/** Every engine change of a result, flat: each change, then the values that moved with it (`also`). */
+export const engineChanges = (changes: readonly (Change & { also?: readonly ValueChange[] })[]): Change[] =>
+  changes.flatMap((c) => {
+    const { also, ...own } = c
+    return [own as Change, ...(also ?? [])]
+  })
 
 export type TuneLogEvent = 'info' | 'render' | 'keep' | 'revert' | 'skip'
 
@@ -114,7 +158,10 @@ export interface TuneInput {
   /** Sample rate of the take and of every render (default 48000). */
   sampleRate?: number
   goals: TuneGoals
-  /** The live chain in real units, as it is before tuning. Only switched-on slots with the needed keys are tuned. */
+  /**
+   * The live chain in real units, as it is before tuning. Only switched-on slots with the needed keys are tuned; a
+   * ReaFIR may be switched off and a switched-off Noise Removal on, as candidates like any other (./switches.ts).
+   */
   chain: readonly ChainSlot[]
   render: TuneRender
   /** Before each render: the stage, the render's number (from 1) and the budget. */

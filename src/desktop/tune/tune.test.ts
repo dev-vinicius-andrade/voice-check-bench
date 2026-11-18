@@ -8,7 +8,7 @@ import { DEFAULT_MAX_RENDERS } from './session'
 import { toneExcess, targetsOf } from './targets'
 import { testTake, type TestTakeOptions } from './testTake'
 import { retune, tune } from './tune'
-import type { TuneGoals, TuneInput, TuneResult, TuneStage } from './types'
+import { engineChanges, valueChanges, type TuneChange, type TuneGoals, type TuneInput, type TuneResult, type TuneStage, type TuneValueChange } from './types'
 
 const TIMEOUT = 60_000
 const goalsOf = (g: Partial<TuneGoals> = {}): TuneGoals => ({ use: 'streaming', style: 'natural', bothers: [], amount: 'medium', ...g })
@@ -32,7 +32,9 @@ async function run(take: Partial<TestTakeOptions>, chain: ChainSlot[], goals: Pa
   return { result, calls: calls.length, input }
 }
 
-const keysOf = (r: TuneResult): string[] => r.changes.map((c) => `${c.slot}:${c.key}`)
+const vals = (c: readonly TuneChange[]): TuneValueChange[] => valueChanges(c)
+const isGain = (c: { key: string }): boolean => !/\.(freqHz|bwOct)$/.test(c.key)
+const keysOf = (r: TuneResult): string[] => vals(r.changes).map((c) => `${c.slot}:${c.key}`)
 const unmetKeys = (r: TuneResult): string[] => r.unmet.map((m) => m.key.replace('desktop.autotune.unmet.', ''))
 
 describe('tune: level', () => {
@@ -40,7 +42,7 @@ describe('tune: level', () => {
     const { result: r } = await run({ speechDb: -38, noiseDb: -85 }, fullChain())
     expect(r.before.speechDb).toBeLessThan(-30)
     expect(keysOf(r)).toEqual(['3:wetDb'])
-    const c = r.changes[0]
+    const c = vals(r.changes)[0]
     expect(c.to).toBeGreaterThan(c.from)
     expect(c.stage).toBe('level')
     expect(c.reason).toBe('tooQuiet')
@@ -66,7 +68,7 @@ describe('tune: level', () => {
 
   it('without a compressor nothing sets the level: unmet, no change', async () => {
     const { result: r } = await run({ speechDb: -36 }, [gate({ thresholdDb: -60 }), eq()])
-    expect(r.changes).toEqual([])
+    expect(vals(r.changes)).toEqual([])
     expect(unmetKeys(r)).toContain('level.noToolQuiet')
   }, TIMEOUT)
 
@@ -76,19 +78,23 @@ describe('tune: level', () => {
       if ((live.find((sl) => sl.kind === 'reacomp')?.values.wetDb ?? 0) > 1) x.fill(0, 0, Math.round(x.length * 0.3))
     }
     const { result: r } = await run({ speechDb: -30 }, [eq(), comp(0)], {}, {}, { post })
-    expect(r.changes).toEqual([])
+    expect(vals(r.changes)).toEqual([])
     expect(unmetKeys(r)).toContain('level.held')
     expect(unmetKeys(r)).not.toContain('level.capQuiet')
   }, TIMEOUT)
 })
 
 describe('tune: already good', () => {
-  it('changes nothing, uses one render and reports nothing unmet', async () => {
+  it('changes nothing, uses one render (and one for what its working gate cuts) and reports nothing unmet', async () => {
     const { result: r, calls } = await run({}, fullChain(GOOD_WET))
-    expect(r.changes).toEqual([])
+    expect(vals(r.changes)).toEqual([])
     expect(r.unmet).toEqual([])
-    expect(r.renders).toBe(1)
-    expect(calls).toBe(1)
+    // the chain as it is, and the same with the gate passing everything: the gate is measured against it
+    expect(r.renders).toBe(2)
+    expect(calls).toBe(2)
+    expect(r.before.cutSpeech).toBeLessThan(0.01)
+    const bare = await run({}, [eq(), comp(GOOD_WET)])
+    expect([bare.result.renders, bare.result.before.cutSpeech]).toEqual([1, 0])
     expect(r.after).toEqual(r.before)
     expect(r.before.score.total).toBe(0)
   }, TIMEOUT)
@@ -98,15 +104,17 @@ describe('tune: tone', () => {
   it('boomy take + "boomy": cuts the low bands, measures less boom, does not worsen the other bands', async () => {
     const { result: r } = await run({ tone: [0, 7, 4] }, fullChain(GOOD_WET), { bothers: ['boomy'] })
     expect(r.before.tone[1]).toBeGreaterThan(6)
-    const eqChanges = r.changes.filter((c) => c.stage === 'tone')
+    const eqChanges = vals(r.changes).filter((c) => c.stage === 'tone')
     expect(eqChanges.length).toBeGreaterThan(0)
     const lowShelf = eqChanges.find((c) => c.key === 'band1.gainDb')
     expect(lowShelf?.to).toBeLessThan(0)
-    expect(lowShelf?.titleMsg.key).toBe('desktop.autotune.reason.tone.high.boom')
-    expect(lowShelf?.effect).toMatchObject({ metric: 'tone', band: 1 })
+    // the shelf is cut where it is, or with its corner moved onto the boom (one change line for the whole band then)
+    expect(['desktop.autotune.reason.tone.high.boom', 'desktop.autotune.reason.tone.shape.high']).toContain(lowShelf?.titleMsg.key)
+    expect(lowShelf?.effect.metric).toBe('tone')
+    expect([1, 2]).toContain(lowShelf?.effect.band)
     expect(lowShelf?.effect.after).toBeLessThan((lowShelf?.effect.before ?? 0) - 2)
-    // medium: no band moves more than 4 dB
-    for (const c of eqChanges) expect(Math.abs(c.to - c.from)).toBeLessThanOrEqual(4)
+    // medium: no band's gain moves more than 4 dB
+    for (const c of eqChanges.filter(isGain)) expect(Math.abs(c.to - c.from)).toBeLessThanOrEqual(4)
     expect(r.after.tone[1]).toBeLessThan(r.before.tone[1] - 2)
     expect(r.after.tone[2]).toBeLessThan(r.before.tone[2] - 2)
     const t = targetsOf(goalsOf({ bothers: ['boomy'] }))
@@ -124,7 +132,7 @@ describe('tune: tone', () => {
     const light = await run({ tone: [0, 7, 4] }, fullChain(GOOD_WET), { bothers: ['boomy'], amount: 'light' })
     expect(strong.result.after.tone[1]).toBeLessThan(medium.result.after.tone[1] - 0.5)
     expect(light.result.after.tone[1]).toBeGreaterThan(medium.result.after.tone[1] + 0.5)
-    for (const c of light.result.changes.filter((x) => x.stage === 'tone')) expect(Math.abs(c.to - c.from)).toBeLessThanOrEqual(2)
+    for (const c of vals(light.result.changes).filter((x) => x.stage === 'tone' && isGain(x))) expect(Math.abs(c.to - c.from)).toBeLessThanOrEqual(2)
   }, TIMEOUT)
 
   it('a deep low-cut does not read as every other band being too loud: no across-the-board cuts', async () => {
@@ -132,7 +140,7 @@ describe('tune: tone', () => {
     // the robust level-match leaves the healthy bands at 0 (the plain mean would put them near +4)
     for (let b = 3; b <= 7; b++) expect(Math.abs(r.before.tone[b]), `band ${b}`).toBeLessThan(0.5)
     expect(r.before.tone[1]).toBeLessThan(-15)
-    const eqChanges = r.changes.filter((c) => c.stage === 'tone')
+    const eqChanges = vals(r.changes).filter((c) => c.stage === 'tone')
     // nothing is cut, and the presence band and the high shelf are not touched at all
     for (const c of eqChanges) expect(c.to, c.key).toBeGreaterThan(c.from)
     expect(eqChanges.map((c) => c.key)).not.toContain('band4.gainDb')
@@ -144,25 +152,33 @@ describe('tune: tone', () => {
 
   it('chain without an EQ: unmet "add ReaEQ", tone untouched', async () => {
     const { result: r } = await run({ tone: [0, 7, 4] }, [gate({ thresholdDb: -60 }), comp(GOOD_WET)], { bothers: ['boomy'] })
-    expect(r.changes.filter((c) => c.stage === 'tone')).toEqual([])
+    expect(vals(r.changes).filter((c) => c.stage === 'tone')).toEqual([])
     expect(unmetKeys(r)).toContain('tone.noEq')
     expect(r.after.tone[1]).toBeCloseTo(r.before.tone[1], 3)
   }, TIMEOUT)
 
-  it('sharp S: only bands that really move 5–10 kHz are used, presence is not sacrificed, the rest is reported', async () => {
+  it('sharp S: the bands next to 5–10 kHz are moved onto it, presence is not sacrificed', async () => {
     const { result: r } = await run({ tone: [0, 0, 0, 0, 0, 0, 0, 6, 2] }, fullChain(GOOD_WET), { bothers: ['sharpS'] })
-    expect(r.after.tone[7]).toBeLessThan(r.before.tone[7] - 1)
+    expect(r.after.tone[7]).toBeLessThan(r.before.tone[7] - 3)
     expect(r.after.tone[6]).toBeGreaterThanOrEqual(-4)
-    for (const c of r.changes.filter((x) => x.stage === 'tone')) expect(['band4.gainDb', 'band5.gainDb']).toContain(c.key)
-    expect(unmetKeys(r)).toContain('tone.sharpS')
+    const tone = vals(r.changes).filter((x) => x.stage === 'tone')
+    for (const c of tone) expect(c.key).toMatch(/^band[45]\./)
+    // the 3.5 kHz band went up toward the S sounds, not more than an octave, and stayed a band of sane width
+    const hz = tone.find((c) => c.key === 'band4.freqHz')
+    expect(hz?.to).toBeGreaterThan(3500)
+    expect(hz?.to).toBeLessThanOrEqual(7000)
+    const moved = r.changes.find((c) => c.kind === 'value' && c.key.startsWith('band4.'))
+    expect(moved?.changeMsg.key).toBe('desktop.autotune.change.band')
+    expect(moved?.titleMsg.key).toBe('desktop.autotune.reason.tone.shape.high')
+    expect(moved?.titleMsg.params).toMatchObject({ lo: 5000, hi: 10000 })
   }, TIMEOUT)
 
   it('the style is the target: a warm goal leaves a warm take alone and a natural goal trims it', async () => {
     const warmTake = { tone: [0, 6, 5, 0, 1, 0, -1, -1, -1] }
     const asWarm = await run(warmTake, fullChain(GOOD_WET), { style: 'warm' })
     const asNatural = await run(warmTake, fullChain(GOOD_WET), { style: 'natural' })
-    expect(asWarm.result.changes.filter((c) => c.stage === 'tone')).toEqual([])
-    expect(asNatural.result.changes.some((c) => c.stage === 'tone' && c.to < c.from)).toBe(true)
+    expect(vals(asWarm.result.changes).filter((c) => c.stage === 'tone')).toEqual([])
+    expect(vals(asNatural.result.changes).some((c) => c.stage === 'tone' && c.to < c.from)).toBe(true)
   }, TIMEOUT)
 })
 
@@ -170,10 +186,11 @@ describe('tune: a change that makes things worse is reverted', () => {
   it('EQ bands that do the opposite of their setting are not kept', async () => {
     // the two low bands boost when asked to cut
     const { result: r } = await run({ tone: [0, 7, 4] }, fullChain(GOOD_WET), { bothers: ['boomy'] }, {}, { eqGain: (_s, n, g) => (n <= 2 ? -g : g) })
-    expect(r.changes.map((c) => c.key)).not.toContain('band1.gainDb')
-    expect(r.changes.map((c) => c.key)).not.toContain('band2.gainDb')
+    expect(vals(r.changes).map((c) => c.key)).not.toContain('band1.gainDb')
+    expect(vals(r.changes).map((c) => c.key)).not.toContain('band2.gainDb')
     expect(r.log.some((l) => l.stage === 'tone' && l.event === 'revert')).toBe(true)
-    expect(r.after.tone[1]).toBeGreaterThan(r.before.tone[1] - 0.5)
+    // no band that did the opposite stays moved in any way
+    expect(vals(r.changes).filter((c) => /^band[12]\./.test(c.key))).toEqual([])
     expect(r.after.score.total).toBeLessThanOrEqual(r.before.score.total)
     expect(unmetKeys(r)).toContain('tone.limitHigh')
   }, TIMEOUT)
@@ -181,7 +198,7 @@ describe('tune: a change that makes things worse is reverted', () => {
   it('a noise-removal step that turns pauses into dead silence is taken back and a smaller one kept', async () => {
     // the fake remover zeroes pauses from strength 80: 60 → 80 is rejected, 60 → 70 kept
     const { result: r } = await run({ noiseDb: -45 }, [noiseRemoval(60), eq(), comp(GOOD_WET)], { bothers: ['roomNoise'] })
-    const c = r.changes.find((x) => x.key === 'strength')
+    const c = vals(r.changes).find((x) => x.key === 'strength')
     expect(c?.to).toBe(70)
     expect(r.log.some((l) => l.stage === 'noise' && l.event === 'revert' && l.text.includes('damage'))).toBe(true)
     expect(r.after.deadSilence).toBeLessThan(0.05)
@@ -194,7 +211,7 @@ describe('tune: a change that makes things worse is reverted', () => {
       for (let i = 0; i < x.length; i++) if (Math.abs(x[i]) > 0.2) x[i] = Math.sign(x[i])
     }
     const { result: r } = await run({ speechDb: -34 }, fullChain(0), {}, {}, { post })
-    expect(r.changes).toEqual([])
+    expect(vals(r.changes)).toEqual([])
     expect(r.after).toEqual(r.before)
     expect(r.log.some((l) => l.stage === 'level' && l.event === 'revert')).toBe(true)
   }, TIMEOUT)
@@ -204,7 +221,7 @@ describe('tune: noise & gate', () => {
   it('noisy pauses + "room noise": pause noise goes down without dead silence or cut words', async () => {
     const { result: r } = await run({ noiseDb: -50 }, fullChain(GOOD_WET), { bothers: ['roomNoise'] })
     expect(r.before.snrDb).toBeLessThan(35)
-    const c = r.changes.find((x) => x.key === 'strength')
+    const c = vals(r.changes).find((x) => x.key === 'strength')
     expect(c?.to).toBeGreaterThan(c?.from ?? Infinity)
     expect(c?.stage).toBe('noise')
     expect(c?.effect.metric).toBe('snrDb')
@@ -217,7 +234,7 @@ describe('tune: noise & gate', () => {
 
   it('nothing to remove the noise with: unmet, no change', async () => {
     const { result: r } = await run({ noiseDb: -45 }, [eq(), comp(GOOD_WET)], { bothers: ['roomNoise'] })
-    expect(r.changes.filter((c) => c.stage === 'noise')).toEqual([])
+    expect(vals(r.changes).filter((c) => c.stage === 'noise')).toEqual([])
     expect(unmetKeys(r)).toContain('noise.noTool')
   }, TIMEOUT)
 
@@ -225,25 +242,25 @@ describe('tune: noise & gate', () => {
     const chain = (): ChainSlot[] => [noiseRemoval(85), gate({ thresholdDb: -60 }), eq(), comp(GOOD_WET)]
     const natural = await run({ noiseDb: -60 }, chain())
     expect(natural.result.before.deadSilence).toBeGreaterThan(0.2)
-    const c = natural.result.changes.find((x) => x.key === 'strength')
+    const c = vals(natural.result.changes).find((x) => x.key === 'strength')
     expect(c).toMatchObject({ from: 85, to: 65, reason: 'deadSilence' })
     expect(c?.effect.metric).toBe('deadSilence')
     expect(natural.result.after.deadSilence).toBeLessThan(0.05)
 
     const max = await run({ noiseDb: -60 }, chain(), { bothers: ['roomNoise'], amount: 'strong' })
-    expect(max.result.changes.find((x) => x.key === 'strength')).toBeUndefined()
+    expect(vals(max.result.changes).find((x) => x.key === 'strength')).toBeUndefined()
     expect(max.result.after.score.damage).toBe(0)
   }, TIMEOUT)
 
   it('a hard gate leaving dead silence gets the soft Dry', async () => {
     const { result: r } = await run({ noiseDb: -60 }, [gate({ thresholdDb: -45, dryDb: -100 }), eq(), comp(GOOD_WET)])
-    expect(r.changes.find((c) => c.key === 'dryDb')).toMatchObject({ from: -100, to: -20, stage: 'noise' })
+    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: -100, to: -20, stage: 'noise' })
     expect(r.after.deadSilence).toBeLessThan(0.05)
   }, TIMEOUT)
 
   it('a doubled gate over noisy pauses gets Dry −20', async () => {
     const { result: r } = await run({ noiseDb: -48 }, [gate({ thresholdDb: -40, dryDb: 0 }), eq(), comp(GOOD_WET)])
-    expect(r.changes.find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, to: -20, reason: 'gateDoubled' })
+    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, to: -20, reason: 'gateDoubled' })
     expect(r.after.snrDb).toBeGreaterThan(r.before.snrDb + 5)
     expect(Math.abs(r.after.speechDb - TARGET_SPEECH_DB)).toBeLessThanOrEqual(1.01)
   }, TIMEOUT)
@@ -254,8 +271,8 @@ describe('tune: noise & gate', () => {
 
   it('a doubled gate behind a compressor is placed on what it receives, and follows the make-up gain', async () => {
     const { result: r } = await run({ ...quietTake, noiseDb: -55 }, behindComp())
-    expect(r.changes.find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, to: -20, reason: 'gateDoubled' })
-    const thr = r.changes.find((c) => c.key === 'thresholdDb')
+    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, to: -20, reason: 'gateDoubled' })
+    const thr = vals(r.changes).find((c) => c.key === 'thresholdDb')
     // the raw take's room (−55) + 6 would be −49: under what the gate receives behind 12 dB of make-up
     expect(thr?.to).toBeGreaterThan(-40)
     expect(thr?.titleMsg).toEqual({ key: 'desktop.autotune.reason.noise.threshold', params: { to: thr?.to } })
@@ -269,7 +286,7 @@ describe('tune: noise & gate', () => {
 
   it('a gate behind a compressor that would close on the quiet phrases is left as it was', async () => {
     const { result: r } = await run({ ...quietTake, noiseDb: -50 }, behindComp())
-    expect(r.changes.find((c) => c.slot === 4)).toBeUndefined()
+    expect(vals(r.changes).find((c) => c.slot === 4)).toBeUndefined()
     expect(r.log.some((l) => l.stage === 'noise' && l.event === 'revert' && /reagate\[4\]\.thresholdDb/.test(l.text))).toBe(true)
     expect(r.after.spreadDb).toBeLessThan(r.before.spreadDb + 1)
   }, TIMEOUT)
@@ -281,8 +298,9 @@ describe('tune: the voice does not come out', () => {
     expect(r.before.speechDb).toBe(-100)
     expect(r.before.tone.every(Number.isNaN)).toBe(true)
     // nothing is judged on a render without a voice except getting it back
-    expect(r.changes[0]).toMatchObject({ key: 'dryDb', to: -20, stage: 'noise' })
-    expect(r.changes.some((c) => c.key === 'wetDb' && c.to > c.from)).toBe(true)
+    expect(vals(r.changes)[0]).toMatchObject({ key: 'dryDb', stage: 'noise' })
+    expect(vals(r.changes)[0].to).toBeGreaterThanOrEqual(-20)
+    expect(vals(r.changes).some((c) => c.key === 'wetDb' && c.to > c.from)).toBe(true)
     expect(r.after.speechDb).toBeGreaterThan(-40)
     expect(r.after.deadSilence).toBeLessThan(0.05)
     expect(unmetKeys(r)).not.toContain('silent')
@@ -290,7 +308,7 @@ describe('tune: the voice does not come out', () => {
 
   it('nothing in reach cuts it: unmet, no change, no wasted renders', async () => {
     const { result: r, calls } = await run({}, fullChain(GOOD_WET), { bothers: ['boomy'] }, {}, { post: (x) => x.fill(0) })
-    expect(r.changes).toEqual([])
+    expect(vals(r.changes)).toEqual([])
     expect(unmetKeys(r)).toEqual(['silent'])
     expect(calls).toBeLessThanOrEqual(3)
   }, TIMEOUT)
@@ -301,10 +319,10 @@ describe('tune: compression', () => {
     const chain = [eq(), { ...comp(6), values: { thresholdDb: -12, ratio: 1.5, attackMs: 5, releaseMs: 100, wetDb: 6 } }]
     const { result: r } = await run({ speechDb: -18, phraseDb: [0, -12, -3, -14] }, chain, { bothers: ['unevenVolume'] })
     expect(r.before.spreadDb).toBeGreaterThan(8)
-    const stages = r.changes.filter((c) => c.stage === 'compression').map((c) => c.key)
+    const stages = vals(r.changes).filter((c) => c.stage === 'compression').map((c) => c.key)
     expect(stages).toEqual(expect.arrayContaining(['ratio', 'thresholdDb']))
     expect(r.after.spreadDb).toBeLessThan(r.before.spreadDb - 1)
-    expect(r.changes.find((c) => c.key === 'ratio')?.effect).toMatchObject({ metric: 'spreadDb', after: r.after.spreadDb })
+    expect(vals(r.changes).find((c) => c.key === 'ratio')?.effect).toMatchObject({ metric: 'spreadDb', after: r.after.spreadDb })
     expect(Math.abs(r.after.speechDb - TARGET_SPEECH_DB)).toBeLessThanOrEqual(1.01)
     expect(r.after.clipped).toBe(0)
   }, TIMEOUT)
@@ -327,7 +345,7 @@ describe('tune: budget, progress, determinism', () => {
     expect(seen.map((s) => s[1])).toEqual(Array.from({ length: calls }, (_, i) => i + 1))
     expect(seen[0][0]).toBe('baseline')
     expect(seen.every((s) => s[2] === DEFAULT_MAX_RENDERS)).toBe(true)
-    expect(r.changes.length).toBeGreaterThan(2)
+    expect(vals(r.changes).length).toBeGreaterThan(2)
     expect(r.after.score.total).toBeLessThan(r.before.score.total)
   }, TIMEOUT)
 
@@ -345,10 +363,10 @@ describe('tune: budget, progress, determinism', () => {
     const chain = fullChain()
     const { render } = fakeRenderer(x, chain)
     const r = await tune({ take: x, chain, render, goals: goalsOf(messyGoals) })
-    const again = await render(r.changes)
+    const again = await render(engineChanges(r.changes))
     expect(Array.from(r.processed.subarray(0, 4000))).toEqual(Array.from(again.subarray(0, 4000)))
     expect(r.processed.length).toBe(x.length)
-    for (const c of r.changes) expect(c.from).toBe(chain.find((s) => s.index === c.slot)?.values[c.key])
+    for (const c of vals(r.changes)) expect(c.from).toBe(chain.find((s) => s.index === c.slot)?.values[c.key])
   }, TIMEOUT)
 
   it('same inputs, same result', async () => {
@@ -367,7 +385,7 @@ describe('tune: budget, progress, determinism', () => {
     const x = new Float32Array(48000 * 6)
     const { render, calls } = fakeRenderer(x, fullChain())
     const r = await tune({ take: x, chain: fullChain(), render, goals: goalsOf() })
-    expect(r.changes).toEqual([])
+    expect(vals(r.changes)).toEqual([])
     expect(calls.length).toBe(1)
     expect(unmetKeys(r)).toEqual(['notEnoughSpeech'])
   }, TIMEOUT)
@@ -385,15 +403,16 @@ describe('retune', () => {
     expect(resume.goals.amount).toBe('light')
     expect(resume.limit).toBe(1)
     expect(resume.startRender).toBeUndefined()
-    for (const c of resume.start ?? []) {
-      const was = first.result.changes.find((p) => p.slot === c.slot && p.key === c.key)
-      if (c.stage === 'tone') expect(c.to - c.from).toBeCloseTo(((was?.to ?? 0) - (was?.from ?? 0)) / 2, 6)
+    for (const c of vals(resume.start ?? [])) {
+      const was = vals(first.result.changes).find((p) => p.slot === c.slot && p.key === c.key)
+      // gains halve exactly; a frequency lands on a whole Hz, a width on 0.05 oct
+      if (c.stage === 'tone') expect(Math.abs(c.to - c.from - ((was?.to ?? 0) - (was?.from ?? 0)) / 2)).toBeLessThanOrEqual(c.key.endsWith('.freqHz') ? 0.5 : c.key.endsWith('.bwOct') ? 0.026 : 1e-6)
       else expect(c.to).toBe(was?.to)
     }
     const second = await tune({ ...first.input, ...resume })
-    const tone = second.changes.filter((c) => c.stage === 'tone')
+    const tone = vals(second.changes).filter((c) => c.stage === 'tone')
     expect(tone.length).toBeGreaterThan(0)
-    for (const c of tone) expect(Math.abs(c.to - c.from)).toBeLessThanOrEqual(2)
+    for (const c of tone.filter(isGain)) expect(Math.abs(c.to - c.from)).toBeLessThanOrEqual(2)
     expect(second.after.tone[1]).toBeGreaterThan(first.result.after.tone[1])
     expect(second.after.tone[1]).toBeLessThan(first.result.before.tone[1])
     expect(Math.abs(second.after.speechDb - TARGET_SPEECH_DB)).toBeLessThanOrEqual(1.01)
@@ -422,7 +441,7 @@ describe('retune', () => {
     expect(second.before).toEqual({ ...first.result.before, score: second.before.score })
     expect(second.after.tone[7]).toBeLessThan(first.result.after.tone[7] - 0.5)
     expect(second.after.tone[1]).toBeLessThanOrEqual(first.result.after.tone[1] + 0.5)
-    expect(second.changes.find((c) => c.key === 'band1.gainDb')?.to).toBe(first.result.changes.find((c) => c.key === 'band1.gainDb')?.to)
+    expect(vals(second.changes).find((c) => c.key === 'band1.gainDb')?.to).toBe(vals(first.result.changes).find((c) => c.key === 'band1.gainDb')?.to)
 
     const again = retune(first.result, ['boomy'])
     expect(again.goals.amount).toBe('strong')
@@ -436,6 +455,6 @@ describe('retune', () => {
     const { render } = fakeRenderer(x, first.input.chain)
     const r = await tune({ take: x, chain: first.input.chain, render, goals: goalsOf(), start: first.result.changes })
     expect(r.log.some((l) => l.stage === 'baseline' && l.event === 'revert')).toBe(true)
-    expect(r.changes.filter((c) => c.stage === 'tone' && c.to < c.from)).toEqual([])
+    expect(vals(r.changes).filter((c) => c.stage === 'tone' && c.to < c.from)).toEqual([])
   }, TIMEOUT)
 })

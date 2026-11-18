@@ -1,14 +1,16 @@
-// The tone stage: ReaEQ gains toward the goal's target, planned on the take's own spectrum, corrected by what each
-// band really did in a render, and kept only when the rendered tone is measurably closer.
-import { sameValue } from '../advice/chain'
-import { calibrate, EqCurves, eqHandles, NO_BOOST_SNR, NOISY_SNR, planTone, predictBands, touched, type EqHandle } from './eqModel'
+// The tone stage: ReaEQ gains (and, when gains alone cannot do it, a band's frequency and width) toward the goal's
+// target, planned on the take's own spectrum, corrected by what each band really did in a render, and kept only when
+// the rendered tone is measurably closer.
 import { median } from '../../audio/dsp'
+import { BANDS } from '../../audio/reference'
+import { eqKey, sameValue } from '../advice/chain'
+import { calibrate, EqCurves, eqHandles, NO_BOOST_SNR, NOISY_SNR, planShaped, predictBands, reshape, sameShape, SHAPE_OCT, SHAPE_VOICE_HZ, shapeVariants, touched, type EqHandle, type TonePlan } from './eqModel'
 import { bandsOfCells, toneAt, toneLevel, type Measured } from './measure'
-import { toneReasonMsg } from './msgs'
+import { shapeReasonMsg, toneReasonMsg } from './msgs'
 import { toneOf } from './score'
-import { STAGE_RENDERS, type Move, type Session } from './session'
+import type { Move, Session } from './session'
 import { tryWithGates } from './stages'
-import { N_BANDS, toneExcess, type TuneTargets } from './targets'
+import { N_BANDS, toneExcess, toneJudge, type TuneTargets } from './targets'
 
 /** No band may end this much further outside its tolerance than it was, dB ("other bands not worsened"). */
 export const OTHER_BAND_TOL_DB = 1
@@ -16,9 +18,17 @@ export const OTHER_BAND_TOL_DB = 1
 export interface ToneNotes {
   /** No tunable ReaEQ band in the chain. */
   noEq: boolean
-  /** Per BANDS index: some tunable EQ band reaches it. */
+  /** Per BANDS index: some tunable EQ band reaches it, where it is or moved onto it. */
   reach: boolean[]
+  /**
+   * No plan was kept and even the gentlest one rendered cost this much voice over the pauses, dB: cutting the loudest
+   * part of a voice makes the whole voice quieter against the room (on the real chain 5.8 dB for the 160–320 Hz hump).
+   */
+  roomCostDb?: number
 }
+
+/** Plans one run of the stage may render (the stage's share of the budget covers two runs: with and without a ReaFIR). */
+export const TONE_PASSES = 4
 
 /** A plan that cost this much voice over the room was lifting the room with the voice, dB. */
 export const LIFT_NOISE_DB = 1
@@ -69,8 +79,7 @@ export function alignedTone(b: Measured, a: Measured, predicted: readonly number
 }
 
 /** The band a move is for: the out-of-tolerance band its curve moves most the right way, else where its curve is strongest. */
-function targetBand(curves: EqCurves, i: number, from: number, to: number, shifted: readonly number[], excess: readonly number[]): number {
-  const d = curves.bandDelta(i, from, to)
+function targetBand(d: readonly number[], shifted: readonly number[], excess: readonly number[]): number {
   let best = 1
   let bestHelp = -Infinity
   for (let b = 1; b < N_BANDS; b++) {
@@ -84,16 +93,30 @@ function targetBand(curves: EqCurves, i: number, from: number, to: number, shift
   return best
 }
 
+/** A Band can be moved onto this BANDS index: its centre is within SHAPE_OCT of the band's and inside the voice range. */
+const movable = (h: EqHandle, band: number): boolean => {
+  const hz = Math.sqrt(BANDS[band].lo * BANDS[band].hi)
+  return h.type === 'Band' && Math.abs(Math.log2(hz / h.baseFreqHz)) <= SHAPE_OCT && hz >= SHAPE_VOICE_HZ[0] && hz <= SHAPE_VOICE_HZ[1]
+}
+
+const shapeKey = (p: TonePlan): string => p.curves.handles.map((h, i) => `${p.gains[i]}@${h.freqHz}/${h.bwOct}`).join(',')
+
 /**
- * Tone, at most STAGE_RENDERS.tone renders:
+ * Tone, at most TONE_PASSES plans rendered:
  * 1. Nothing outside its tolerance → nothing to do. No tunable ReaEQ band → noted for the unmet list.
- * 2. Plan the gains on the measured spectrum with each band's nominal curve (planTone).
+ * 2. Plan on the measured spectrum with each band's nominal curve (planShaped): the gains first; while they leave a
+ *    band out of tolerance, a band's frequency (within an octave of where it is, inside the voice range) and width
+ *    (0.3–2.5 oct) too, so a narrow cut can sit on a hump without thinning the hole next to it and a lift can be put
+ *    where the voice is missing. A shelf stays a shelf. The amount's caps count how far the band's whole curve moved.
  * 3. Render the plan. Keep it when the tone score improves and no band ends more than OTHER_BAND_TOL_DB further
  *    outside its tolerance than before, aligned on what the plan predicted for each band (alignedTone: what the EQ
  *    did to it, beyond what was planned).
  * 4. Fit what each moved band REALLY did in that render (calibrate) and plan again from the stage's start with the
  *    fitted strengths: a band that did less than its curve is pushed further or dropped, one that did the opposite
  *    is dropped. A new plan is rendered and replaces the kept one only if it measures better still.
+ * The score is taken against toneJudge(targets): a plan may cost voice over the room while it stays at the use's own
+ * target (30 dB, calls 25), whatever "room noise" wishes for; one that is rejected and ends under it gets the gate
+ * placed again first (tryWithGates).
  * No band moves against a complaint (respectBothers: boomy never lifts the low bands).
  * In a noisy room (SNR under 25 dB) a band whose voice-over-room SNR is under 12 dB is never boosted (suggest()). A
  * plan that cost LIFT_NOISE_DB of voice over the pauses is planned again without lifting such bands at all
@@ -103,60 +126,106 @@ export async function toneStage(s: Session): Promise<ToneNotes> {
   const t = s.targets
   const a = s.mask.analysis
   const noisy = a.snr < NOISY_SNR
-  const handles = respectBothers(eqHandles(s.chain, t.caps.eqStepDb, (band) => noisy && a.bandSnr[band] < NO_BOOST_SNR), t)
-  const curves = new EqCurves(handles, s.mask.cellHz, s.mask.sampleRate)
+  const noBoost = (band: number): boolean => noisy && a.bandSnr[band] < NO_BOOST_SNR
+  const roomLoud = (band: number): boolean => a.bandSnr[band] < NO_BOOST_SNR
+  const home = eqHandles(s.chain, t.caps.eqStepDb, noBoost)
+  const mk = (hs: readonly EqHandle[]): EqCurves => new EqCurves(hs, s.mask.cellHz, s.mask.sampleRate)
+  const homeCurves = mk(respectBothers(home, t))
   const notes: ToneNotes = {
-    noEq: handles.length === 0,
-    reach: Array.from({ length: N_BANDS }, (_, b) => handles.some((_h, i) => curves.reaches(i)[b])),
+    noEq: home.length === 0,
+    reach: Array.from({ length: N_BANDS }, (_, b) => home.some((h, i) => homeCurves.reaches(i)[b] || movable(h, b))),
   }
   const startM = s.m
   if (startM.silent) return notes
   const tone0 = toneOf(startM, t)
   const excess0 = toneExcess(tone0, t)
   if (!excess0.some((e, i) => e * t.weight[i] > 0)) return notes
-  if (!handles.length) {
+  if (!home.length) {
     s.note('tone', 'skip', 'no tunable ReaEQ band in the chain')
     return notes
   }
   const shifted = tone0.map((d, i) => d + t.shift[i])
-  const start = handles.map((h) => s.value(h.slot, h.key))
-  const current = (): number[] => handles.map((h) => s.value(h.slot, h.key))
-  /** The stage's keep check for gains `from` → `to` (alignedTone on the plan's predicted change per band). */
+  /** The handles' bounds: never against a complaint, and after a plan lifted the room, no lift where it is loud. */
+  let lifted = false
+  const bound = (hs: readonly EqHandle[]): EqHandle[] => respectBothers(lifted ? withoutLifts(hs, roomLoud) : hs, t)
+  /**
+   * Handle `i` at a frequency / width (the chain's own: the handle as it started). A band that may not be lifted (or
+   * cut) where the chain has it may not be either once moved: a shelf slid down under a band the person hears as too
+   * much would lift it all the same.
+   */
+  const at = (i: number, freqHz: number, bwOct: number): EqHandle => {
+    const own = bound([home[i]])[0]
+    const h = bound([reshape(home[i], freqHz, bwOct, noBoost)])[0]
+    if (sameShape(h)) return h
+    // at its new place the band answers for every tone band its curve reaches there, from 0 dB: a cut it carried is
+    // not taken along onto a band the person hears as too little, nor a lift onto one they hear as too much
+    const reach = mk([h]).reaches(0)
+    const noLift = own.hi <= own.base || reach.some((r, b) => r && (t.shift[b] > 0 || (lifted ? roomLoud(b) : noBoost(b))))
+    const noCut = own.lo >= own.base || reach.some((r, b) => r && t.shift[b] < 0)
+    return { ...h, lo: noCut ? Math.max(h.lo, 0) : h.lo, hi: noLift ? Math.min(h.hi, 0) : h.hi }
+  }
+  const value = (h: EqHandle, field: 'freqHz' | 'bwOct' | 'gainDb'): number => s.value(h.slot, eqKey(h.n, field))
+  // where the stage starts: the kept shapes and gains (the chain's own, or a previous result's on a retune)
+  const startShape = home.map((h) => ({ freqHz: value(h, 'freqHz'), bwOct: value(h, 'bwOct') }))
+  const startCurves = (): EqCurves => mk(home.map((_h, i) => at(i, startShape[i].freqHz, startShape[i].bwOct)))
+  const startGains = home.map((h) => value(h, 'gainDb'))
+  const variants = (i: number, bands: readonly number[]): EqHandle[] => {
+    const here = at(i, startShape[i].freqHz, startShape[i].bwOct)
+    const back = sameShape(here) ? [] : [{ freqHz: home[i].baseFreqHz, bwOct: home[i].baseBwOct }]
+    return [...back, ...shapeVariants(here, bands)].map((v) => at(i, v.freqHz, v.bwOct))
+  }
+  /** The stage's keep check for a plan `to` over the kept one `from` (alignedTone on the plan's predicted change per band). */
   const noWorse =
-    (from: readonly number[], to: readonly number[], strength: readonly number[]) =>
+    (from: TonePlan, to: TonePlan, strength: readonly number[]) =>
     (b: Measured, m: Measured): string | null => {
       const bb = bandsOfCells(b.cells)
-      const predicted = predictBands(b.cells, curves.delta(from, to, strength)).map((v, k) => v - bb[k])
+      const predicted = predictBands(b.cells, to.curves.delta(from.gains, to.gains, strength, from.curves)).map((v, k) => v - bb[k])
       const [eb, ea] = alignedTone(b, m, predicted, t).map((d) => toneExcess(d, t))
       const i = ea.findIndex((e, k) => t.weight[k] > 0 && e > eb[k] + OTHER_BAND_TOL_DB)
       return i < 0 ? null : `band ${i} ended ${(ea[i] - eb[i]).toFixed(1)} dB further off`
     }
 
-  let rho = handles.map(() => 1)
-  let planner = curves
+  // the room may give way to the tone down to the use's own target ("room noise" asks the noise stage for more)
+  const judge = toneJudge(t)
+  let rho = home.map(() => 1)
+  let kept: TonePlan = { curves: startCurves(), gains: startGains }
+  let keptAny = false
+  let roomCost = Infinity
   const tried = new Set<string>()
-  for (let pass = 0; pass < STAGE_RENDERS.tone; pass++) {
-    const plan = planTone(planner, startM.cells, start, rho, t, t.caps.eqTotalDb)
-    const key = plan.join(',')
-    const now = current()
-    if (tried.has(key) || plan.every((g, i) => sameValue(g, now[i]))) break
+  for (let pass = 0; pass < TONE_PASSES; pass++) {
+    const was = startCurves()
+    const plan = planShaped(was, startM.cells, startGains, rho, t, t.caps.eqTotalDb, variants)
+    const key = shapeKey(plan)
+    if (tried.has(key) || key === shapeKey(kept)) break
     tried.add(key)
-    const moves: Move[] = handles.flatMap((h: EqHandle, i): Move[] => {
-      if (sameValue(plan[i], now[i])) return []
-      const band = targetBand(curves, i, start[i], sameValue(plan[i], start[i]) ? now[i] : plan[i], shifted, excess0)
-      const cut = plan[i] < h.base
-      return [{ slot: h.slot, key: h.key, to: plan[i], reason: 'tone', titleMsg: toneReasonMsg(band, cut ? 'high' : 'low', Math.abs(plan[i] - h.base)), metric: 'tone', band }]
+    const moves: Move[] = plan.curves.handles.flatMap((h: EqHandle, i): Move[] => {
+      const k = kept.curves.handles[i]
+      const gain = !sameValue(plan.gains[i], kept.gains[i])
+      const freq = h.freqHz !== k.freqHz
+      const width = h.bwOct !== k.bwOct
+      if (!gain && !freq && !width) return []
+      // what the band does from where the stage found it (back at the start: what undoing the kept move does)
+      const back = sameValue(plan.gains[i], startGains[i]) && h.freqHz === was.handles[i].freqHz && h.bwOct === was.handles[i].bwOct
+      const d = back ? plan.curves.bandDelta(i, kept.gains[i], plan.gains[i], kept.curves) : plan.curves.bandDelta(i, startGains[i], plan.gains[i], was)
+      const band = targetBand(d, shifted, excess0)
+      const titleMsg = sameShape(h) ? toneReasonMsg(band, plan.gains[i] < h.base ? 'high' : 'low', Math.abs(plan.gains[i] - h.base)) : shapeReasonMsg(band, d[band] < 0 ? 'high' : 'low')
+      const move = (field: 'freqHz' | 'bwOct' | 'gainDb', to: number): Move => ({ slot: h.slot, key: eqKey(h.n, field), to, reason: 'tone', titleMsg, metric: 'tone', band })
+      return [...(gain ? [move('gainDb', plan.gains[i])] : []), ...(freq ? [move('freqHz', h.freqHz)] : []), ...(width ? [move('bwOct', h.bwOct)] : [])]
     })
-    const kept = s.m
+    const before = s.m
     const renders = s.renders
-    const r = await tryWithGates(s, 'tone', moves, 'tone', noWorse(now, plan, rho))
+    const r = await tryWithGates(s, 'tone', moves, 'tone', noWorse(kept, plan, rho), judge)
     if (r === 'budget' || r === 'same') break
-    if (r === 'reverted' && planner === curves && s.renders > renders && s.last.snrDb < kept.snrDb - LIFT_NOISE_DB) {
-      planner = new EqCurves(withoutLifts(handles, (b) => a.bandSnr[b] < NO_BOOST_SNR), s.mask.cellHz, s.mask.sampleRate)
-      s.note('tone', 'info', `that plan brought the room up (voice over pauses ${kept.snrDb.toFixed(1)} → ${s.last.snrDb.toFixed(1)} dB): planning again without lifting bands where the room is loud`)
+    if (r === 'kept') {
+      kept = plan
+      keptAny = true
+    } else if (s.renders > renders) roomCost = Math.min(roomCost, before.snrDb - s.last.snrDb)
+    if (r === 'reverted' && !lifted && s.renders > renders && s.last.snrDb < before.snrDb - LIFT_NOISE_DB) {
+      lifted = true
+      s.note('tone', 'info', `that plan brought the room up (voice over pauses ${before.snrDb.toFixed(1)} → ${s.last.snrDb.toFixed(1)} dB): planning again without lifting bands where the room is loud`)
     }
-    rho = calibrate(curves, startM.cells, s.last.cells, start, plan, rho)
-    s.note('tone', 'info', `what each band did vs its curve: ${handles.map((h, i) => `${h.type} ${Math.round(h.freqHz)} Hz ×${rho[i].toFixed(2)}`).join(', ')}`)
+    rho = calibrate(plan.curves, startM.cells, s.last.cells, startGains, plan.gains, rho, was)
+    s.note('tone', 'info', `what each band did vs its curve: ${plan.curves.handles.map((h, i) => `${h.type} ${Math.round(h.freqHz)} Hz ×${rho[i].toFixed(2)}`).join(', ')}`)
   }
-  return notes
+  return !keptAny && Number.isFinite(roomCost) && roomCost >= LIFT_NOISE_DB ? { ...notes, roomCostDb: roomCost } : notes
 }

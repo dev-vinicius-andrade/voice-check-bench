@@ -24,6 +24,18 @@ export const SPREAD_POINTS = 1.5
 /** wordLossDb above this means quiet syllables are being cut off, dB; points per dB beyond it. */
 export const CHOP_OK_DB = 2
 export const CHOP_POINTS = 3
+/**
+ * Speech cut by a gate (measure.ts cutOf), when measured: up to this share of the voice frames is not heard as
+ * chopping, percent; points per percent beyond it. Steep on purpose: it is damage, and no voice over the room is
+ * worth words that start or end cut.
+ */
+export const CUT_OK_PCT = 1
+export const CUT_POINTS = 8
+/** Cut events (word starts or ends cut) per 10 s that pass, and points per event beyond them. */
+export const CUT_OK_EVENTS = 1
+export const CUT_EVENT_POINTS = 3
+/** Whether a render's gates cut speech audibly (false while not measured). */
+export const cutsSpeech = (m: Pick<Measured, 'cutShare' | 'cutEvents'>): boolean => 100 * m.cutShare > CUT_OK_PCT || m.cutEvents > CUT_OK_EVENTS
 
 /** A change is kept only when the judged total drops by at least this many points… */
 export const MIN_GAIN = 0.5
@@ -81,7 +93,9 @@ export function levelPoints(m: Measured, t: TuneTargets, gain = 0): number {
  * - tone: 1.2 per dB a band is outside its tolerance, weighted (rumble 0, air 0.5).
  * - consistency: 1.5 per dB of level spread above the target.
  * - damage: up to 35 for digital silence (0 at 5 % zero samples or 6 cut-outs per 10 s, full at 30 % or 18; nothing
- *   when the goals allow dead-silent pauses) plus 3 per dB of word loss above 2 dB.
+ *   when the goals allow dead-silent pauses) plus 3 per dB of word loss above 2 dB, plus, when the session measured
+ *   what the gates cut against the ungated render, 8 per percent of cut speech beyond 1 % and 3 per cut event
+ *   beyond 1 per 10 s.
  */
 export function scoreOf(m: Measured, t: TuneTargets, trim: TrimRange | null = null): TuneScore {
   const level = levelPoints(m, t, trimGain(m, t, trim))
@@ -96,7 +110,8 @@ export function scoreOf(m: Measured, t: TuneTargets, trim: TrimRange | null = nu
         clamp((m.deadSilence - OVER_ZERO_WARN) / (OVER_ZERO_FULL - OVER_ZERO_WARN), 0, 1),
         clamp((m.gateSwitches - OVER_SWITCH_WARN) / (OVER_SWITCH_FULL - OVER_SWITCH_WARN), 0, 1),
       )
-  const damage = dead + CHOP_POINTS * Math.max(0, m.wordLossDb - CHOP_OK_DB)
+  const cut = Number.isFinite(m.cutShare) ? CUT_POINTS * Math.max(0, 100 * m.cutShare - CUT_OK_PCT) + CUT_EVENT_POINTS * Math.max(0, m.cutEvents - CUT_OK_EVENTS) : 0
+  const damage = dead + CHOP_POINTS * Math.max(0, m.wordLossDb - CHOP_OK_DB) + cut
   return { level, noise, tone, consistency, damage, total: level + noise + tone + consistency + damage }
 }
 
@@ -133,6 +148,8 @@ export function summarize(m: Measured, t: TuneTargets): TakeSummary {
     deadSilence: m.deadSilence,
     gateSwitches: m.gateSwitches,
     wordLossDb: m.wordLossDb,
+    cutSpeech: m.cutShare,
+    cutEvents: m.cutEvents,
     score: scoreOf(m, t),
   }
 }

@@ -73,7 +73,8 @@
         },
         "noise": {
           "strength": "Suas pausas tinham ruído do ambiente (sua voz ficava só {{snr, number(maximumFractionDigits: 1)}} dB acima dele): a remoção de ruído fica mais forte.",
-          "threshold": "O gate ficava aberto entre as suas palavras: o Threshold dele sobe para {{to, number(maximumFractionDigits: 1)}} dB para ele fechar nas pausas."
+          "threshold": "O gate ficava aberto entre as suas palavras: o Threshold dele sobe para {{to, number(maximumFractionDigits: 1)}} dB para ele fechar nas pausas.",
+          "onStrength": "O Noise Removal começa com força {{to, number(maximumFractionDigits: 1)}}: o ajuste mais leve que baixou o ruído do ambiente sem cortar sua voz."
         },
         "tone": {
           "high": {
@@ -95,11 +96,25 @@
             "presence": "Sua voz soava sem brilho ou distante (2,5–5 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
             "sibilance": "Faltava nitidez na sua voz (5–10 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
             "air": "Faltava ar na sua voz (10–16 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB."
+          },
+          "shape": {
+            "high": "Sobra de {{lo, number}}–{{hi, number}} Hz na sua voz: esta banda do EQ foi levada para cima dessa faixa e ficou da largura do problema, assim o corte cai ali e não nas partes boas ao lado.",
+            "low": "Falta de {{lo, number}}–{{hi, number}} Hz na sua voz: esta banda do EQ foi levada para cima dessa faixa e ficou da largura da falta, assim o reforço cai onde sua voz precisa."
           }
         },
         "comp": {
           "ratio": "Seu volume variava {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos: o Ratio do compressor vai para {{to, number(maximumFractionDigits: 1)}}:1 para nivelar mais.",
           "threshold": "Seu volume variava {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos: o Threshold do compressor desce para {{to, number(maximumFractionDigits: 1)}} dB para ele começar a agir antes."
+        },
+        "switch": {
+          "reafirDamage": "O ReaFIR estava tirando partes da sua voz junto com o ruído (palavras cortadas ou caindo para o silêncio): ele foi desligado. O teste sem ele mediu sua voz inteira de novo.",
+          "reafirTone": "O ReaFIR estava mudando o timbre da sua voz, não só o ruído ({{lo, number}}–{{hi, number}} Hz estava fora de equilíbrio): ele foi desligado, e o teste sem ele mediu mais perto do seu alvo.",
+          "nrOn": "Suas pausas ainda tinham ruído do ambiente (sua voz ficava só {{snr, number(maximumFractionDigits: 1)}} dB acima dele) e o Elgato Noise Removal estava desligado na sua cadeia: ele foi ligado."
+        },
+        "words": {
+          "times": "O gate estava fechando em cima do fim das suas palavras: o Hold e o Release dele ficam mais longos, para ele continuar aberto até a palavra acabar.",
+          "threshold": "O gate estava cortando o começo das suas palavras mais baixas: o Threshold dele desce para {{to, number(maximumFractionDigits: 1)}} dB, com folga abaixo delas, para ele abrir a tempo.",
+          "floor": "O gate ainda estava cortando palavras mais baixas: o Dry dele vai para {{to, number(maximumFractionDigits: 1)}} dB, assim o que ele abaixa continua audível em vez de ser cortado."
         }
       },
       "unmet": {
@@ -118,20 +133,29 @@
         "chopped": "Palavras mais baixas ainda estão sendo cortadas. Outro efeito está cortando o som: desligue os efeitos um por um para achar qual.",
         "noise": {
           "noTool": "Sua voz está só {{snr, number(maximumFractionDigits: 1)}} dB acima do ruído do ambiente (o desejado é {{target, number(maximumFractionDigits: 1)}}) e nada na sua cadeia consegue reduzir isso: adicione o Elgato Noise Removal ou chegue mais perto do microfone.",
-          "limit": "Sua voz ainda está só {{snr, number(maximumFractionDigits: 1)}} dB acima do ruído do ambiente (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais remoção cortaria sua voz ou passaria da quantidade que você escolheu: chegue mais perto do microfone ou deixe o ambiente mais quieto."
+          "limit": "Sua voz ainda está só {{snr, number(maximumFractionDigits: 1)}} dB acima do ruído do ambiente (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais remoção cortaria sua voz ou passaria da quantidade que você escolheu: chegue mais perto do microfone ou deixe o ambiente mais quieto.",
+          "wouldCut": "Sua voz está {{snr, number(maximumFractionDigits: 1)}} dB acima do ruído do ambiente (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais redução de ruído começaria a cortar suas palavras, então o gate fica suave: deixe o ambiente mais quieto ou chegue mais perto do microfone."
         },
         "tone": {
           "noEq": "Sua cadeia não tem EQ ligado, então o timbre não pode ser mudado: adicione o ReaEQ.",
           "noBand": "Nenhuma banda do seu ReaEQ alcança {{lo, number}}–{{hi, number}} Hz: adicione uma banda ali.",
           "sharpS": "Seus S ainda estão {{db, number(maximumFractionDigits: 1)}} dB fortes demais. As bandas de EQ da sua cadeia quase não alcançam eles (5–10 kHz): ligue um De-Esser ou adicione uma banda no ReaEQ por volta de 6–7 kHz.",
           "limitHigh": "{{lo, number}}–{{hi, number}} Hz ainda está {{db, number(maximumFractionDigits: 1)}} dB acima do seu alvo. O EQ não consegue tirar mais sem exagerar ou prejudicar outras partes da sua voz.",
-          "limitLow": "{{lo, number}}–{{hi, number}} Hz ainda está {{db, number(maximumFractionDigits: 1)}} dB abaixo do seu alvo. O EQ não consegue colocar mais sem exagerar ou levantar o ruído do ambiente."
+          "limitLow": "{{lo, number}}–{{hi, number}} Hz ainda está {{db, number(maximumFractionDigits: 1)}} dB abaixo do seu alvo. O EQ não consegue colocar mais sem exagerar ou levantar o ruído do ambiente.",
+          "hidden": "O que você descreve indica falta de {{lo, number}}–{{hi, number}} Hz, mas essa faixa já mede {{db, number(maximumFractionDigits: 1)}} dB acima do seu alvo, então ela não foi reforçada. O que esconde ela é a sobra de {{maskLo, number}}–{{maskHi, number}} Hz ({{maskDb, number(maximumFractionDigits: 1)}} dB acima do seu alvo): é baixar essa faixa que faz ela aparecer.",
+          "alreadyHigh": "O que você descreve indica falta de {{lo, number}}–{{hi, number}} Hz, mas essa faixa já mede {{db, number(maximumFractionDigits: 1)}} dB acima do seu alvo, então ela não foi reforçada. Se ainda parecer que falta, tente outro estilo de som ou outra posição do microfone.",
+          "alreadyLow": "O que você descreve indica sobra de {{lo, number}}–{{hi, number}} Hz, mas essa faixa já mede {{db, number(maximumFractionDigits: 1)}} dB abaixo do seu alvo, então ela não foi cortada mais. Se ainda parecer forte demais, tente outro estilo de som ou outra posição do microfone.",
+          "room": "As mudanças de EQ que consertariam isso foram testadas e não ficaram: com elas sua voz ficava {{db, number(maximumFractionDigits: 1)}} dB menos acima do ruído do ambiente, o que custa mais do que o timbre ganha. A parte da sua voz que está forte demais é também a que mantém ela acima do ruído. Deixe o ambiente mais quieto ou chegue mais perto do microfone e rode de novo."
         },
         "spread": {
           "noComp": "Seu volume varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}) e não há compressor ligado: ligue o ReaComp.",
           "limit": "Seu volume ainda varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais compressão não ajudou ou levantaria o ruído do ambiente: mantenha a mesma distância do microfone."
         },
-        "budget": "Parei depois de {{renders, number}} testes. Rode de novo para continuar daqui."
+        "budget": "Parei depois de {{renders, number}} testes. Rode de novo para continuar daqui.",
+        "cut": "O gate ainda corta o começo ou o fim de algumas palavras ({{pct, number(maximumFractionDigits: 1)}} % da sua fala, umas {{events, number(maximumFractionDigits: 1)}} vezes a cada 10 segundos) e deixar ele mais suave não resolveu. Desligue o ReaGate, ou deixe o ambiente mais quieto e rode de novo."
+      },
+      "change": {
+        "band": "{{plugin}} {{band}}: {{fromHz, number}} Hz, {{fromOct, number(maximumFractionDigits: 2)}} oct, {{fromDb, number(maximumFractionDigits: 1)}} dB → {{toHz, number}} Hz, {{toOct, number(maximumFractionDigits: 2)}} oct, {{toDb, number(maximumFractionDigits: 1)}} dB"
       },
       "ui": {
         "nav": {
@@ -193,7 +217,12 @@
             "roomNoise": "Ruído do ambiente",
             "boomy": "Graves demais",
             "muffled": "Abafada",
+            "boxy": "Som de caixa",
+            "nasal": "Anasalada",
             "thin": "Fina",
+            "lacksBody": "Falta corpo",
+            "lacksClarity": "Falta clareza",
+            "lacksPresence": "Falta presença",
             "harsh": "Áspera",
             "sharpS": "S estridente",
             "dull": "Sem brilho",
@@ -267,7 +296,8 @@
             "tone": "Medido: {{band}} {{before}} → {{after}} do seu alvo",
             "spreadDb": "Medido: estabilidade {{before}} → {{after}}",
             "deadSilence": "Medido: silêncio morto {{before}} → {{after}} da gravação",
-            "wordLossDb": "Medido: palavras baixas cortadas em {{before}} → {{after}}"
+            "wordLossDb": "Medido: palavras baixas cortadas em {{before}} → {{after}}",
+            "cutSpeech": "Medido: fala cortada pelo gate {{before}} → {{after}}"
           },
           "none": "Seu som já atende a esses objetivos: nada nos seus efeitos precisa mudar.",
           "unmet": "O que não deu para fazer",

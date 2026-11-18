@@ -9,7 +9,22 @@ import type { Bother, TuneGoals, TuneUse } from '../tune'
 export const USES: readonly TuneUse[] = ['streaming', 'calls', 'recording']
 export const TUNE_STYLES: readonly VoiceStyle[] = ['natural', 'warm', 'clear', 'bright']
 /** In the order the screen offers them. */
-export const BOTHERS: readonly Bother[] = ['roomNoise', 'boomy', 'muffled', 'thin', 'harsh', 'sharpS', 'dull', 'tooQuiet', 'unevenVolume']
+export const BOTHERS: readonly Bother[] = [
+  'roomNoise',
+  'boomy',
+  'muffled',
+  'boxy',
+  'nasal',
+  'thin',
+  'lacksBody',
+  'lacksClarity',
+  'lacksPresence',
+  'harsh',
+  'sharpS',
+  'dull',
+  'tooQuiet',
+  'unevenVolume',
+]
 
 export const DEFAULT_TUNE_GOALS: Readonly<TuneGoals> = { use: 'streaming', style: 'natural', bothers: [], amount: 'medium' }
 

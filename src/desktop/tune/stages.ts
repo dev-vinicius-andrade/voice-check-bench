@@ -2,12 +2,13 @@
 // measures, and Session.tryMoves keeps it only when the next render proves it (./session.ts).
 import { OVER_SWITCH_WARN, PEAK_WARN_DB } from '../../audio/diagnose'
 import { CHOPPED_ZERO, GATE_MIN_DB, GATE_OFF_WET_DB, GATE_SOFT_DRY_DB, GATE_STEP_DB, gateDoubles, gateIsOff, gatePassesAll, openGainDb } from '../../plain/refine'
-import { sameValue, slotsWith } from '../advice/chain'
+import { sameValue } from '../advice/chain'
 import type { ChainSlot } from '../advice/types'
 import type { Measured } from './measure'
 import { reasonMsg } from './msgs'
-import { CHOP_OK_DB, LEVEL_TOL_DB, type ScorePart } from './score'
-import type { Move, Outcome, Session } from './session'
+import { CHOP_OK_DB, cutsSpeech, LEVEL_TOL_DB, MIN_GAIN, scoreOf, type ScorePart } from './score'
+import { GATE_DEEPER, type Move, type Outcome, type Session } from './session'
+import type { TuneTargets } from './targets'
 import type { TuneStage } from './types'
 
 /** A level move must bring the speech this much closer to the target, dB. */
@@ -97,8 +98,20 @@ export function gatePlanDb(speechDb: number, noiseDb: number, afterNoiseRemoval:
  * −20 dB still lost no word.
  */
 export const GATE_GAP_SHARE = 0.7
-/** Pause peaks and quiet syllables' peaks closer than this: no threshold tells them apart, dB. */
-export const GATE_GAP_MIN_DB = 3
+/**
+ * …but never closer than this under the quiet syllables' peaks: in a noisy room 70 % of a 3.6 dB gap put the threshold
+ * 1 dB under them and the starts of words were cut (heard on the real chain; 3–4.5 cuts per 10 s). What is left of
+ * that is protectWords' business. And never under
+ * this much over the pause peaks, where it would not close at all, dB.
+ */
+export const GATE_SAFE_DB = 2
+export const GATE_OVER_ROOM_DB = 0.5
+/** A gentle gate: floors tried in turn when a deeper one cuts speech (Dry, dB), and the hold / release it gets with them, ms. */
+export const GATE_DRY_STEPS: readonly number[] = [GATE_SOFT_DRY_DB, -12, -6]
+export const GATE_HOLD_MS = 300
+export const GATE_RELEASE_MS = 400
+/** When the gate still cuts speech, its threshold comes down by this much at a time, dB. */
+export const GATE_LOWER_DB = 3
 
 /** What a gate receives, dBFS. */
 export interface GateInput {
@@ -117,6 +130,8 @@ export interface GateInput {
 
 /** A render that lost this much voice over the pauses had a gate open on them that closed before, dB. */
 export const GATE_OPENED_DB = 6
+/** A tone move that ended under the voice-over-room target having lost this much: the gate is placed again for it, dB. */
+export const GATE_REPLACE_MIN_DB = 1
 /** A room's sample peaks sit about this far over its RMS (real take: −41.4 dBFS RMS, peaks P50 −32), dB. */
 export const ROOM_CREST_DB = 10
 /** The gate values that pass everything at unity (Wet off, Dry 0 dB): a probe render shows what the gate receives. */
@@ -124,8 +139,8 @@ const PASS: { wet: number; dry: number } = { wet: GATE_OFF_WET_DB, dry: 0 }
 
 /** A ReaComp before the gate and nothing after it that removes noise: what it receives can be read from a render. */
 const readable = (s: Session, g: ChainSlot): boolean =>
-  s.chain.some((c) => c.on && c.kind === 'reacomp' && c.index < g.index) &&
-  !s.chain.some((c) => c.on && c.index > g.index && (c.kind === 'noiseRemoval' || c.kind === 'reafir' || c.kind === 'reagate'))
+  s.chain.some((c) => s.isOn(c) && c.kind === 'reacomp' && c.index < g.index) &&
+  !s.chain.some((c) => s.isOn(c) && c.index > g.index && (c.kind === 'noiseRemoval' || c.kind === 'reafir' || c.kind === 'reagate'))
 
 /**
  * What a gate receives. Without a compressor before it, the raw take's levels (a remover or an EQ before it barely
@@ -155,8 +170,9 @@ const neverCloses = (lv: GateInput, thresholdDb: number): boolean => (lv.measure
 /**
  * Where a gate's threshold should go for what it receives, NaN when nowhere helps (or nothing tells).
  * - Measured (behind a compressor): ReaGate opens on sample peaks (its RMS size at 0, as the guide leaves it), so the
- *   threshold goes GATE_GAP_SHARE of the way from the pause peaks to the quiet syllables' peaks; closer than
- *   GATE_GAP_MIN_DB there is no such place. (Real chain: pause peaks −27.9, quiet syllables −22.7 → −24.5: voice over
+ *   threshold goes GATE_GAP_SHARE of the way from the pause peaks to the quiet syllables' peaks, but stays GATE_SAFE_DB
+ *   under those and at least GATE_OVER_ROOM_DB over the pause peaks (a room that close to the voice gets the gentlest
+ *   place, and what the gate then cuts decides: the cut measure, protectWords). (Real chain: pause peaks −27.9, quiet syllables −22.7 → −24.5: voice over
  *   pauses 15 → about 33 dB, no word lost; the guide's room + 6 dB, −36, never closed.)
  * - Raw levels: the guide's threshold (gatePlanDb), 30 dB under the speech behind a noise remover.
  * The amount's cap counts from where the gate starts to act: a threshold under the room does nothing, so a move up
@@ -166,10 +182,11 @@ function gateTargetDb(s: Session, g: ChainSlot, lv: GateInput = gateInputDb(s, g
   const cap = s.targets.caps.gateDb
   if (lv.measured) {
     const gap = lv.quietPeakDb - lv.pausePeakDb
-    if (!(gap >= GATE_GAP_MIN_DB)) return NaN
-    return r05(clamp(Math.min(lv.pausePeakDb + GATE_GAP_SHARE * gap, Math.max(g.values.thresholdDb, lv.pausePeakDb) + cap), GATE_MIN_DB, 0))
+    if (!Number.isFinite(gap)) return NaN
+    const place = Math.max(lv.pausePeakDb + GATE_OVER_ROOM_DB, Math.min(lv.pausePeakDb + GATE_GAP_SHARE * gap, lv.quietPeakDb - GATE_SAFE_DB))
+    return r05(clamp(Math.min(place, Math.max(g.values.thresholdDb, lv.pausePeakDb) + cap), GATE_MIN_DB, 0))
   }
-  const removal = s.chain.some((c) => c.on && (c.kind === 'noiseRemoval' || c.kind === 'reafir'))
+  const removal = s.chain.some((c) => s.isOn(c) && (c.kind === 'noiseRemoval' || c.kind === 'reafir'))
   return r05(Math.min(gatePlanDb(lv.speechDb, lv.noiseDb, removal), Math.max(g.values.thresholdDb, lv.noiseDb) + cap))
 }
 
@@ -178,8 +195,8 @@ function gateTargetDb(s: Session, g: ChainSlot, lv: GateInput = gateInputDb(s, g
  * with those gates passing everything: what they receive cannot be read through a gate that closes on some pauses.
  * Null without such a gate, without two renders left (the probe and the candidate) or when no higher threshold helps.
  */
-async function replaceGates(s: Session, stage: TuneStage, moves: readonly Move[], after: number): Promise<Move[] | null> {
-  const gates = slotsWith(s.chain, 'reagate', 'thresholdDb', 'wetDb', 'dryDb').filter(
+export async function replaceGates(s: Session, stage: TuneStage, moves: readonly Move[], after: number): Promise<Move[] | null> {
+  const gates = s.live('reagate', 'thresholdDb', 'wetDb', 'dryDb').filter(
     (g) => g.index > after && readable(s, g) && !gatePassesAll(gateOf(s, g)) && !moves.some((mv) => mv.slot.index === g.index),
   )
   if (!gates.length || s.left(stage) < 2) return null
@@ -189,7 +206,9 @@ async function replaceGates(s: Session, stage: TuneStage, moves: readonly Move[]
   ])
   const probe = s.withMoves(stage, [...moves, ...pass])
   if (!probe) return null
-  const { m } = await s.render(stage, probe)
+  const { m, audio } = await s.render(stage, probe)
+  // the probe is the ungated chain: what the gates cut is measured against it
+  s.keepRef(probe, audio)
   const out: Move[] = []
   for (const g of gates) {
     const lv = gateInputDb(s, g, m, PASS)
@@ -207,22 +226,31 @@ async function replaceGates(s: Session, stage: TuneStage, moves: readonly Move[]
  * render lost GATE_OPENED_DB of voice over the pauses (an EQ lift or a compressor raised what reaches the gate:
  * on the real chain a +3.5 dB high shelf put the room back at 15 dB under the voice), the gate's threshold is placed
  * again for what it receives with the moves (replaceGates: one probe render) and the moves are tried once more with
- * it.
+ * it. `judge` (the tone stage's targets): the candidate is scored against them, and one that was rejected and left
+ * the voice over the pauses under their target (having lost GATE_REPLACE_MIN_DB of it) gets the same second go, with
+ * the gate placed for what it receives, before it is given up.
  */
-export async function tryWithGates(s: Session, stage: TuneStage, moves: readonly Move[], part: ScorePart, check?: (before: Measured, after: Measured) => string | null): Promise<Outcome> {
+export async function tryWithGates(s: Session, stage: TuneStage, moves: readonly Move[], part: ScorePart, check?: (before: Measured, after: Measured) => string | null, judge?: TuneTargets): Promise<Outcome> {
   const renders = s.renders
-  const r = await s.tryMoves(stage, moves, part, check)
-  if (r !== 'reverted' || s.renders === renders || !(s.last.snrDb < s.m.snrDb - GATE_OPENED_DB)) return r
+  const r = await s.tryMoves(stage, moves, part, check, false, judge)
+  if (r !== 'reverted' || s.renders === renders) return r
+  const lost = s.m.snrDb - s.last.snrDb
+  if (!(lost > GATE_OPENED_DB) && !(judge && lost >= GATE_REPLACE_MIN_DB && s.last.snrDb < judge.snrDb)) return r
+  const mine = s.last
   const extra = await replaceGates(s, stage, moves, Math.min(...moves.map((mv) => mv.slot.index)))
-  if (!extra) return r
-  return s.tryMoves(stage, [...moves, ...extra], part, check)
+  if (!extra) {
+    // the latest render the caller reads is the candidate's own, not the probe with the gates passing everything
+    s.last = mine
+    return r
+  }
+  return s.tryMoves(stage, [...moves, ...extra], part, check, false, judge)
 }
 
 /** Working gates after the last gain stage: their threshold follows a Wet move, so they keep closing where they did. */
 function followers(s: Session): ChainSlot[] {
   const gain = s.gain
   if (!gain) return []
-  return slotsWith(s.chain, 'reagate', 'thresholdDb', 'wetDb', 'dryDb').filter((g) => g.index > gain.slot.index && !gatePassesAll(gateOf(s, g)))
+  return s.live('reagate', 'thresholdDb', 'wetDb', 'dryDb').filter((g) => g.index > gain.slot.index && !gatePassesAll(gateOf(s, g)))
 }
 
 /**
@@ -241,21 +269,24 @@ function followers(s: Session): ChainSlot[] {
 export async function noiseStage(s: Session): Promise<void> {
   const t = s.targets
   const caps = t.caps
-  const gates = slotsWith(s.chain, 'reagate', 'thresholdDb', 'wetDb', 'dryDb')
-  const nr = slotsWith(s.chain, 'noiseRemoval', 'strength')[0]
-  const snrUp = (min: number) => (b: Measured, a: Measured): string | null => (a.snrDb >= b.snrDb + min ? null : `voice over pauses ${b.snrDb.toFixed(1)} → ${a.snrDb.toFixed(1)} dB: not enough`)
+  const gates = s.live('reagate', 'thresholdDb', 'wetDb', 'dryDb')
+  const nr = s.live('noiseRemoval', 'strength').at(0)
 
   for (const g of gates) {
     const gate = gateOf(s, g)
     if (!gateDoubles(gate)) continue
-    const moves: Move[] = [{ slot: g, key: 'dryDb', to: GATE_SOFT_DRY_DB, reason: 'gateDoubled', titleMsg: reasonMsg('gateDoubled', { from: gate.dry, to: GATE_SOFT_DRY_DB }), metric: 'snrDb' }]
     // a gate opening on every pause it receives: Dry alone would change nothing but the level
     const from = s.value(g, 'thresholdDb')
     const to = gateTargetDb(s, g)
-    if (neverCloses(gateInputDb(s, g), from) && to >= from + 1) {
-      moves.push({ slot: g, key: 'thresholdDb', to, reason: 'noisyPause', titleMsg: reasonMsg('noise.threshold', { to }), metric: 'snrDb' })
+    const threshold: Move[] = neverCloses(gateInputDb(s, g), from) && to >= from + 1 ? [{ slot: g, key: 'thresholdDb', to, reason: 'noisyPause', titleMsg: reasonMsg('noise.threshold', { to }), metric: 'snrDb' }] : []
+    // the deepest floor first; a shallower one (with a longer hold and release) only when the deeper one cut speech
+    for (const dry of GATE_DRY_STEPS) {
+      const moves: Move[] = [{ slot: g, key: 'dryDb', to: dry, reason: 'gateDoubled', titleMsg: reasonMsg('gateDoubled', { from: gate.dry, to: dry }), metric: 'snrDb' }, ...threshold, ...(dry > GATE_SOFT_DRY_DB ? longer(s, g) : [])]
+      const renders = s.renders
+      const r = await s.tryMoves('noise', moves, 'noise', snrUp(DOUBLED_MIN_GAIN_DB))
+      if (r === 'budget') return
+      if (r !== 'reverted' || s.renders === renders || !cutsSpeech(s.last)) break
     }
-    if ((await s.tryMoves('noise', moves, 'noise', snrUp(DOUBLED_MIN_GAIN_DB))) === 'budget') return
   }
 
   const dead = (m: Measured): boolean => !t.allowDeadSilence && (m.deadSilence > CHOPPED_ZERO || m.gateSwitches > OVER_SWITCH_WARN)
@@ -270,7 +301,7 @@ export async function noiseStage(s: Session): Promise<void> {
     const strength = nr ? s.value(nr, 'strength') : 0
     // one step lighter; when that repaired nothing, as light as the amount allows (Elgato Noise Removal leaves digital
     // silence at any strength above about 10: on the real chain 44 → 24 changed nothing)
-    const floor = nr ? Math.max(0, nr.values.strength - caps.nrMax) : 0
+    const floor = nr ? Math.max(0, nrBase(nr) - caps.nrMax) : 0
     const lighter = [Math.max(floor, strength - caps.nrStep), floor].find((v) => v < strength && !failed.has(`strength:${v}`))
     let id: string
     let move: Move
@@ -292,16 +323,7 @@ export async function noiseStage(s: Session): Promise<void> {
   }
   if (dead(s.m) || chopped(s.m)) return
 
-  let step = caps.nrStep
-  for (let pass = 0; pass < 3 && nr && s.m.snrDb < t.snrDb && step >= 5; pass++) {
-    const from = s.value(nr, 'strength')
-    const to = Math.min(100, nr.values.strength + caps.nrMax, from + step)
-    if (!(to > from)) break
-    const move: Move = { slot: nr, key: 'strength', to, reason: 'noisyPause', titleMsg: reasonMsg('noise.strength', { snr: s.m.snrDb }), metric: 'snrDb' }
-    const r = await s.tryMoves('noise', [move], 'noise', snrUp(NOISE_MIN_GAIN_DB))
-    if (r === 'budget') return
-    if (r !== 'kept') step = Math.round(step / 2)
-  }
+  if (nr && (await strengthen(s, nr)) === 'budget') return
 
   if (!(s.m.snrDb < t.snrDb)) return
   for (const g of gates) {
@@ -312,6 +334,106 @@ export async function noiseStage(s: Session): Promise<void> {
     const move: Move = { slot: g, key: 'thresholdDb', to, reason: 'noisyPause', titleMsg: reasonMsg('noise.threshold', { to }), metric: 'snrDb' }
     if ((await s.tryMoves('noise', [move], 'noise', snrUp(NOISE_MIN_GAIN_DB))) === 'budget') return
   }
+}
+
+const snrUp = (min: number) => (b: Measured, a: Measured): string | null => (a.snrDb >= b.snrDb + min ? null : `voice over pauses ${b.snrDb.toFixed(1)} → ${a.snrDb.toFixed(1)} dB: not enough`)
+
+/**
+ * The noise stage's second go after a tone or compression move left the voice over the pauses under the use's own
+ * target (targets.snrFloorDb): the working gates behind a compressor are placed again for what they receive now (one
+ * probe render with them passing everything, replaceGates), and the higher threshold is kept when it wins
+ * NOISE_MIN_GAIN_DB.
+ */
+export async function regate(s: Session): Promise<void> {
+  if (s.m.silent || !(s.m.snrDb < s.targets.snrFloorDb)) return
+  const kept = s.last
+  const extra = await replaceGates(s, 'noise', [], -Infinity)
+  s.last = kept
+  if (extra) await s.tryMoves('noise', extra, 'noise', snrUp(NOISE_MIN_GAIN_DB))
+}
+
+/** A longer hold and release for a gate that has shorter ones (word tails stay open). */
+function longer(s: Session, g: ChainSlot): Move[] {
+  const out: Move[] = []
+  for (const [key, to] of [['holdMs', GATE_HOLD_MS], ['releaseMs', GATE_RELEASE_MS]] as const) {
+    if (Number.isFinite(g.values[key]) && s.value(g, key) < to) out.push({ slot: g, key, to, reason: 'deadSilence', titleMsg: reasonMsg('words.times'), metric: 'cutSpeech' })
+  }
+  return out
+}
+
+/**
+ * No cut words. The kept render's gate is measured against the ungated chain (Session.checkCut: one render when an
+ * upstream move changed what the gate receives). With `repair`, while it cuts speech (more than CUT_OK_PCT of the
+ * voice, or CUT_OK_EVENTS word starts / ends per 10 s), gentler versions of the last working gate are rendered, one
+ * render each: its threshold a third, two thirds and all of GATE_LOWER_DB lower (in a noisy room the place that closes
+ * on the pauses without cutting word starts is a dB wide), a shallower floor (Dry −12, Dry −6) and, in a second round,
+ * a longer hold and release. Of those that no longer cut, the one with the best score is kept (the most voice over the room that leaves
+ * the words whole); when none does, the one that cuts least, and one more round from there. What it costs in voice over
+ * the room is not asked: no noise target, the use's own included, is worth cut words. The run remembers it
+ * (GATE_DEEPER), so the result can say why the room is still there.
+ */
+export async function protectWords(s: Session, stage: TuneStage = 'noise', repair = true): Promise<void> {
+  if (s.m.silent || !s.gatesWorking().length) return
+  if (!(await s.checkCut(stage)) || !repair) return
+  const t = s.targets
+  for (let round = 0; round < 2 && cutsSpeech(s.m); round++) {
+    const g = s.gatesWorking().at(-1)
+    if (!g) return
+    s.refused.add(GATE_DEEPER)
+    const threshold = s.value(g, 'thresholdDb')
+    const lower = (db: number): Move[] => (threshold - db >= GATE_MIN_DB ? [{ slot: g, key: 'thresholdDb', to: threshold - db, reason: 'deadSilence', titleMsg: reasonMsg('words.threshold', { to: threshold - db }), metric: 'cutSpeech' }] : [])
+    const floor = (dry: number): Move[] => (s.value(g, 'dryDb') < dry ? [{ slot: g, key: 'dryDb', to: dry, reason: 'deadSilence', titleMsg: reasonMsg('words.floor', { to: dry }), metric: 'cutSpeech' }] : [])
+    const options = [lower(GATE_LOWER_DB / 3), lower((2 * GATE_LOWER_DB) / 3), lower(GATE_LOWER_DB), floor(GATE_DRY_STEPS[1]), floor(GATE_DRY_STEPS[2]), ...(round ? [longer(s, g)] : [])].filter((o) => o.length)
+    const before = scoreOf(s.m, t, s.trim())
+    let best: { set: NonNullable<ReturnType<Session['withMoves']>>; audio: Float32Array; m: Measured; total: number; clear: boolean; text: string } | null = null
+    for (const moves of options) {
+      const set = s.withMoves(stage, moves)
+      if (!set) continue
+      if (s.left(stage) < 1) {
+        s.outOfBudget = true
+        break
+      }
+      const { audio, m } = await s.render(stage, set)
+      s.cut(set, audio, m)
+      const score = scoreOf(m, t, s.trim(set))
+      const text = moves.map((mv) => `${mv.key} → ${mv.to}`).join(', ')
+      s.note(stage, 'render', `#${s.renders} gentler gate, ${text}: speech cut ${(100 * m.cutShare).toFixed(1)} % / ${m.cutEvents.toFixed(1)} per 10 s, voice over pauses ${m.snrDb.toFixed(1)} dB`, score)
+      if (!(score.damage <= before.damage - MIN_GAIN)) continue
+      const clear = !cutsSpeech(m)
+      const rank = clear ? score.total : score.damage
+      if (!best || (clear && !best.clear) || (clear === best.clear && rank < best.total)) best = { set, audio, m, total: rank, clear, text }
+    }
+    if (!best) {
+      s.note(stage, 'info', 'no gentler gate cut less speech')
+      return
+    }
+    s.note(stage, 'keep', `gentler gate, ${best.text}: speech cut ${(100 * s.m.cutShare).toFixed(1)} → ${(100 * best.m.cutShare).toFixed(1)} %, voice over pauses ${s.m.snrDb.toFixed(1)} → ${best.m.snrDb.toFixed(1)} dB`)
+    s.set = best.set
+    s.audio = best.audio
+    s.m = best.m
+  }
+}
+
+/** Where a Noise Removal's strength counts from for the amount's cap: where the chain had it, or 0 when it was off. */
+const nrBase = (nr: ChainSlot): number => (nr.on ? nr.values.strength : 0)
+
+/**
+ * Noise Removal one step stronger while the voice over the pauses is under the target and each step really wins
+ * NOISE_MIN_GAIN_DB (half a step after one that did not), at most 3 renders, inside the amount's cap.
+ */
+export async function strengthen(s: Session, nr: ChainSlot): Promise<'done' | 'budget'> {
+  const t = s.targets
+  let step = t.caps.nrStep
+  for (let pass = 0; pass < 3 && s.m.snrDb < t.snrDb && step >= 5; pass++) {
+    const from = s.value(nr, 'strength')
+    const to = Math.min(100, nrBase(nr) + t.caps.nrMax, from + step)
+    if (!(to > from)) break
+    const move: Move = { slot: nr, key: 'strength', to, reason: 'noisyPause', titleMsg: reasonMsg('noise.strength', { snr: s.m.snrDb }), metric: 'snrDb' }
+    const r = await s.tryMoves('noise', [move], 'noise', snrUp(NOISE_MIN_GAIN_DB))
+    if (r === 'budget') return 'budget'
+    if (r !== 'kept') step = Math.round(step / 2)
+  }
+  return 'done'
 }
 
 /**
@@ -326,9 +448,9 @@ export async function noiseStage(s: Session): Promise<void> {
 export async function compressionStage(s: Session): Promise<void> {
   const t = s.targets
   if (s.m.silent || !(s.m.spreadDb > t.spreadDb)) return
-  const comp = slotsWith(s.chain, 'reacomp', 'thresholdDb', 'ratio').at(-1)
+  const comp = s.live('reacomp', 'thresholdDb', 'ratio').at(-1)
   if (!comp) return
-  const pre = slotsWith(s.chain, 'reagate', 'wetDb', 'dryDb')
+  const pre = s.live('reagate', 'wetDb', 'dryDb')
     .filter((g) => g.index < comp.index && !gateIsOff(gateOf(s, g)))
     .reduce((sum, g) => sum + openGainDb(gateOf(s, g)), 0)
   const floor = COMP_THRESHOLD_RANGE[0]
