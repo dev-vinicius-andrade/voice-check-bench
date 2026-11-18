@@ -19,7 +19,21 @@ export interface FakeOptions {
   removerReactsDb?: number
   /** What a switched-on ReaFIR does (default: lowCut at REAFIR_CUT_HZ). */
   reafir?: (x: Float32Array, sampleRate: number) => void
+  /**
+   * A Noise Removal that lets the room through for a moment in the middle of a pause, like the real one when the room
+   * it receives sits near its threshold: room blocks over this level (dBFS RMS), LEAK_AFTER_MS or more after the last
+   * voice block, pass untouched for LEAK_MS of every LEAK_EVERY_MS (off by default). With it the remover also tells the
+   * voice by its level, as a voice detector would: a block LEAK_VOICE_DB or more under the loudest blocks (P90) is room,
+   * however far over the room it learned (a gate opening on the room is no voice).
+   */
+  removerLeaksAboveDb?: number
 }
+
+/** The fake remover's leak: this long, this often, from this long into a pause, ms. */
+export const LEAK_MS = 60
+export const LEAK_EVERY_MS = 500
+export const LEAK_AFTER_MS = 400
+export const LEAK_VOICE_DB = 18
 
 /** Corner of the default fake ReaFIR's low-cut, Hz: it empties 80–160 Hz and leaves 160–320 Hz. */
 export const REAFIR_CUT_HZ = 170
@@ -62,17 +76,27 @@ function blockRms(x: Float32Array, from: number, to: number): number {
  * zeros (the real one gates pauses to digital silence at its default 85). High strengths therefore also eat quiet
  * syllables.
  */
-function noiseRemoval(x: Float32Array, sr: number, strength: number): void {
+function noiseRemoval(x: Float32Array, sr: number, strength: number, leakDb?: number): void {
   const w = Math.round(0.01 * sr)
   const lead: number[] = []
   for (let s = 0; s + w <= Math.min(x.length, 2 * sr); s += w) lead.push(blockRms(x, s, s + w))
   lead.sort((p, q) => p - q)
   const room = lead[Math.floor(lead.length / 2)] ?? 0
-  const thr = room * 10 ** ((2 + 0.08 * strength) / 20)
+  const leak = leakDb === undefined ? Infinity : amp(leakDb)
+  const blocks: number[] = []
+  if (leakDb !== undefined) for (let s = 0; s + w <= x.length; s += w) blocks.push(blockRms(x, s, s + w))
+  blocks.sort((p, q) => p - q)
+  const voiceFloor = leakDb === undefined ? 0 : (blocks[Math.floor(0.9 * blocks.length)] ?? 0) * 10 ** (-LEAK_VOICE_DB / 20)
+  const thr = Math.max(room * 10 ** ((2 + 0.08 * strength) / 20), voiceFloor)
   const g = strength >= 80 ? 0 : 10 ** ((-0.45 * strength) / 20)
+  let voice = -Infinity
   for (let s = 0; s < x.length; s += w) {
     const end = Math.min(x.length, s + w)
-    if (blockRms(x, s, end) < thr) for (let i = s; i < end; i++) x[i] *= g
+    const rms = blockRms(x, s, end)
+    if (rms >= thr) voice = s
+    const ms = (s / sr) * 1000
+    if (rms >= thr || (rms > leak && ms - (voice / sr) * 1000 >= LEAK_AFTER_MS && ms % LEAK_EVERY_MS < LEAK_MS)) continue
+    for (let i = s; i < end; i++) x[i] *= g
   }
 }
 
@@ -159,7 +183,7 @@ export function fakeRenderer(take: Float32Array, chain: readonly ChainSlot[], op
       if (s.kind === 'reafir') reafir(x, sr)
       else if (s.kind === 'noiseRemoval') {
         if (opts.removerReactsDb) reactiveTilt(x, sr, opts.removerReactsDb)
-        noiseRemoval(x, sr, s.values.strength ?? 0)
+        noiseRemoval(x, sr, s.values.strength ?? 0, opts.removerLeaksAboveDb)
       }
       else if (s.kind === 'reagate') gate(x, sr, s.values)
       else if (s.kind === 'reaeq') eq(x, sr, s, eqGain)

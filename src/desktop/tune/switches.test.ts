@@ -545,7 +545,7 @@ describe('peaks are a hard limit; "too loud" and "crackling"', () => {
 
   it('result rows: silence is silence, a hidden band says so, a band inside its tolerance is not listed', () => {
     const t0 = [0, 6, 0, NaN, 2, 0, 0, 0, 0]
-    const sum = (o: object) => ({ speechDb: -21, peakDb: -6, clipped: 0, pauseDb: -60, snrDb: 39, tone: t0, spreadDb: 7, deadSilence: 0, gateSwitches: 0, wordLossDb: 0, cutSpeech: 0, cutEvents: 0, pumpDb: 0, score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 }, ...o })
+    const sum = (o: object) => ({ speechDb: -21, peakDb: -6, clipped: 0, pauseDb: -60, snrDb: 39, tone: t0, spreadDb: 7, deadSilence: 0, gateSwitches: 0, wordLossDb: 0, cutSpeech: 0, cutEvents: 0, pumpDb: 0, burstDb: NaN, burstEvents: 0, removerCut: NaN, removerCutEvents: NaN, score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 }, ...o })
     const rows = metricRows({ before: sum({ pauseDb: -100, snrDb: 79, peakDb: 3 }), after: sum({ pauseDb: -100, snrDb: 70, peakDb: -4, tone: [0, 1, 0, NaN, 0.5, 0, 0, 0, 0] }), goals: goalsOf(), limit: 1 })
     const by = (id: string, band?: number) => rows.find((r) => r.id === id && r.band === band)
     expect(by('peak')?.dir).toBe('better')

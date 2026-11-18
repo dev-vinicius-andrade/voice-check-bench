@@ -17,7 +17,7 @@ const U = en.desktop.autotune.ui
 const S = en.desktop.save
 const TAKE = testTake({ quietSec: 3, speechSec: 12 })
 const summary: TuneResult['before'] = {
-  speechDb: -21, peakDb: -8, clipped: 0, pauseDb: -70, snrDb: 49, tone: [0, 0, 0, 0, 0, 0, 0, 0, 0], spreadDb: 9, deadSilence: 0, gateSwitches: 0, wordLossDb: 0, cutSpeech: 0, cutEvents: 0, pumpDb: 0,
+  speechDb: -21, peakDb: -8, clipped: 0, pauseDb: -70, snrDb: 49, tone: [0, 0, 0, 0, 0, 0, 0, 0, 0], spreadDb: 9, deadSilence: 0, gateSwitches: 0, wordLossDb: 0, cutSpeech: 0, cutEvents: 0, pumpDb: 0, burstDb: NaN, burstEvents: 0, removerCut: NaN, removerCutEvents: NaN,
   score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
 }
 const CHANGE: TuneChange = {

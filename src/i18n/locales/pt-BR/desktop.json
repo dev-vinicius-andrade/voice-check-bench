@@ -114,12 +114,32 @@
         "words": {
           "times": "O gate estava fechando em cima do fim das suas palavras: o Hold e o Release dele ficam mais longos, para ele continuar aberto até a palavra acabar.",
           "threshold": "O gate estava cortando o começo das suas palavras mais baixas: o Threshold dele desce para {{to, number(maximumFractionDigits: 1)}} dB, com folga abaixo delas, para ele abrir a tempo.",
-          "floor": "O gate ainda estava cortando palavras mais baixas: o Dry dele vai para {{to, number(maximumFractionDigits: 1)}} dB, assim o que ele abaixa continua audível em vez de ser cortado."
+          "floor": "O gate ainda estava cortando palavras mais baixas: o Dry dele vai para {{to, number(maximumFractionDigits: 1)}} dB, assim o que ele abaixa continua audível em vez de ser cortado.",
+          "strength": "O Noise Removal estava levando o começo ou o fim suave das palavras junto com o ruído do ambiente: a força desce para {{to, number(maximumFractionDigits: 1)}}, para que elas passem inteiras.",
+          "gateOff": "Você ouve palavras cortadas, e o Noise Removal já deixa suas pausas em silêncio: o ReaGate agora deixa tudo passar, então não corta mais o começo ou o fim de uma palavra."
         },
         "peak": {
           "attack": "Picos curtos no começo das suas palavras passavam antes de o compressor reagir, e o ganho de compensação fazia eles distorcerem: o Attack dele vai para {{to, number(maximumFractionDigits: 1)}} ms para pegar esses picos.",
           "comp": "Seus momentos mais altos ficavam muito acima do resto da sua voz e distorciam: o Threshold do compressor vai para {{to, number(maximumFractionDigits: 1)}} dB e o Ratio sobe, para ele segurar esses picos.",
           "strength": "Palavras começando do silêncio total criavam picos que distorciam: a força da remoção de ruído vai para {{to, number(maximumFractionDigits: 1)}}, para as pausas não serem cortadas até o nada."
+        },
+        "bursts": {
+          "gate": "O Noise Removal deixava o ruído do ambiente passar por um instante nas suas pausas (ele reage a quanto ruído recebe): o ReaGate, que vem antes dele, agora fecha nas pausas, então o Noise Removal recebe menos ruído e fica em silêncio.",
+          "level": "O Wet do compressor sobe {{db, number(maximumFractionDigits: 1)}} dB para devolver à sua voz o que o gate tirou, então ela continua no mesmo volume.",
+          "strength": "O Noise Removal ainda deixava o ruído do ambiente passar por um instante em algumas pausas: a força vai para {{to, number(maximumFractionDigits: 1)}}, e o teste não cortou nenhuma palavra."
+        },
+        "metallic": {
+          "strength": "Você ouve sua voz metálica ou robótica, que é o que um Noise Removal forte faz: a força desce para {{to, number(maximumFractionDigits: 1)}}."
+        },
+        "flat": {
+          "ratio": "Sua voz soava achatada (os momentos altos e baixos a só {{spread, number(maximumFractionDigits: 1)}} dB um do outro): o Ratio do compressor desce para {{to, number(maximumFractionDigits: 1)}}:1 para ele apertar menos.",
+          "threshold": "Sua voz soava achatada (os momentos altos e baixos a só {{spread, number(maximumFractionDigits: 1)}} dB um do outro): o Threshold do compressor sobe para {{to, number(maximumFractionDigits: 1)}} dB para ele agir em menos momentos."
+        },
+        "hum": {
+          "cut": "Havia um zumbido em {{hz, number}} Hz no ruído do ambiente: uma banda livre do EQ vai para ele, estreita, {{db, number(maximumFractionDigits: 1)}} dB abaixo."
+        },
+        "hiss": {
+          "shelf": "Havia um chiado agudo nas suas pausas: a prateleira de agudos do EQ desce {{db, number(maximumFractionDigits: 1)}} dB, onde o ambiente está mais alto que sua voz."
         }
       },
       "unmet": {
@@ -155,7 +175,8 @@
         },
         "spread": {
           "noComp": "Seu volume varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}) e não há compressor ligado: ligue o ReaComp.",
-          "limit": "Seu volume ainda varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais compressão não ajudou ou levantaria o ruído do ambiente: mantenha a mesma distância do microfone."
+          "limit": "Seu volume ainda varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais compressão não ajudou ou levantaria o ruído do ambiente: mantenha a mesma distância do microfone.",
+          "flat": "Sua voz ainda varia só {{spread, number(maximumFractionDigits: 1)}} dB entre momentos altos e baixos ({{target, number(maximumFractionDigits: 1)}} ou mais desejados). Menos compressão não abriu isso: baixe o Ratio do compressor à mão, ou fale com mais variação."
         },
         "budget": "Parei depois de {{renders, number}} testes. Rode de novo para continuar daqui.",
         "cut": "O gate ainda corta o começo ou o fim de algumas palavras ({{pct, number(maximumFractionDigits: 1)}} % da sua fala, umas {{events, number(maximumFractionDigits: 1)}} vezes a cada 10 segundos) e deixar ele mais suave não resolveu. Desligue o ReaGate, ou deixe o ambiente mais quieto e rode de novo.",
@@ -165,6 +186,15 @@
         "silentPauses": "Suas pausas agora ficam totalmente em silêncio: é o Noise Removal tirando o ruído do ambiente, e nenhuma palavra é cortada. Se soar artificial, abaixe um pouco a força dele.",
         "peak": {
           "over": "Seus momentos mais altos ainda chegam a {{peak, number(maximumFractionDigits: 1)}} dBFS (deveriam ficar abaixo de {{ceiling, number(maximumFractionDigits: 1)}}) e vão distorcer ou estalar. Nada mais na sua cadeia consegue baixar isso: abaixe o ganho do microfone e grave de novo."
+        },
+        "bursts": "Em algumas pausas o ruído do ambiente ainda aparece por um instante, no meio de pausas que fora isso são silenciosas (o mais alto cerca de {{db, number(maximumFractionDigits: 1)}} dB abaixo da sua voz). Nenhum dos seus efeitos tirou isso sem cortar palavras: deixe o ambiente mais silencioso ou fique mais perto do microfone.",
+        "removerCut": "O Noise Removal leva um pouco do começo ou do fim suave de algumas palavras junto com o ruído do ambiente ({{pct, number(maximumFractionDigits: 1)}} % da sua fala, cerca de {{events, number(maximumFractionDigits: 1)}} vezes a cada 10 segundos), e uma força mais leve não mudou isso. Se você ouvir isso, deixe o ambiente mais silencioso ou fique mais perto do microfone, para ele ter menos o que tirar.",
+        "metallic": "O Noise Removal fica leve (força {{max, number}} no máximo) porque sua voz soava metálica: um pouco do ruído do ambiente volta nas pausas. Essa é a troca.",
+        "hum": {
+          "noBand": "Há um zumbido em {{hz, number}} Hz no ruído do ambiente, e nenhuma banda do ReaEQ está livre para cortá-lo: adicione uma banda estreita em {{hz, number}} Hz, com cerca de −6 dB."
+        },
+        "hiss": {
+          "noShelf": "O chiado nas suas pausas está mais alto que sua voz nos agudos, e seu ReaEQ não tem prateleira de agudos para baixá-lo: adicione uma em cerca de 8 kHz."
         }
       },
       "change": {
@@ -242,12 +272,25 @@
             "tooQuiet": "Baixa demais",
             "tooLoud": "Alta demais",
             "crackling": "Estalando ou distorcendo",
-            "unevenVolume": "Volume irregular"
+            "unevenVolume": "Volume irregular",
+            "wordsCut": "Palavras cortadas",
+            "metallic": "Voz metálica ou robótica",
+            "noisePumps": "Ruído aparece e some",
+            "flat": "Achatada, sem dinâmica",
+            "plosives": "P e B estourando",
+            "hum": "Zumbido ou ronco grave",
+            "hiss": "Chiado agudo"
           },
           "amount": "Processamento",
           "amountHint": "Quanto o app pode mexer nos seus efeitos a partir de onde eles estão agora.",
           "tune": "Ajustar meus efeitos",
-          "back": "Voltar"
+          "back": "Voltar",
+          "groups": {
+            "noise": "Ruído",
+            "tone": "Timbre",
+            "volume": "Volume",
+            "processing": "Processamento"
+          }
         },
         "tuning": {
           "title": "Ajustando seus efeitos",
@@ -304,8 +347,10 @@
             "note": {
               "silence": "silêncio",
               "none": "–",
-              "hidden": "escondida pelo ruído do ambiente"
-            }
+              "hidden": "escondida pelo ruído do ambiente",
+              "noBursts": "nenhum"
+            },
+            "bursts": "Ruído que aparece nas pausas (o mais alto, quanto abaixo da sua voz)"
           },
           "bands": {
             "rumble": "ronco, 40–80 Hz",
@@ -329,7 +374,9 @@
             "spreadDb": "Medido: estabilidade {{before}} → {{after}}",
             "deadSilence": "Medido: silêncio morto {{before}} → {{after}} da gravação",
             "wordLossDb": "Medido: palavras baixas cortadas em {{before}} → {{after}}",
-            "cutSpeech": "Medido: fala cortada pelo gate {{before}} → {{after}}"
+            "cutSpeech": "Medido: fala cortada pelo gate {{before}} → {{after}}",
+            "burstDb": "Medido: ruído mais alto que aparece nas pausas {{before}} → {{after}} abaixo da sua voz",
+            "removerCut": "Medido: fala levada junto com o ruído {{before}} → {{after}}"
           },
           "none": "Seu som já atende a esses objetivos: nada nos seus efeitos precisa mudar.",
           "unmet": "O que não deu para fazer",
@@ -529,7 +576,8 @@
           "noiseBetween": "O ambiente ainda vai e volta entre suas palavras (cerca de {{db, number}} dB).",
           "moreCuts": "Mais redução cortava suas palavras, então voltou um passo.",
           "morePumps": "Mais redução fazia o ambiente subir e descer entre suas palavras, então voltou um passo.",
-          "keptReafir": "Suas pausas só ficavam em silêncio com o ReaFIR ligado, então ele continua ligado."
+          "keptReafir": "Suas pausas só ficavam em silêncio com o ReaFIR ligado, então ele continua ligado.",
+          "bursts": "De vez em quando o ruído do ambiente ainda aparece por um instante nas suas pausas (até {{db, number(maximumFractionDigits: 1)}} dBFS)."
         },
         "result": {
           "room": "Ruído do ambiente no seu microfone: {{level}}",

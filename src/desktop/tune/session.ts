@@ -13,8 +13,8 @@ import type { TuneTargets } from './targets'
 import type { TuneChange, TuneLogEntry, TuneLogEvent, TuneMetric, TuneRender, TuneStage } from './types'
 
 /** Renders a run may use, and how many of them each stage may take (the baseline takes one, a retune start one more). */
-export const DEFAULT_MAX_RENDERS = 40
-export const STAGE_RENDERS: Readonly<Record<Exclude<TuneStage, 'baseline'>, number>> = { level: 2, noise: 14, tone: 8, compression: 3, trim: 10 }
+export const DEFAULT_MAX_RENDERS = 46
+export const STAGE_RENDERS: Readonly<Record<Exclude<TuneStage, 'baseline'>, number>> = { level: 2, noise: 14, tone: 10, compression: 3, trim: 16 }
 
 /** Marks a run in which a deeper or tighter gate was measured to cut speech (Session.refused): the room stays louder for it. */
 export const GATE_DEEPER = 'deeper gate'
@@ -299,7 +299,7 @@ export class Session {
    * The closed loop: render the chain with these moves on top of what is kept, measure it, and keep the moves only
    * when the judged score improves (worseBecause: total down by MIN_GAIN, no other part worse by more than
    * REGRESS_TOL; only the total when the kept render had lost the voice) and `check` (the stage's own measured-effect
-   * rule) has no objection. Otherwise nothing changes: the kept state and its render stay as they were, and the same
+   * rule, given the kept render's measurements, the candidate's and the candidate's samples) has no objection. Otherwise nothing changes: the kept state and its render stay as they were, and the same
    * candidate from the same kept state is not rendered again. `asRendered`: judge the level as rendered and let the
    * other parts give up to what the level wins (the level stages, LEVEL_REGRESS_SHARE); otherwise only what the final
    * trim cannot repair counts. `judge`: the targets the score is taken against (the tone stage's: targets.ts toneJudge).
@@ -313,7 +313,7 @@ export class Session {
     stage: TuneStage,
     moves: readonly Move[],
     part: ScorePart,
-    check?: (before: Measured, after: Measured) => string | null,
+    check?: (before: Measured, after: Measured, audio: Float32Array) => string | null,
     asRendered = false,
     judge: TuneTargets = this.targets,
     repair = false,
@@ -347,7 +347,7 @@ export class Session {
     // the final trim: the level, the peaks (its `check`) and what it does to the speech itself; a remover after the
     // compressor reacts to level, and the tone or the room it moves for that may not veto the level
     const hurt = levelOnly ? (after.damage > before.damage + REGRESS_TOL ? `damage got worse (${before.damage.toFixed(1)} → ${after.damage.toFixed(1)})` : null) : undefined
-    const why = check?.(this.m, m) ?? (levelOnly ? hurt : repair ? damaged : worseBecause(before, after, part, this.m.silent, asRendered ? LEVEL_REGRESS_SHARE : REGRESS_SHARE))
+    const why = check?.(this.m, m, audio) ?? (levelOnly ? hurt : repair ? damaged : worseBecause(before, after, part, this.m.silent, asRendered ? LEVEL_REGRESS_SHARE : REGRESS_SHARE))
     if (why) {
       if (!repair && moves.some((mv) => mv.slot.kind === 'reagate') && Number.isFinite(m.cutShare) && after.damage > before.damage + REGRESS_TOL && cutsSpeech(m)) this.refused.add(GATE_DEEPER)
       this.rejected.add(asked)

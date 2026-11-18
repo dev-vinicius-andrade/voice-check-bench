@@ -15,6 +15,6 @@ export const noticeMsg = (key: 'talkedQuiet' | 'talkedSet' | 'noSpeech' | 'gap' 
 
 /** A line of the result: desktop.tune.calibrate.note.<key>. */
 export const noteMsg = (
-  key: 'nothing' | 'alreadySilent' | 'notReached' | 'noHelp' | 'wouldCut' | 'wordsFirst' | 'noiseBetween' | 'moreCuts' | 'morePumps' | 'keptReafir',
+  key: 'nothing' | 'alreadySilent' | 'notReached' | 'noHelp' | 'wouldCut' | 'wordsFirst' | 'noiseBetween' | 'moreCuts' | 'morePumps' | 'keptReafir' | 'bursts',
   params?: Msg['params'],
 ): Msg => msg(`note.${key}`, params)

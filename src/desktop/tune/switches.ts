@@ -51,7 +51,8 @@ const strengths = (s: Session): number[] => nrLadder(s.targets.caps)
  * The voice over the pauses misses the target by NR_ON_MIN_MISS_DB, nothing is damaged, no Noise Removal is on and
  * one sits in the chain switched off → Noise Removal on, at the strength that scores best: each strength is one
  * render, lightest first, up to the first that reaches the target; of those that win NOISE_MIN_GAIN_DB and pass the
- * keep rule, the best total is kept (the lighter on a tie). Pauses a remover turns fully silent are not damage while
+ * keep rule, the best total is kept (the lighter on a tie). What it cuts of the words is checked on the final state
+ * (./burstStage.ts: the level it receives moves after this). Pauses a remover turns fully silent are not damage while
  * no word is cut (the targets allow dead silence from here on; the result says so, unmet.silentPauses): Elgato Noise
  * Removal does that from a strength of about 5, where it also takes the room 25 dB further down than at 0. A remover
  * that costs the voice is not kept, and one that removed the room at some strength and was rejected at all of them is

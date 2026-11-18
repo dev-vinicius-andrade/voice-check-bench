@@ -158,7 +158,9 @@ describe('checkTake', () => {
     const quiet = testTake({ quietSec: 23, speechSec: 0 })
     little.set(quiet.subarray(SR * 9), SR * 9)
     expect(checkTake(little)).toBe('notEnoughSpeech')
-  })
+    // six 20 s synthetic takes and their analysis take about 2 s alone; under the full suite's load that passed the
+    // default 5 s timeout now and then
+  }, 20_000)
 })
 
 describe('result rows', () => {
@@ -176,6 +178,10 @@ describe('result rows', () => {
     cutSpeech: 0,
     cutEvents: 0,
     pumpDb: 0,
+    burstDb: NaN,
+    burstEvents: 0,
+    removerCut: NaN,
+    removerCutEvents: NaN,
     score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
     ...o,
   })
@@ -197,6 +203,18 @@ describe('result rows', () => {
       ['band', 'better'],
     ])
     expect(rows[5].band).toBe(1)
+  })
+
+  it('noise bursts in the pauses: the loudest, further under the voice is better, none is best; no row without any', () => {
+    const rows = (b: number, a: number) => metricRows({ before: summary({ burstDb: b }), after: summary({ burstDb: a }), goals: DEFAULT_TUNE_GOALS, limit: 1 }).filter((r) => r.id === 'bursts')
+    expect(rows(14, 26).map((r) => [r.before, r.after, r.unit, r.dir])).toEqual([[14, 26, 'db', 'better']])
+    expect(rows(26, 14)[0].dir).toBe('worse')
+    expect(rows(24, NaN)).toEqual([{ id: 'bursts', before: 24, after: 0, unit: 'db', dir: 'better', afterNote: 'noBursts' }])
+    expect(rows(NaN, 30)[0]).toMatchObject({ dir: 'worse', beforeNote: 'noBursts' })
+    expect(rows(NaN, NaN)).toEqual([])
+    // it sits right after voice over room
+    const ids = metricRows({ before: summary({ burstDb: 14 }), after: summary({ burstDb: 26 }), goals: DEFAULT_TUNE_GOALS, limit: 1 }).map((r) => r.id)
+    expect(ids.indexOf('bursts')).toBe(ids.indexOf('snr') + 1)
   })
 
   it('a NaN summary (not enough speech) gives no rows', () => {

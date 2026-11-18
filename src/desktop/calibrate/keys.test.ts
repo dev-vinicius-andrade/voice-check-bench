@@ -29,6 +29,7 @@ describe('desktop.tune.calibrate keys', () => {
       ...(['talkedQuiet', 'talkedSet', 'noSpeech', 'gap', 'cancelled', 'undone', 'engineStopped', 'backedOff'] as const).map((k) => noticeMsg(k)),
       ...(['nothing', 'alreadySilent', 'notReached', 'noHelp', 'wordsFirst', 'wouldCut', 'moreCuts', 'morePumps', 'keptReafir'] as const).map((k) => noteMsg(k)),
       noteMsg('noiseBetween', { db: 14 }),
+      noteMsg('bursts', { db: -48 }),
     ]
     for (const m of msgs) {
       const e = lookup(en, m.key)

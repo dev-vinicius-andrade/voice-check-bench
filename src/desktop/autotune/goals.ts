@@ -8,25 +8,25 @@ import type { Bother, TuneGoals, TuneUse } from '../tune'
 
 export const USES: readonly TuneUse[] = ['streaming', 'calls', 'recording']
 export const TUNE_STYLES: readonly VoiceStyle[] = ['natural', 'warm', 'clear', 'bright']
-/** In the order the screen offers them. */
-export const BOTHERS: readonly Bother[] = [
-  'roomNoise',
-  'boomy',
-  'muffled',
-  'boxy',
-  'nasal',
-  'thin',
-  'lacksBody',
-  'lacksClarity',
-  'lacksPresence',
-  'harsh',
-  'sharpS',
-  'dull',
-  'tooQuiet',
-  'tooLoud',
-  'crackling',
-  'unevenVolume',
+/** The headings the complaints are grouped under on both screens (desktop.autotune.ui.goals.groups.<id>). */
+export type BotherGroupId = 'noise' | 'tone' | 'volume' | 'processing'
+
+/**
+ * What bothers the person, grouped as both screens show it (the adjust panel adds "Too processed" to processing), in
+ * the order they are offered.
+ */
+export const BOTHER_GROUPS: readonly { id: BotherGroupId; bothers: readonly Bother[] }[] = [
+  { id: 'noise', bothers: ['roomNoise', 'noisePumps', 'hum', 'hiss'] },
+  { id: 'tone', bothers: ['boomy', 'muffled', 'boxy', 'nasal', 'thin', 'lacksBody', 'lacksClarity', 'lacksPresence', 'harsh', 'sharpS', 'dull', 'plosives'] },
+  { id: 'volume', bothers: ['tooQuiet', 'tooLoud', 'crackling', 'unevenVolume', 'flat'] },
+  { id: 'processing', bothers: ['wordsCut', 'metallic'] },
 ]
+
+/**
+ * In the order the screen offers them. Opposites may both be picked; the tuner then lets them cancel (tooQuiet /
+ * tooLoud, unevenVolume / flat) or lets one win (metallic over hiss and strong roomNoise): ../tune/targets.ts.
+ */
+export const BOTHERS: readonly Bother[] = BOTHER_GROUPS.flatMap((g) => g.bothers)
 
 export const DEFAULT_TUNE_GOALS: Readonly<TuneGoals> = { use: 'streaming', style: 'natural', bothers: [], amount: 'medium' }
 

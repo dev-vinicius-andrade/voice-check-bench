@@ -15,7 +15,7 @@ import { changeLineMsg } from '../changeMsg'
 import { MIN_PAUSE_FRAMES, PAUSE_MARGIN_DB } from '../tune/measure'
 import { NOISE_MIN_GAIN_DB } from '../tune/stages'
 import { capsOf, type TuneCaps } from '../tune/targets'
-import { CAL_FRAME_SEC, FrameCollector, frameDb, pausesSilent, quietLevels, speechFrame, talked, type CalFrameLevels, type QuietLevels } from './levels'
+import { burstsIn, CAL_FRAME_SEC, FrameCollector, frameDb, heardPausesDb, loudMoment, pausesSilent, quietLevels, speechFrame, talked, type CalFrameLevels, type QuietLevels } from './levels'
 import { calReasonMsg, doMsg, noteMsg, noticeMsg } from './msgs'
 import { gateFloorStep, gateGentler, gateNeedsProbe, GATE_PASS, gatePlacement, gateUnderSpeech, reafirsOn, removerOf, rungAbove, rungBelow, strengthLadder, type GateValues, type Remover } from './plan'
 import { talkCheck, type TalkCheck } from './talkCheck'
@@ -332,7 +332,8 @@ export class NoiseCalibrator {
 
   private nrMeasured(m: QuietLevels): CalCommand[] {
     this.after = m
-    this.tried.push({ strength: this.rung, pausesDb: m.pausesDb })
+    // a strength is as quiet as its pauses are heard: at their loudest burst, when there is one
+    this.tried.push({ strength: this.rung, pausesDb: heardPausesDb(m) })
     if (this.final) {
       this.final = false
       return this.toTalk()
@@ -358,7 +359,7 @@ export class NoiseCalibrator {
       return this.apply([...back, ...this.moves(index, { strength: this.reached }, calReasonMsg('strength'))], NR_SETTLE_MS)
     }
     const best = this.tried.reduce((a, b) => (b.pausesDb < a.pausesDb - 1e-9 ? b : a))
-    if (this.before && this.before.pausesDb - best.pausesDb >= NOISE_MIN_GAIN_DB) {
+    if (this.before && heardPausesDb(this.before) - best.pausesDb >= NOISE_MIN_GAIN_DB) {
       this.notes.push(noteMsg('notReached'))
       if (sameValue(best.strength, this.rung)) return this.toTalk()
       this.final = true
@@ -502,7 +503,7 @@ export class NoiseCalibrator {
       const step: Change = { id: `calibrate:${target}`, reason: reasonOf(title), titleMsg: title, kind: 'value', slot: index, key, from: now, to }
       this.detail = changeLineMsg(s, step)
       this.chain = withChange(this.chain, step)
-      if (key === 'dryDb' && this.phase !== 'set' && this.after && s.kind === 'reagate') this.after = { ...this.after, pausesDb: this.after.pausesDb + to - now }
+      if (key === 'dryDb' && this.phase !== 'set' && this.after && s.kind === 'reagate') this.after = { ...this.after, pausesDb: this.after.pausesDb + to - now, pausesLoudDb: this.after.pausesLoudDb + to - now }
       if (typeof was === 'number' && sameValue(was, to)) {
         this.touched.delete(target)
         out.push({ kind: 'revert', target })
@@ -561,7 +562,8 @@ export class NoiseCalibrator {
     if (this.pauseLevels.length > 4 * MIN_PAUSE_FRAMES) this.pauseLevels.splice(0, this.pauseLevels.length - 4 * MIN_PAUSE_FRAMES)
     if (this.summary && this.pauseLevels.length >= MIN_PAUSE_FRAMES) {
       const afterDb = median(this.pauseLevels)
-      this.summary = { ...this.summary, afterDb, silent: pausesSilent({ pausesDb: afterDb }) }
+      const loud = { pausesDb: afterDb, pausesLoudDb: loudMoment(this.pauseLevels) }
+      this.summary = { ...this.summary, afterDb, silent: pausesSilent(loud), notes: this.notesWith(loud) }
     }
   }
 
@@ -596,8 +598,13 @@ export class NoiseCalibrator {
       cutShare: this.check?.cutShare ?? NaN,
       cutEvents: this.check?.cutEvents ?? NaN,
       pumpDb: this.check?.pumpDb ?? NaN,
-      notes: [...this.notes],
+      notes: this.notesWith(a),
     }
+  }
+
+  /** The result's notes, and one when the pauses as heard still carry bursts (the room let through now and then). */
+  private notesWith(q: Pick<QuietLevels, 'pausesDb' | 'pausesLoudDb'> | null): Msg[] {
+    return q && burstsIn(q) ? [...this.notes, noteMsg('bursts', { db: q.pausesLoudDb })] : [...this.notes]
   }
 
   private clockSec(): string {
@@ -613,7 +620,7 @@ export class NoiseCalibrator {
   }
 
   private note(what: string, m: QuietLevels): void {
-    this.log.push(`${this.clockSec()} ${what}: room ${m.roomDb.toFixed(1)} dBFS (peaks ${m.roomPeakDb.toFixed(1)}), pauses heard ${m.pausesDb.toFixed(1)} dBFS (peaks ${m.pausesPeakDb.toFixed(1)}, ${(100 * m.silentShare).toFixed(0)} % digital silence)`)
+    this.log.push(`${this.clockSec()} ${what}: room ${m.roomDb.toFixed(1)} dBFS (peaks ${m.roomPeakDb.toFixed(1)}), pauses heard ${m.pausesDb.toFixed(1)} dBFS (peaks ${m.pausesPeakDb.toFixed(1)}, loudest moment ${m.pausesLoudDb.toFixed(1)}${burstsIn(m) ? ': bursts' : ''}, ${(100 * m.silentShare).toFixed(0)} % digital silence)`)
   }
 
   private reset(): void {

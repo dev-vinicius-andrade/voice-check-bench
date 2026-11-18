@@ -114,12 +114,32 @@
         "words": {
           "times": "The gate was closing on the ends of your words: its Hold and Release get longer, so it stays open until a word is over.",
           "threshold": "The gate was cutting the starts of your quiet words: its Threshold goes down to {{to, number(maximumFractionDigits: 1)}} dB, safely under them, so it opens in time.",
-          "floor": "The gate was still cutting into quiet words: its Dry goes to {{to, number(maximumFractionDigits: 1)}} dB, so what it turns down stays audible instead of being cut."
+          "floor": "The gate was still cutting into quiet words: its Dry goes to {{to, number(maximumFractionDigits: 1)}} dB, so what it turns down stays audible instead of being cut.",
+          "strength": "Noise Removal was taking the soft starts or ends of words along with the room: its strength goes down to {{to, number(maximumFractionDigits: 1)}}, so they come through whole.",
+          "gateOff": "You hear words cut off, and Noise Removal already keeps your pauses silent: ReaGate now lets everything through, so it can no longer cut the start or end of a word."
         },
         "peak": {
           "attack": "Short spikes at the start of your words were getting through before the compressor reacted, and the make-up gain made them distort: its Attack goes to {{to, number(maximumFractionDigits: 1)}} ms so it catches them.",
           "comp": "Your loudest moments were far above the rest of your voice and distorted: the compressor's Threshold goes to {{to, number(maximumFractionDigits: 1)}} dB and its Ratio up, so it holds them back.",
           "strength": "Words starting out of complete silence made spikes that distorted: the noise removal's strength goes to {{to, number(maximumFractionDigits: 1)}} so the pauses are not cut to nothing."
+        },
+        "bursts": {
+          "gate": "Noise Removal let the room through for a moment in your pauses (it reacts to how much room it receives): ReaGate, which comes before it, now closes in the pauses, so Noise Removal gets less room and stays silent.",
+          "level": "The compressor's Wet goes up {{db, number(maximumFractionDigits: 1)}} dB to give your voice back what the gate took, so it stays as loud as it was.",
+          "strength": "Noise Removal still let the room through for a moment in some pauses: its strength goes to {{to, number(maximumFractionDigits: 1)}}, and the test run cut no word."
+        },
+        "metallic": {
+          "strength": "You hear your voice as metallic or robotic, which is what a strong Noise Removal does: its strength comes down to {{to, number(maximumFractionDigits: 1)}}."
+        },
+        "flat": {
+          "ratio": "Your voice sounded flat (its loud and quiet moments only {{spread, number(maximumFractionDigits: 1)}} dB apart): the compressor's Ratio comes down to {{to, number(maximumFractionDigits: 1)}}:1 so it squeezes less.",
+          "threshold": "Your voice sounded flat (its loud and quiet moments only {{spread, number(maximumFractionDigits: 1)}} dB apart): the compressor's Threshold goes up to {{to, number(maximumFractionDigits: 1)}} dB so it works on fewer moments."
+        },
+        "hum": {
+          "cut": "A hum at {{hz, number}} Hz sat in your room noise: a free EQ band goes onto it, narrow, {{db, number(maximumFractionDigits: 1)}} dB down."
+        },
+        "hiss": {
+          "shelf": "A high hiss sat in your pauses: the EQ's top shelf comes down {{db, number(maximumFractionDigits: 1)}} dB, where the room is louder than your voice."
         }
       },
       "unmet": {
@@ -155,7 +175,8 @@
         },
         "spread": {
           "noComp": "Your volume swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted) and no compressor is switched on: switch ReaComp on.",
-          "limit": "Your volume still swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted). More compression didn't help or would lift the room noise: keep the same distance to the mic."
+          "limit": "Your volume still swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted). More compression didn't help or would lift the room noise: keep the same distance to the mic.",
+          "flat": "Your voice still swings only {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} or more wanted). Less compression didn't widen it: lower the compressor's Ratio by hand, or speak with more variation."
         },
         "budget": "Stopped after {{renders, number}} test runs. Run it again to keep going from here.",
         "cut": "The gate still cuts the starts or ends of some words ({{pct, number(maximumFractionDigits: 1)}} % of your speech, about {{events, number(maximumFractionDigits: 1)}} times every 10 seconds) and making it gentler did not stop it. Switch ReaGate off, or quiet the room and run this again.",
@@ -165,6 +186,15 @@
         "silentPauses": "Your pauses now go fully silent: that is Noise Removal taking the room out, and no word is cut. If it sounds unnatural, lower its strength a little.",
         "peak": {
           "over": "Your loudest moments still reach {{peak, number(maximumFractionDigits: 1)}} dBFS (they should stay under {{ceiling, number(maximumFractionDigits: 1)}}) and will distort or crackle. Nothing left in your chain can bring them down: lower your mic gain and record again."
+        },
+        "bursts": "In some pauses the room still comes through for a moment, against pauses that are otherwise silent (the loudest about {{db, number(maximumFractionDigits: 1)}} dB under your voice). None of your effects removed it without cutting words: quiet the room or move closer to the mic.",
+        "removerCut": "Noise Removal takes a little of the soft starts or ends of some words along with the room ({{pct, number(maximumFractionDigits: 1)}} % of your speech, about {{events, number(maximumFractionDigits: 1)}} times every 10 seconds), and a lighter strength did not change that. If you hear it, quiet the room or move closer to the mic, so it has less to remove.",
+        "metallic": "Noise Removal stays light (strength {{max, number}} at most) because your voice sounded metallic: some room noise comes back in your pauses. That is the trade.",
+        "hum": {
+          "noBand": "A hum at {{hz, number}} Hz sits in your room noise, and no ReaEQ band is free to cut it: add a narrow band at {{hz, number}} Hz, about −6 dB."
+        },
+        "hiss": {
+          "noShelf": "The hiss in your pauses is louder than your voice up high, and your ReaEQ has no high shelf to take it down: add one at about 8 kHz."
         }
       },
       "change": {
@@ -242,12 +272,25 @@
             "tooQuiet": "Too quiet",
             "tooLoud": "Too loud",
             "crackling": "Crackling or distorting",
-            "unevenVolume": "Uneven volume"
+            "unevenVolume": "Uneven volume",
+            "wordsCut": "Words cut off",
+            "metallic": "Metallic or robotic voice",
+            "noisePumps": "Noise comes and goes",
+            "flat": "Flat, no dynamics",
+            "plosives": "Popping P and B",
+            "hum": "Low hum or rumble",
+            "hiss": "High hiss"
           },
           "amount": "Processing",
           "amountHint": "How far the app may move your effects from where they are now.",
           "tune": "Tune my effects",
-          "back": "Back"
+          "back": "Back",
+          "groups": {
+            "noise": "Noise",
+            "tone": "Tone",
+            "volume": "Volume",
+            "processing": "Processing"
+          }
         },
         "tuning": {
           "title": "Tuning your effects",
@@ -304,8 +347,10 @@
             "note": {
               "silence": "silence",
               "none": "–",
-              "hidden": "hidden by room noise"
-            }
+              "hidden": "hidden by room noise",
+              "noBursts": "none"
+            },
+            "bursts": "Noise bursts in pauses (the loudest, how far under your voice)"
           },
           "bands": {
             "rumble": "rumble, 40–80 Hz",
@@ -328,7 +373,9 @@
             "spreadDb": "Measured: steadiness {{before}} → {{after}}",
             "deadSilence": "Measured: dead silence {{before}} → {{after}} of the recording",
             "wordLossDb": "Measured: quiet words cut by {{before}} → {{after}}",
-            "cutSpeech": "Measured: speech cut by the gate {{before}} → {{after}}"
+            "cutSpeech": "Measured: speech cut by the gate {{before}} → {{after}}",
+            "burstDb": "Measured: loudest noise burst in your pauses {{before}} → {{after}} under your voice",
+            "removerCut": "Measured: speech taken off with the room {{before}} → {{after}}"
           },
           "none": "Your sound already meets these goals: nothing in your effects needs to change.",
           "unmet": "What it could not do",
@@ -527,7 +574,8 @@
           "noiseBetween": "The room still comes and goes between your words (about {{db, number}} dB).",
           "moreCuts": "More reduction cut your words, so it went back one step.",
           "morePumps": "More reduction made the room go up and down between your words, so it went back one step.",
-          "keptReafir": "Your pauses were only silent with ReaFIR on, so it stays on."
+          "keptReafir": "Your pauses were only silent with ReaFIR on, so it stays on.",
+          "bursts": "Now and then the room still comes through in your pauses for a moment (up to {{db, number(maximumFractionDigits: 1)}} dBFS)."
         },
         "result": {
           "room": "Room noise on your mic: {{level}}",

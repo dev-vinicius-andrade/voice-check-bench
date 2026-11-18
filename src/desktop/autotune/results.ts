@@ -8,12 +8,12 @@ import { toneExcess } from '../tune/targets'
 export type Direction = 'better' | 'worse' | 'same' | 'over'
 
 /** A value shown as words instead of a number: digital silence in the pauses, nothing to compare, a band hidden by room noise. */
-export type RowNote = 'silence' | 'none' | 'hidden'
+export type RowNote = 'silence' | 'none' | 'hidden' | 'noBursts'
 
 /** Pauses at or under this are digital silence, dBFS. */
 export const SILENCE_DBFS = -95
 
-export type MetricId = 'speech' | 'peak' | 'noise' | 'snr' | 'spread' | 'band'
+export type MetricId = 'speech' | 'peak' | 'noise' | 'snr' | 'bursts' | 'spread' | 'band'
 
 export interface MetricRow {
   id: MetricId
@@ -51,8 +51,19 @@ function peakDir(before: number, after: number): Direction {
   return 'same'
 }
 
-/** Voice level, peak, room noise in pauses, voice over room, steadiness, then every tone band that moved ≥ 1 dB
- * (closer to its target, shifted against a complaint, is better). */
+/**
+ * Noise bursts in the pauses (the loudest, dB under the voice: further under is better, none is best); no row when
+ * neither side has one or could be measured.
+ */
+function burstRow(b: TakeSummary, a: TakeSummary): MetricRow[] {
+  const has = (s: TakeSummary): boolean => Number.isFinite(s.burstDb)
+  if (!has(b) && !has(a)) return []
+  const dir: Direction = has(b) && has(a) ? lowerBetter(-b.burstDb, -a.burstDb) : has(a) ? 'worse' : 'better'
+  return [{ id: 'bursts', before: has(b) ? b.burstDb : 0, after: has(a) ? a.burstDb : 0, unit: 'db', dir, ...note('noBursts', !has(b), !has(a)) }]
+}
+
+/** Voice level, peak, room noise in pauses, voice over room, bursts in the pauses, steadiness, then every tone band
+ * that moved ≥ 1 dB (closer to its target, shifted against a complaint, is better). */
 export function metricRows(result: Pick<TuneResult, 'before' | 'after' | 'goals' | 'limit'>): MetricRow[] {
   const b: TakeSummary = result.before
   const a: TakeSummary = result.after
@@ -64,6 +75,7 @@ export function metricRows(result: Pick<TuneResult, 'before' | 'after' | 'goals'
     // pauses at digital silence are silence, not a number, and a voice over silence is not compared
     { id: 'noise', before: b.pauseDb, after: a.pauseDb, unit: 'dbfs', dir: silent(b) && silent(a) ? 'same' : lowerBetter(b.pauseDb, a.pauseDb), ...note('silence', silent(b), silent(a)) },
     { id: 'snr', before: b.snrDb, after: a.snrDb, unit: 'db', dir: silent(a) ? (silent(b) ? 'same' : 'better') : lowerBetter(-b.snrDb, -a.snrDb), ...note('none', silent(b), silent(a)) },
+    ...burstRow(b, a),
     { id: 'spread', before: b.spreadDb, after: a.spreadDb, unit: 'db', dir: lowerBetter(b.spreadDb, a.spreadDb) },
   ]
   const [eb, ea] = [toneExcess(b.tone, t), toneExcess(a.tone, t)]

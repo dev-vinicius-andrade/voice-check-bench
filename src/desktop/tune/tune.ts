@@ -12,6 +12,8 @@ import { EQ_GRID_DB } from './eqModel'
 import { prepareTake, TUNE_SAMPLE_RATE } from './measure'
 import { BANDS } from '../../audio/reference'
 import { bandRange, unmetMsg } from './msgs'
+import { burstsCost, burstStage } from './burstStage'
+import { gateOffForWords, HISS_NO_SHELF, HUM_NO_BAND, hissStage, humStage } from './botherStages'
 import { PEAK_HELD, PEAK_TOL_DB, peakStage } from './peakStage'
 import { CHOP_OK_DB, cutsSpeech, MIN_GAIN, scoreOf, summarize, toneOf } from './score'
 import { DEFAULT_MAX_RENDERS, GATE_DEEPER, Session, SWITCH_KEY, type Pending } from './session'
@@ -52,6 +54,10 @@ const nanSummary = (): TakeSummary => ({
   cutSpeech: NaN,
   cutEvents: NaN,
   pumpDb: NaN,
+  burstDb: NaN,
+  burstEvents: NaN,
+  removerCut: NaN,
+  removerCutEvents: NaN,
   score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
 })
 
@@ -170,6 +176,10 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
   if (dead) out.push(unmetMsg('dead'))
   if (chopped) out.push(unmetMsg('chopped'))
   if (cutsSpeech(m)) out.push(unmetMsg('cut', { pct: 100 * m.cutShare, events: m.cutEvents }))
+  // Noise Removal (with the gates) still takes the soft starts or ends of words even as light as it was tried
+  else if (cutsSpeech({ cutShare: m.removerCut, cutEvents: m.removerCutEvents })) out.push(unmetMsg('removerCut', { pct: 100 * m.removerCut, events: m.removerCutEvents }))
+  // the room let through for a moment against silent pauses: said, with how far under the voice the loudest one sits
+  if (burstsCost(m, t.snrDb - UNMET_SNR_DB)) out.push(unmetMsg('bursts', { db: m.burstDb }))
   // a deeper or tighter gate was measured to cut words: the room stays louder, and that is the reason to give
   if (!dead && !chopped && m.snrDb < t.snrDb - UNMET_SNR_DB && s.refused.has(GATE_DEEPER)) out.push(unmetMsg('noise.wouldCut', { snr: m.snrDb, target: t.snrDb }))
   else if (!dead && !chopped && m.snrDb < t.snrDb - UNMET_SNR_DB) {
@@ -219,7 +229,12 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
   if (m.spreadDb > t.spreadDb + UNMET_SPREAD_DB) {
     const comp = s.live('reacomp', 'thresholdDb', 'ratio').length > 0
     out.push(unmetMsg(comp ? 'spread.limit' : 'spread.noComp', { spread: m.spreadDb, target: t.spreadDb }))
-  }
+  } else if (m.spreadDb < t.spreadMinDb - UNMET_SPREAD_DB) out.push(unmetMsg('spread.flat', { spread: m.spreadDb, target: t.spreadMinDb }))
+  // what a complaint needed and the chain does not have
+  if (s.refused.has(HUM_NO_BAND)) out.push(unmetMsg('hum.noBand', { hz: s.mask.humHz }))
+  if (s.refused.has(HISS_NO_SHELF)) out.push(unmetMsg('hiss.noShelf'))
+  // "metallic": Noise Removal is kept light, and the room that comes back is said, not hidden
+  if (t.metallic && (s.live('noiseRemoval', 'strength').length || s.off('noiseRemoval', 'strength').length)) out.push(unmetMsg('metallic', { max: t.caps.nrCeil }))
   if (s.outOfBudget) out.push(unmetMsg('budget', { renders: s.renders }))
   return out
 }
@@ -295,6 +310,8 @@ export async function tune(input: TuneInput): Promise<TuneResult> {
   await protectWords(s)
   await noiseRemovalOn(s)
   const tone = await toneWithSwitch(s)
+  await humStage(s)
+  await hissStage(s)
   await compressionStage(s)
   await roomTouchUp(s)
   await levelStage(s, 'trim')
@@ -302,11 +319,14 @@ export async function tune(input: TuneInput): Promise<TuneResult> {
   // and a switched-off Noise Removal gets one more go for the room that costs
   const gate = s.set
   await protectWords(s, 'trim')
+  await gateOffForWords(s)
   if (s.refused.has(GATE_DEEPER)) await noiseRemovalOn(s)
   // a shallower floor or a remover moved the level once more
   if (s.set !== gate) await levelStage(s, 'trim')
   // peaks are a hard limit: nothing ends over the ceiling while a lower make-up gain can prevent it
   await peakStage(s)
+  // the pauses as heard: the room Noise Removal lets through for a moment, against its silence
+  await burstStage(s)
 
   return { changes: s.result(), before, after: summarize(s.m, s.targets), processed: s.audio, renders: s.renders, unmet: unmetOf(s, tone), log: s.log, goals, limit }
 }

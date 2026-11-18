@@ -56,6 +56,55 @@ export const MIN_PAUSE_WINDOWS = 3
  */
 export const PUMP_AUDIBLE_SNR_DB = 35
 
+/**
+ * Bursts in the pauses: a remover that lets the room through for a moment (Elgato Noise Removal right after some
+ * words, or on and off in a long pause when the room it receives sits near its threshold). The median pause level
+ * reads digital silence there; what is heard against that silence is the loudest moments. Measured in CUT_FRAME_SEC
+ * frames over the take's room frames (TakeMask.roomFrames):
+ * - the pauses of the raw take from BURST_FROM_SEC on (the render resets every plugin and feeds silence first, so Noise
+ *   Removal starts cold: on the real chain its first 0.7 s let the room through and a warm-up with the take's own room
+ *   took that away and nothing else; the live engine at real-time pace gave the same output as the offline render),
+ * - BURST_GUARD_SEC or more from speech (word tails: the cut measure's own pad),
+ * - where the raw take is the room alone: no band of a BURST_FFT-point spectrum BURST_ROOM_DB over the room's median
+ *   there (a breath, an "s" or a soft syllable at room level is the person's own sound, which a remover rightly keeps),
+ *   widened by BURST_SOUND_PAD frames.
+ * A burst is BURST_MIN_FRAMES frames in a row (30 ms: a single click of the room is no burst; the ones heard on the real
+ * chain lasted 50–300 ms) over both the pauses' own median (+ BURST_OVER_DB: as far as a gate may
+ * move an audible room before it pumps, score.ts PUMP_OK_DB, plus what one 10 ms frame of a steady room swings, so a
+ * gentle gate's floor is no burst) and the audible line (BURST_AUDIBLE_DB under the voice); its level is its loudest
+ * BURST_MIN_FRAMES frames (power mean: a burst is heard at its loudest, and a single 10 ms frame swings too much).
+ * Fewer than MIN_ROOM_FRAMES room frames: not measured.
+ */
+export const BURST_FROM_SEC = 1
+export const BURST_GUARD_SEC = CUT_PAD_SEC
+export const BURST_FFT = 1024
+export const BURST_ROOM_DB = 6
+export const BURST_SOUND_PAD = 3
+export const BURST_OVER_DB = 16
+export const BURST_AUDIBLE_DB = 45
+export const BURST_MIN_FRAMES = 3
+export const MIN_ROOM_FRAMES = 50
+/** Bands of the room test, Hz (low voice, the middle, consonants, hiss). */
+const ROOM_TEST_BANDS: readonly (readonly [number, number])[] = [
+  [80, 320],
+  [320, 1250],
+  [1250, 2500],
+  [2500, 5000],
+  [5000, 10000],
+]
+
+/**
+ * A mains hum in the room ("low hum or rumble"): a peak at 50 or 60 Hz or one of their next two harmonics in the raw
+ * take's pause spectrum (FFT_N points, 5.9 Hz bins) standing HUM_OVER_DB over the median of its neighbourhood (bins
+ * HUM_NEAR away on either side, the peak's own ±1 left out).
+ */
+export const HUM_MAINS_HZ: readonly number[] = [50, 60]
+export const HUM_HARMONICS = 3
+export const HUM_OVER_DB = 10
+const HUM_NEAR: readonly [number, number] = [3, 8]
+/** "High hiss": the top of the spectrum, from this frequency up to the last band's top, Hz. */
+export const HISS_FROM_HZ = 8000
+
 /** The fixed frames of a take, from the raw recording. */
 export interface TakeMask {
   sampleRate: number
@@ -77,6 +126,12 @@ export interface TakeMask {
   pauseWindows: number[]
   /** Per BANDS entry: the raw take has no measurable voice there (not MASK_DB over the room). */
   masked: boolean[]
+  /** CUT_FRAME_SEC frames of the pauses where the raw take is the room alone, ascending (bursts are measured there). */
+  roomFrames: number[]
+  /** Level of each CUT_FRAME_SEC frame of the raw take, dBFS (fineLevels). */
+  rawFine: Float32Array
+  /** The frequency of a mains hum in the raw take's pauses (the strongest peak of humPeaks), Hz; NaN without one. */
+  humHz: number
   /** Cell of each FFT bin (−1: outside the bands). */
   binCell: Int16Array
   /** Centre frequency of each cell, Hz. */
@@ -112,6 +167,19 @@ export interface Measured {
    */
   cutShare: number
   cutEvents: number
+  /**
+   * Bursts in the pauses (burstsOf): how far under the voice the loudest one sits, dB (NaN: none, or not measurable),
+   * and how many there are per 10 s of the take's room frames (NaN: not measurable).
+   */
+  burstDb: number
+  burstEvents: number
+  /**
+   * What Noise Removal and the gates cut of the words together, against the chain without Noise Removal and with its
+   * gates passing everything (./burstStage.ts, on the final state): share and events as cutShare / cutEvents. NaN while
+   * not measured (no Noise Removal on, or not the final stage's render).
+   */
+  removerCut: number
+  removerCutEvents: number
   /** Summed speech power per cell (N_CELLS). */
   cells: Float64Array
 }
@@ -223,7 +291,139 @@ export function prepareTake(take: Float32Array, sampleRate = TUNE_SAMPLE_RATE): 
     }
     return s < n * 10 ** (MASK_DB / 10)
   })
-  return { sampleRate, win, frames, rawLevels: fr, speech, loud, quiet, pause, seconds, windows, pauseWindows, masked, ...layout, analysis: a }
+  const roomFrames = roomOnly(take, sampleRate, frames, speech, pause)
+  const rawFine = fineLevels(take, sampleRate)
+  const humHz = mainsHum(take, pauseWindows, sampleRate)
+  return { sampleRate, win, frames, rawLevels: fr, speech, loud, quiet, pause, seconds, windows, pauseWindows, masked, roomFrames, rawFine, humHz, ...layout, analysis: a }
+}
+
+/**
+ * The CUT_FRAME_SEC frames of the pause frames (50 ms) from BURST_FROM_SEC on, BURST_GUARD_SEC or more from a speech
+ * frame, where the raw take is the room alone: around each, a BURST_FFT-point spectrum whose ROOM_TEST_BANDS all stay
+ * within BURST_ROOM_DB of their median over those frames; a frame that does not, and BURST_SOUND_PAD frames each side of
+ * it, carry a sound of their own.
+ */
+function roomOnly(take: Float32Array, sampleRate: number, frames: number, speech: readonly number[], pause: readonly number[]): number[] {
+  const w = Math.round(CUT_FRAME_SEC * sampleRate)
+  const per = Math.round(FRAME_SEC / CUT_FRAME_SEC)
+  const guard = Math.round(BURST_GUARD_SEC / CUT_FRAME_SEC)
+  const near = new Uint8Array(frames * per)
+  for (const f of speech) for (let i = Math.max(0, f * per - guard); i < Math.min(near.length, (f + 1) * per + guard); i++) near[i] = 1
+  const from = Math.round(BURST_FROM_SEC / CUT_FRAME_SEC)
+  const cand: number[] = []
+  for (const f of pause) for (let j = 0; j < per; j++) if (f * per + j >= from && !near[f * per + j]) cand.push(f * per + j)
+  if (!cand.length) return []
+  const bins = ROOM_TEST_BANDS.map(([lo, hi]) => [Math.ceil((lo * BURST_FFT) / sampleRate), Math.floor((hi * BURST_FFT) / sampleRate)] as const)
+  const bands = cand.map((i) => {
+    const p = powerSpec(take, Math.max(0, i * w + Math.round(w / 2) - BURST_FFT / 2), BURST_FFT)
+    return bins.map(([a, b]) => {
+      let s = 0
+      for (let k = a; k <= b; k++) s += p[k]
+      return db(s)
+    })
+  })
+  const ref = bins.map((_, b) => median(bands.map((x) => x[b])))
+  const sound = new Set<number>()
+  cand.forEach((i, k) => {
+    if (bands[k].every((v, b) => v <= ref[b] + BURST_ROOM_DB)) return
+    for (let d = -BURST_SOUND_PAD; d <= BURST_SOUND_PAD; d++) sound.add(i + d)
+  })
+  return cand.filter((i) => !sound.has(i)).sort((x, y) => x - y)
+}
+
+/**
+ * Bursts in the pauses of a render (see BURST_FROM_SEC): its CUT_FRAME_SEC levels on the take's room frames; the
+ * floor is their median, the line BURST_OVER_DB over it and never under BURST_AUDIBLE_DB under the voice (`speechDb`).
+ * A burst is BURST_MIN_FRAMES frames in a row over the line, as loud as its loudest BURST_MIN_FRAMES frames (power
+ * mean). `burstDb`: the voice over the loudest one, dB (NaN without a burst); `burstEvents`: bursts per 10 s of room frames. Both NaN with fewer than MIN_ROOM_FRAMES room frames or
+ * without a voice level.
+ */
+export function burstsOf(mask: Pick<TakeMask, 'roomFrames' | 'sampleRate'>, audio: Float32Array, speechDb: number): { burstDb: number; burstEvents: number } {
+  const room = mask.roomFrames
+  if (room.length < MIN_ROOM_FRAMES || !Number.isFinite(speechDb)) return { burstDb: NaN, burstEvents: NaN }
+  const w = Math.round(CUT_FRAME_SEC * mask.sampleRate)
+  const level = room.map((f) => {
+    let s = 0
+    for (let i = f * w; i < Math.min(audio.length, (f + 1) * w); i++) s += audio[i] * audio[i]
+    return Math.max(FLOOR_DB, adb(Math.sqrt(s / w)))
+  })
+  const line = Math.max(median(level) + BURST_OVER_DB, speechDb - BURST_AUDIBLE_DB)
+  let loudest = -Infinity
+  let events = 0
+  for (let k = 0; k < room.length; ) {
+    if (!(level[k] > line)) {
+      k++
+      continue
+    }
+    // a run of consecutive frames over the line, as loud as its loudest BURST_MIN_FRAMES frames (power mean)
+    let e = k
+    while (e + 1 < room.length && room[e + 1] === room[e] + 1 && level[e + 1] > line) e++
+    if (e - k + 1 >= BURST_MIN_FRAMES) {
+      events++
+      for (let j = k; j + BURST_MIN_FRAMES - 1 <= e; j++) {
+        let power = 0
+        for (let i = j; i < j + BURST_MIN_FRAMES; i++) power += 10 ** (level[i] / 10)
+        loudest = Math.max(loudest, db(power / BURST_MIN_FRAMES))
+      }
+    }
+    k = e + 1
+  }
+  return { burstDb: events ? speechDb - loudest : NaN, burstEvents: (events / (room.length * CUT_FRAME_SEC)) * 10 }
+}
+
+/** Mean power spectrum (FFT_N points) over FFT windows; null without any. */
+function meanSpectrum(x: Float32Array, starts: readonly number[]): Float64Array | null {
+  if (!starts.length) return null
+  const out = new Float64Array(FFT_N / 2 + 1)
+  for (const st of starts) {
+    const p = powerSpec(x, st, FFT_N)
+    for (let i = 0; i < out.length; i++) out[i] += p[i] / starts.length
+  }
+  return out
+}
+
+/** How far the spectrum's peak at `hz` (its bin ±1) stands over the median of its neighbourhood, dB. */
+function peakOver(p: Float64Array, hz: number, sampleRate: number): number {
+  const k = Math.round((hz * FFT_N) / sampleRate)
+  const near: number[] = []
+  for (let d = HUM_NEAR[0]; d <= HUM_NEAR[1]; d++) near.push(p[k - d] ?? 0, p[k + d] ?? 0)
+  return db(Math.max(p[k - 1] ?? 0, p[k], p[k + 1] ?? 0)) - db(median(near))
+}
+
+/** The mains hum of the raw take's pauses: the strongest peak HUM_OVER_DB over its neighbourhood, Hz (NaN: none). */
+function mainsHum(take: Float32Array, pauseWindows: readonly number[], sampleRate: number): number {
+  const p = pauseWindows.length >= MIN_PAUSE_WINDOWS ? meanSpectrum(take, pauseWindows) : null
+  if (!p) return NaN
+  let best = NaN
+  let height = HUM_OVER_DB
+  for (const base of HUM_MAINS_HZ) {
+    for (let h = 1; h <= HUM_HARMONICS; h++) {
+      const over = peakOver(p, base * h, sampleRate)
+      if (over >= height) {
+        height = over
+        best = base * h
+      }
+    }
+  }
+  return best
+}
+
+/** How far the take's hum stands over its neighbourhood in a render's pauses, dB (NaN without a hum or pauses). */
+export function humDb(mask: Pick<TakeMask, 'humHz' | 'pauseWindows' | 'sampleRate'>, audio: Float32Array): number {
+  const p = Number.isFinite(mask.humHz) ? meanSpectrum(audio, mask.pauseWindows) : null
+  return p ? peakOver(p, mask.humHz, mask.sampleRate) : NaN
+}
+
+/** The top of a render (HISS_FROM_HZ up to the last band's top) in its pauses and in its speech windows, dBFS-like power. */
+export function topDb(mask: Pick<TakeMask, 'windows' | 'pauseWindows' | 'sampleRate'>, audio: Float32Array): { pause: number; speech: number } {
+  const top = (starts: readonly number[]): number => {
+    const p = meanSpectrum(audio, starts)
+    if (!p) return NaN
+    let s = 0
+    for (let i = Math.ceil((HISS_FROM_HZ * FFT_N) / mask.sampleRate); i < (BANDS[BANDS.length - 1].hi * FFT_N) / mask.sampleRate && i < p.length; i++) s += p[i]
+    return db(s)
+  }
+  return { pause: top(mask.pauseWindows), speech: top(mask.windows) }
 }
 
 /** Summed power per cell over FFT windows. */
@@ -297,6 +497,7 @@ export function measure(mask: TakeMask, audio: Float32Array): Measured {
   const cells = voiceCells(mask, audio)
 
   const zero = digitalSilence(audio, mask.sampleRate)
+  const bursts = burstsOf(mask, audio, speechDb)
   return {
     speechDb,
     peakDb: adb(peak),
@@ -313,6 +514,9 @@ export function measure(mask: TakeMask, audio: Float32Array): Measured {
     cutShare: NaN,
     cutEvents: NaN,
     pumpDb: NaN,
+    ...bursts,
+    removerCut: NaN,
+    removerCutEvents: NaN,
     cells,
   }
 }
@@ -332,7 +536,9 @@ export function fineLevels(x: Float32Array, sampleRate: number): Float32Array {
 /**
  * How much speech a gate cuts: `gated` is a render, `open` the fineLevels of the same chain rendered with its gates
  * passing everything. Over the speech frames of the raw take and CUT_PAD_SEC around them, the frames that carry voice
- * in the ungated render (CUT_VOICE_DB over its pause level) are compared: one is cut when the gated render sits more
+ * in the ungated render (CUT_VOICE_DB over its pause level) and in the raw take (CUT_VOICE_DB over its room: a Noise
+ * Removal after the gate can let the room through right before or after a word in the ungated render, and a gate that
+ * spares it that is not cutting a word) are compared: one is cut when the gated render sits more
  * than CUT_DB under the ungated one, after the gain the open gate adds (the median difference over the loud half of
  * the speech). `share`: cut voice frames / voice frames, each cut frame weighted by its depth (CUT_DB → 0,
  * CUT_FULL_DB → 1: a word start held 6 dB down is heard far less than one held 20 dB down); `events`: runs of
@@ -351,6 +557,7 @@ export function cutOf(mask: TakeMask, gated: Float32Array, open: Float32Array): 
     return out
   }
   const room = mask.pause.length >= MIN_PAUSE_FRAMES ? median(fine(mask.pause, (i) => open[i])) : -Infinity
+  const rawRoom = Number.isFinite(mask.analysis.noise) ? mask.analysis.noise : -Infinity
   const diffs = fine(mask.loud, (i) => g[i] - open[i])
   const gain = diffs.length ? median(diffs) : 0
   let voice = 0
@@ -366,7 +573,7 @@ export function cutOf(mask: TakeMask, gated: Float32Array, open: Float32Array): 
     for (let j = 0; j < per && f * per + j < n; j++) {
       const i = f * per + j
       frames++
-      if (!(open[i] >= room + CUT_VOICE_DB)) {
+      if (!(open[i] >= room + CUT_VOICE_DB) || !(mask.rawFine[i] >= rawRoom + CUT_VOICE_DB)) {
         run = 0
         continue
       }

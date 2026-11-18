@@ -28,6 +28,13 @@ export type Bother =
   | 'tooLoud'
   | 'crackling'
   | 'unevenVolume'
+  | 'wordsCut'
+  | 'metallic'
+  | 'noisePumps'
+  | 'flat'
+  | 'plosives'
+  | 'hum'
+  | 'hiss'
 
 export interface TuneGoals {
   use: TuneUse
@@ -98,10 +105,25 @@ export interface TakeSummary {
   cutEvents: number
   /** How far a gate moves an audible room between pauses and words, dB (0 without a working gate or with a quiet room; NaN when not measured). */
   pumpDb: number
+  /**
+   * Bursts in the pauses: the room let through for a moment (by Noise Removal right after a word, or on and off in a
+   * long pause), measured where the raw take is the room alone (./measure.ts burstsOf). `burstDb`: how far under the
+   * voice the loudest one sits, dB (NaN: none, or not measurable); `burstEvents`: how many per 10 s of pauses (NaN: not
+   * measurable). The noise score hears the pauses at their loudest burst (./score.ts heardSnrDb).
+   */
+  burstDb: number
+  burstEvents: number
+  /**
+   * What Noise Removal and the gates cut of the words together, against the same chain without Noise Removal and with
+   * its gates passing everything (the gates' own cutSpeech cannot see Noise Removal): share 0..1 and events per 10 s,
+   * measured on the final state; NaN without Noise Removal on (or before the tuner).
+   */
+  removerCut: number
+  removerCutEvents: number
   score: TuneScore
 }
 
-export type TuneMetric = 'speechDb' | 'peakDb' | 'snrDb' | 'tone' | 'spreadDb' | 'deadSilence' | 'wordLossDb' | 'cutSpeech'
+export type TuneMetric = 'speechDb' | 'peakDb' | 'snrDb' | 'tone' | 'spreadDb' | 'deadSilence' | 'wordLossDb' | 'cutSpeech' | 'burstDb' | 'removerCut'
 
 /** The metric a change was made for: its value right before the change and in the final render. */
 export interface TuneEffect {

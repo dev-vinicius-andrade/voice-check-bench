@@ -3,7 +3,8 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
 import { AMOUNTS } from '../../../desktop/advice/prefs'
-import { BOTHERS, TUNE_STYLES, USES, toggleBother } from '../../../desktop/autotune/goals'
+import { TUNE_STYLES, USES, toggleBother } from '../../../desktop/autotune/goals'
+import { BotherGroups } from './BotherGroups'
 import { ChipGroup, Choice } from './ChipGroup'
 import type { TuneGoalsState } from './useTuneGoals'
 
@@ -23,11 +24,7 @@ export function GoalsStep({ goals: { goals, setGoals }, onTune, onBack }: { goal
           <Choice key={s} label={t(`wizard.goal.style.${s}.name`)} on={goals.style === s} onClick={() => setGoals({ style: s })} />
         ))}
       </ChipGroup>
-      <ChipGroup title={t('desktop.autotune.ui.goals.bothers')}>
-        {BOTHERS.map((b) => (
-          <Choice key={b} label={t(`desktop.autotune.ui.goals.bother.${b}`)} on={goals.bothers.includes(b)} onClick={() => setGoals({ bothers: toggleBother(goals.bothers, b) })} />
-        ))}
-      </ChipGroup>
+      <BotherGroups title={t('desktop.autotune.ui.goals.bothers')} isOn={(b) => goals.bothers.includes(b)} onToggle={(b) => setGoals({ bothers: toggleBother(goals.bothers, b) })} />
       <ChipGroup title={t('desktop.autotune.ui.goals.amount')} hint={t('desktop.autotune.ui.goals.amountHint')}>
         {AMOUNTS.map((a) => (
           <Choice key={a} label={t(`desktop.tune.sound.amounts.${a}`)} on={goals.amount === a} onClick={() => setGoals({ amount: a })} />

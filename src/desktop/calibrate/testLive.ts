@@ -57,7 +57,16 @@ export interface FakeLiveOptions {
   nrFollowMs?: number
   /** Strength from which the remover eats the quiet syllables' starts (dB over the room it closes under grows with it). */
   chopFrom?: number
+  /**
+   * Under this strength the remover lets the room through for LEAK_MS of every LEAK_EVERY_MS of stream time, like the
+   * real one near its threshold (its pauses read silent by their median all the same). Off by default.
+   */
+  leakUnder?: number
 }
+
+/** The fake remover's leak: this long, this often, ms. */
+export const LIVE_LEAK_MS = 100
+export const LIVE_LEAK_EVERY_MS = 1000
 
 /** The live chain the calibration drives, and the engine stream it hears. */
 export class FakeLive {
@@ -117,7 +126,11 @@ export class FakeLive {
       // closes under room + 3 dB, plus 0.6 dB per point past chopFrom (quiet syllables go first)
       const close = room + 3 + Math.max(0, st - (this.opts.chopFrom ?? 30)) * 0.6
       const g = st >= 10 ? 0 : amp(-10 - 3 * st)
-      for (let b = 0; b + w <= x.length; b += w) if (rmsDb(raw, b, b + w) < close) for (let i = b; i < b + w; i++) x[i] *= g
+      const leaks = st < (this.opts.leakUnder ?? -Infinity)
+      for (let b = 0; b + w <= x.length; b += w) {
+        if (leaks && (this.t + (b / SR) * 1000) % LIVE_LEAK_EVERY_MS < LIVE_LEAK_MS) continue
+        if (rmsDb(raw, b, b + w) < close) for (let i = b; i < b + w; i++) x[i] *= g
+      }
     } else if (s.kind === 'reafir') {
       for (let b = 0; b + w <= x.length; b += w) if (rmsDb(raw, b, b + w) < room + 3) for (let i = b; i < b + w; i++) x[i] *= amp(-4.5)
     } else if (s.kind === 'reagate') {

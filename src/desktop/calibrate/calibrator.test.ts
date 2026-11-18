@@ -79,6 +79,26 @@ describe('noise calibration: Noise Removal', () => {
     expect(last?.kind === 'set' && last.change.kind === 'value' && last.change.from).toBe(85)
   })
 
+  it('pauses silent by their median but with the room coming through now and then are not silent: the ladder goes on', () => {
+    // under strength 20 the remover lets the room through for 100 ms every second
+    const r = rig(userChain(), { leakUnder: 20 })
+    const v = r.run(done)
+    expect(strength(r.live)).toBe(20)
+    expect(v.summary?.silent).toBe(true)
+    expect(v.summary?.notes.map((n) => n.key)).not.toContain('desktop.tune.calibrate.note.bursts')
+    expect(r.cal.log.some((l) => l.includes(': bursts'))).toBe(true)
+  })
+
+  it('bursts at every strength: the strength whose pauses are heard quietest stays, not one silent only by its median', () => {
+    // the remover lets the room through for 100 ms every second at any strength: from 10 its pauses read digital
+    // silence by their median, with the room coming back each second
+    const r = rig(userChain(), { leakUnder: 101 })
+    const v = r.run(done)
+    expect(strength(r.live)).toBe(0)
+    expect(v.summary?.silent).toBe(false)
+    expect(v.summary?.notes.map((n) => n.key)).toContain('desktop.tune.calibrate.note.notReached')
+  })
+
   it('waits for the Noise Removal to follow each change before it measures', () => {
     // the remover takes 650 ms to follow: a measurement taken any sooner would read the room untouched
     const r = rig(userChain(), { nrFollowMs: 650 })

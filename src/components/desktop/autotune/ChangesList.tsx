@@ -12,6 +12,7 @@ import { bandKey, effectValue } from './format'
 export function ChangesList({ changes }: { changes: readonly TuneChange[] }) {
   const { t } = useTranslation()
   const tm = useMsg()
+  const none = t('desktop.autotune.ui.result.metrics.note.noBursts')
   return (
     <Accordion disableGutters data-testid="autotune-changes">
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -25,8 +26,8 @@ export function ChangesList({ changes }: { changes: readonly TuneChange[] }) {
               <Typography variant="body2" sx={{ fontWeight: 700 }}>{tm(c.changeMsg)}</Typography>
               <Typography variant="caption" color="text.secondary">
                 {t(`desktop.autotune.ui.result.effect.${c.effect.metric}`, {
-                  before: effectValue(c.effect, c.effect.before),
-                  after: effectValue(c.effect, c.effect.after),
+                  before: effectValue(c.effect, c.effect.before, none),
+                  after: effectValue(c.effect, c.effect.after, none),
                   band: t(`desktop.autotune.ui.result.bands.${bandKey(c.effect.band ?? 4)}`),
                 })}
               </Typography>

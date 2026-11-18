@@ -37,6 +37,12 @@ export const CUT_EVENT_POINTS = 3
 /** A gate may move an audible room this much between pauses and words, dB; points per dB beyond it. */
 export const PUMP_OK_DB = 13
 export const PUMP_POINTS = 1.5
+/**
+ * The voice over the pauses as heard, dB: the median pause level, or the loudest burst in them when that comes closer
+ * to the voice (measure.ts burstsOf). Against Noise Removal's digital silence the median reads 80 dB while the room
+ * that comes through for a moment after a word sits 24 dB under the voice: that moment is what is heard.
+ */
+export const heardSnrDb = (m: Pick<Measured, 'snrDb' | 'burstDb'>): number => (Number.isFinite(m.burstDb) && !(m.snrDb <= m.burstDb) ? m.burstDb : m.snrDb)
 /** Whether a render's gate pumps the room audibly (false while not measured). */
 export const pumps = (m: Pick<Measured, 'pumpDb'>): boolean => m.pumpDb > PUMP_OK_DB
 /** Whether a render's gates cut speech audibly (false while not measured). */
@@ -94,20 +100,29 @@ export function levelPoints(m: Measured, t: TuneTargets, gain = 0): number {
  * The score of a render.
  * - level: levelPoints. Between stages (`trim` given) only what the final trim could not repair counts, so a
  *   compressor or an EQ cut is not rejected for the level it costs and the trim gives back.
- * - noise: 1.5 per dB the voice-over-pause SNR (counted from 0 to SNR_CAP) is under the target.
+ * - noise: 1.5 per dB the voice over the pauses as heard (heardSnrDb: the median pause level, or the loudest burst
+ *   in them when that is closer to the voice; counted from 0 to SNR_CAP) is under the target; the burst's share counts
+ *   targets.burstWeight times ("noise comes and goes").
  * - tone: 1.2 per dB a band is outside its tolerance, weighted (rumble 0, air 0.5).
- * - consistency: 1.5 per dB of level spread above the target.
+ * - consistency: 1.5 per dB of level spread above the target (and, "flat" picked, under targets.spreadMinDb).
  * - damage: up to 35 for digital silence (0 at 5 % zero samples or 6 cut-outs per 10 s, full at 30 % or 18; nothing
  *   when the goals allow dead-silent pauses) plus 3 per dB of word loss above 2 dB, plus, when the session measured
  *   what the gates cut against the ungated render, 8 per percent of cut speech beyond 1 % and 3 per cut event
- *   beyond 1 per 10 s.
+ *   beyond 1 per 10 s (× targets.cutWeight: "words cut off"), and 1.5 per dB a gate pumps the room beyond 13
+ *   (× targets.pumpWeight: "noise comes and goes").
  */
 export function scoreOf(m: Measured, t: TuneTargets, trim: TrimRange | null = null): TuneScore {
   const level = levelPoints(m, t, trimGain(m, t, trim))
-  const noise = Number.isFinite(m.snrDb) ? NOISE_POINTS * Math.max(0, t.snrDb - clamp(m.snrDb, 0, SNR_CAP)) : 0
+  // the pauses as heard: their typical level, and their loudest burst ("noise comes and goes": that one counts more)
+  const miss = (snr: number): number => (Number.isFinite(snr) ? Math.max(0, t.snrDb - clamp(snr, 0, SNR_CAP)) : 0)
+  // a stage may judge the bursts against a nearer target of its own (targets.burstSnrDb: the compression stage)
+  const heard = heardSnrDb(m)
+  const burstMiss = heard === m.snrDb || t.burstSnrDb === undefined ? miss(heard) : Math.min(miss(heard), Math.max(0, t.burstSnrDb - clamp(heard, 0, SNR_CAP)))
+  const noise = NOISE_POINTS * Math.max(miss(m.snrDb), t.burstWeight * burstMiss)
   const excess = toneExcess(toneOf(m, t), t)
   const tone = TONE_POINTS * excess.reduce((s, e, i) => s + e * t.weight[i], 0)
-  const consistency = SPREAD_POINTS * Math.max(0, m.spreadDb - t.spreadDb)
+  // too uneven, or ("flat" picked) too flat
+  const consistency = SPREAD_POINTS * (Math.max(0, m.spreadDb - t.spreadDb) + (Number.isFinite(t.spreadMinDb) ? Math.max(0, t.spreadMinDb - m.spreadDb) : 0))
   const dead = t.allowDeadSilence
     ? 0
     : OVER_MAX *
@@ -115,8 +130,8 @@ export function scoreOf(m: Measured, t: TuneTargets, trim: TrimRange | null = nu
         clamp((m.deadSilence - OVER_ZERO_WARN) / (OVER_ZERO_FULL - OVER_ZERO_WARN), 0, 1),
         clamp((m.gateSwitches - OVER_SWITCH_WARN) / (OVER_SWITCH_FULL - OVER_SWITCH_WARN), 0, 1),
       )
-  const cut = Number.isFinite(m.cutShare) ? CUT_POINTS * Math.max(0, 100 * m.cutShare - CUT_OK_PCT) + CUT_EVENT_POINTS * Math.max(0, m.cutEvents - CUT_OK_EVENTS) : 0
-  const pump = Number.isFinite(m.pumpDb) ? PUMP_POINTS * Math.max(0, m.pumpDb - PUMP_OK_DB) : 0
+  const cut = Number.isFinite(m.cutShare) ? t.cutWeight * (CUT_POINTS * Math.max(0, 100 * m.cutShare - CUT_OK_PCT) + CUT_EVENT_POINTS * Math.max(0, m.cutEvents - CUT_OK_EVENTS)) : 0
+  const pump = Number.isFinite(m.pumpDb) ? t.pumpWeight * PUMP_POINTS * Math.max(0, m.pumpDb - PUMP_OK_DB) : 0
   const damage = dead + CHOP_POINTS * Math.max(0, m.wordLossDb - CHOP_OK_DB) + cut + pump
   return { level, noise, tone, consistency, damage, total: level + noise + tone + consistency + damage }
 }
@@ -157,6 +172,10 @@ export function summarize(m: Measured, t: TuneTargets): TakeSummary {
     cutSpeech: m.cutShare,
     cutEvents: m.cutEvents,
     pumpDb: m.pumpDb,
+    burstDb: m.burstDb,
+    burstEvents: m.burstEvents,
+    removerCut: m.removerCut,
+    removerCutEvents: m.removerCutEvents,
     score: scoreOf(m, t),
   }
 }

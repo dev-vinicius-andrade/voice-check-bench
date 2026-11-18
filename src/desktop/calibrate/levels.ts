@@ -3,6 +3,7 @@
 // from them, the talk phase also keeps the samples for the cut check (./talkCheck.ts).
 import { FLOOR_DB, SPEECH_MARGINS } from '../../audio/analyze'
 import { adb, median, pct } from '../../audio/dsp'
+import { BURST_OVER_DB } from '../tune/measure'
 
 /** Frame length of every calibration measurement, seconds (analyze()'s frames, as the tuner's mask). */
 export const CAL_FRAME_SEC = 0.05
@@ -115,12 +116,24 @@ export interface QuietLevels {
   /** The pauses as heard: the processed median frame level and P90 of its peaks. */
   pausesDb: number
   pausesPeakDb: number
+  /**
+   * Their loudest moments: the second loudest processed frame (one click is no burst), dBFS. Against Noise Removal's
+   * digital silence the median reads silence while the room comes through for a moment now and then (burstsIn).
+   */
+  pausesLoudDb: number
   /** Share of processed frames that are digital silence. */
   silentShare: number
 }
 
+/** The second loudest of some levels, dBFS (the loudest when there is one, NaN when none). */
+export function loudMoment(levels: readonly number[]): number {
+  const s = [...levels].sort((a, b) => b - a)
+  return s[Math.min(1, s.length - 1)] ?? NaN
+}
+
 export function quietLevels(frames: readonly CalFrameLevels[]): QuietLevels {
   return {
+    pausesLoudDb: loudMoment(frames.map((f) => f.procDb)),
     roomDb: median(frames.map((f) => f.rawDb)),
     roomPeakDb: pct(frames.map((f) => f.rawPeakDb), 0.9),
     pausesDb: median(frames.map((f) => f.procDb)),
@@ -132,8 +145,21 @@ export function quietLevels(frames: readonly CalFrameLevels[]): QuietLevels {
 /** A frame of speech: TALK_OVER_ROOM_DB over the room and over −70 dBFS (the tuner's speech frames, prepareTake). */
 export const speechFrame = (f: Pick<CalFrameLevels, 'rawDb'>, roomDb: number): boolean => f.rawDb > roomDb + TALK_OVER_ROOM_DB && f.rawDb > -70
 
-/** The pauses are as quiet as the person wants: digital silence or PAUSE_SILENT_DB and under. */
-export const pausesSilent = (q: Pick<QuietLevels, 'pausesDb'>): boolean => q.pausesDb <= PAUSE_SILENT_DB
+/**
+ * Bursts in quiet pauses (the tuner's measure, ../tune/measure.ts burstsOf): their loudest moment is audible (over
+ * PAUSE_SILENT_DB) and stands BURST_OVER_DB over their typical level — the room let through for a moment.
+ */
+export const burstsIn = (q: Pick<QuietLevels, 'pausesDb' | 'pausesLoudDb'>): boolean => q.pausesLoudDb > PAUSE_SILENT_DB && q.pausesLoudDb >= q.pausesDb + BURST_OVER_DB
+
+/**
+ * The pauses are as quiet as the person wants: digital silence or PAUSE_SILENT_DB and under, typically and at their
+ * loudest moments (no bursts: judging by the median alone read Noise Removal letting the room through now and then as
+ * silent).
+ */
+export const pausesSilent = (q: Pick<QuietLevels, 'pausesDb' | 'pausesLoudDb'>): boolean => q.pausesDb <= PAUSE_SILENT_DB && !burstsIn(q)
+
+/** How loud the pauses are heard: their loudest moment when it is a burst, else their typical level, dBFS. */
+export const heardPausesDb = (q: Pick<QuietLevels, 'pausesDb' | 'pausesLoudDb'>): number => (burstsIn(q) ? q.pausesLoudDb : q.pausesDb)
 
 /**
  * Someone talked: TALK_FRAMES frames in a row TALK_OVER_ROOM_DB over the room. Without a known room, over the
