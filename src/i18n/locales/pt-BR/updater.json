@@ -7,6 +7,9 @@
     "installingProgress": "Instalando a versão {{version}}… {{fraction, number(style: percent)}}",
     "progressLabel": "Progresso do download da atualização",
     "failed": "Não foi possível instalar a versão {{version}}. O app continua nesta versão.",
-    "retry": "Tentar de novo"
+    "retry": "Tentar de novo",
+    "check": "Procurar atualização",
+    "checking": "Procurando…",
+    "none": "Nenhuma versão mais nova encontrada."
   }
 }

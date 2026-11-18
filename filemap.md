@@ -483,6 +483,7 @@
 - `src/desktop/autotune/results.ts` — `metricRows` (before → after with a direction; tone bands that moved ≥ 1 dB), `forPlayback` (clamped copy)
 - `src/desktop/autotune/takeFile.ts` · `takeFile.test.ts` — Download: `takeFileName` (`voice-check-<side>-<yyyy-mm-dd-hhmm>.wav`), `takeWav` (16-bit PCM mono 48 kHz, clamped, src/audio/wav.ts), `downloadErrorMsg`; tests incl. `fmtClock`
 - `src/desktop/autotune/autotune.test.ts` · `testWav.ts` · `testRecording.ts` — WAV formats and refusals, goals parsing and blocked storage, recorder full / gaps, take check reasons, result rows
+- `src/components/desktop/UpdateCheckButton.tsx` — "Check for updates" under the version line: asks the update notice to check now (`requestUpdateCheck`), says when nothing newer was found
 - `src/components/desktop/EngineFooter.tsx` — one caption line: app version · Rust · system · architecture (or loading/error)
 - `src/components/desktop/tuning/LiveTuning.tsx` — live tuning screen (SPEC approved mockup, task 43), top to bottom: bar, monitor warning, metric cards, last 60 s chart, Calibrate noise, Try this beside Your sound, effects, before/after table, Restore backup / Save to Wave Link; the two dialogs
 - `src/components/desktop/tuning/useTuningSession.ts` — composes devices, engine, chain, save, restore, tuning prefs, tone trend, Apply feedback and the noise calibration; Start = audio_start (monitor Off) + wavelink_read (resets trend and blocks); advice from held metrics + trend tone (notBeforeMs = last change + settle)

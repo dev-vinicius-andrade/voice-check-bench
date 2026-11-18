@@ -21,6 +21,25 @@ export interface AvailableUpdate {
 
 export type CheckForUpdate = () => Promise<AvailableUpdate | null>
 
+/** How often the app asks the feed again while it stays open. */
+export const UPDATE_RECHECK_MS = 30 * 60 * 1000
+
+/** Looks for an update now; resolves true when one is on offer. */
+export type ManualUpdateCheck = () => Promise<boolean>
+
+let manual: ManualUpdateCheck | null = null
+
+/** The update notice registers how "check now" is done; returns the unregister. */
+export function onManualUpdateCheck(handler: ManualUpdateCheck): () => void {
+  manual = handler
+  return () => {
+    if (manual === handler) manual = null
+  }
+}
+
+/** "Check for updates" pressed: true when an update is on offer, false when none was found (or the check failed). */
+export const requestUpdateCheck: ManualUpdateCheck = () => (manual ? manual() : Promise.resolve(false))
+
 const warn = (what: string, err: unknown) => console.warn(`[updater] ${what} failed:`, err)
 
 /** Asks the feed for a newer version. Null on the web, when up to date, or when the check failed. */

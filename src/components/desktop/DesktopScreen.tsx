@@ -6,6 +6,7 @@ import type { OpenTuneSession } from './autotune/useTuneRun'
 import { BridgeContext } from './bridgeContext'
 import { DesktopNav, type DesktopPage } from './DesktopNav'
 import { EngineFooter } from './EngineFooter'
+import { UpdateCheckButton } from './UpdateCheckButton'
 import { LiveTuning } from './tuning/LiveTuning'
 
 interface DesktopScreenProps {
@@ -38,6 +39,7 @@ export function DesktopScreen({ bridge = desktopBridge, page = 'autotune', openS
           </>
         )}
         <EngineFooter load={bridge.engineInfo} />
+        <UpdateCheckButton />
       </div>
     </BridgeContext>
   )

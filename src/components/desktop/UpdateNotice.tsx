@@ -11,15 +11,16 @@ interface Props {
   /** Injectable for tests; defaults to the real feed check. */
   check?: CheckForUpdate
   delayMs?: number
+  recheckMs?: number
 }
 
 const fraction = (p: UpdateProgress | null): number | null =>
   p && p.total && p.total > 0 ? Math.min(1, p.downloaded / p.total) : null
 
-/** Desktop app only: offers a newer version from the update feed once per start. */
-export function UpdateNotice({ check = checkForUpdate, delayMs = 3000 }: Props) {
+/** Desktop app only: offers a newer version from the update feed, at start, every half hour and on "check for updates". */
+export function UpdateNotice({ check = checkForUpdate, delayMs = 3000, recheckMs }: Props) {
   const { t } = useTranslation()
-  const { state, install, later } = useUpdateNotice(check, delayMs)
+  const { state, install, later } = useUpdateNotice(check, delayMs, recheckMs)
   if (state.phase === 'idle') return null
   const version = state.update.version
   const done = state.phase === 'installing' ? fraction(state.progress) : null
