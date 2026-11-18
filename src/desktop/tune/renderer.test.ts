@@ -242,3 +242,73 @@ describe('openTuneSession', () => {
     expect(eqStateValues(out[0].parameterState ?? '')).toMatchObject({ 'band2.freqHz': 220, 'band2.bwOct': 1 })
   })
 })
+
+describe('TuneSession.setState', () => {
+  const FIR = 5
+  /** The fake session re-saves a loaded state its own way, as the real plugin re-encodes its profile. */
+  function resaving() {
+    const f = fakeBridge()
+    const exportStates = f.bridge.renderExportStates
+    f.bridge.renderExportStates = async () => (await exportStates()).map((e) => (e.index === FIR ? { ...e, parameterState: `${e.parameterState}|saved` } : e))
+    return f
+  }
+
+  it('loads the state for every later render, serialized with them; the chain model does not change', async () => {
+    const { bridge, calls, states } = resaving()
+    const s = await openTuneSession(bridge, take)
+    const chain = structuredClone(s.chain)
+    await Promise.all([s.render([]), s.setState(FIR, 'subtract'), s.render([change(3, 'wetDb', 12)])])
+    expect(calls).toEqual(['run', `state ${FIR}`, `param 3 ${WET.id} ${WET.fromUnits(12)}`, 'run'])
+    expect(states.get(FIR)).toBe('subtract')
+    expect(s.chain).toEqual(chain)
+    await s.render([])
+    // the ReaComp value goes back; the loaded state stays
+    expect(calls.slice(4)).toEqual([`param 3 ${WET.id} ${engineSlots()[3].params.find((p) => p.id === WET.id)?.normalized}`, 'run'])
+    expect(states.get(FIR)).toBe('subtract')
+  })
+
+  it('exportChanges writes a loaded slot as the session exports it, whatever the changes, in slot order', async () => {
+    const { bridge } = resaving()
+    const s = await openTuneSession(bridge, take)
+    expect(await s.exportChanges([])).toEqual([])
+    await s.setState(FIR, 'subtract')
+    expect(await s.exportChanges([])).toEqual([{ inputKey: INPUT_KEY, index: FIR, parameterState: 'subtract|saved' }])
+    const out = await s.exportChanges([change(3, 'wetDb', 12)])
+    expect(out.map((c) => c.index)).toEqual([3, FIR])
+    expect(out[1]).toEqual({ inputKey: INPUT_KEY, index: FIR, parameterState: 'subtract|saved' })
+    // switched on in the same Save (it is off in Wave Link): one change carries both
+    expect(await s.exportChanges([flip(FIR, true)])).toEqual([{ inputKey: INPUT_KEY, index: FIR, bypassed: false, parameterState: 'subtract|saved' }])
+  })
+
+  it('null loads the stored state back and the slot leaves exportChanges; null without a loaded state sends nothing', async () => {
+    const { bridge, calls, states } = resaving()
+    const s = await openTuneSession(bridge, take)
+    await s.setState(FIR, null)
+    expect(calls).toEqual([])
+    await s.setState(FIR, 'subtract')
+    await s.setState(FIR, 'stronger')
+    expect(states.get(FIR)).toBe('stronger')
+    await s.setState(FIR, null)
+    expect(calls).toEqual([`state ${FIR}`, `state ${FIR}`, `state ${FIR}`])
+    expect(states.get(FIR)).toBe(entries()[FIR].parameterState)
+    expect(await s.exportChanges([])).toEqual([])
+  })
+
+  it('rejects for a slot the session does not host; the session goes on', async () => {
+    const { bridge, calls } = fakeBridge()
+    const s = await openTuneSession(bridge, take)
+    await expect(s.setState(4, 'x')).rejects.toThrow(/not hosted/)
+    await expect(s.setState(9, 'x')).rejects.toThrow(/not hosted/)
+    await s.render([])
+    expect(calls).toEqual(['run'])
+  })
+
+  it('exportChanges rejects when the session does not export a loaded slot', async () => {
+    const { bridge } = fakeBridge()
+    const s = await openTuneSession(bridge, take)
+    await s.setState(FIR, 'subtract')
+    const exportStates = bridge.renderExportStates
+    bridge.renderExportStates = async () => (await exportStates()).filter((e) => e.index !== FIR)
+    await expect(s.exportChanges([])).rejects.toThrow(/did not export/)
+  })
+})

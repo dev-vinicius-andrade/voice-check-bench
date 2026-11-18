@@ -396,16 +396,27 @@
           "changedMeanwhile": "Os ajustes do Wave Link mudaram depois que esta gravação foi ajustada, então nada foi gravado. Aperte Gravar de novo para ajustar a partir dos seus ajustes como estão agora.",
           "fineTune": "Ajuste fino ao vivo",
           "calibrateHint": "As pausas ainda não estão silenciosas o bastante?",
-          "calibrate": "Calibrar ruído ao vivo"
+          "calibrate": "Calibrar ruído ao vivo",
+          "player": {
+            "noiseOnly": "Só ruído",
+            "noiseOnlyHelp": "Toca só os momentos em que você não está falando: o silêncio do começo e as pausas."
+          }
         },
         "spectrum": {
           "title": "Espectro",
           "help": "Arraste um ponto para mudar o EQ: a gravação é renderizada de novo e Depois toca a mudança.",
           "aria": "Espectro da sua gravação de 20 Hz a 20 kHz: antes e depois, com a curva do ReaEQ e as bandas dele.",
           "readout": "{{hz}} · {{level}} depois",
+          "view": {
+            "label": "O que o espectro mostra",
+            "whole": "Gravação inteira",
+            "voiceNoise": "Voz e ruído"
+          },
           "legend": {
             "before": "Antes",
-            "after": "Depois"
+            "after": "Depois",
+            "voice": "Voz",
+            "noise": "Ruído (quando você não fala)"
           },
           "noEq": "Nenhum ReaEQ está ligado nos seus efeitos, então não há curva para mudar aqui.",
           "rendering": "Renderizando sua gravação com as suas mudanças…",
@@ -414,7 +425,44 @@
             "undo": "Desfazer minhas mudanças"
           },
           "changedByYou": "mudado por você depois",
-          "measuredBefore": "Medido antes das suas mudanças."
+          "measuredBefore": "Medido antes das suas mudanças.",
+          "voiceNoise": {
+            "aria": "Espectro da sua gravação de 20 Hz a 20 kHz: a sua voz e o ruído quando você não fala, com a curva do ReaEQ e as bandas dele.",
+            "readout": "{{hz}} · {{level}} voz"
+          },
+          "noise": {
+            "title": "No seu ruído",
+            "caption": "Medido onde você não fala: os 3 segundos de silêncio do começo e as pausas.",
+            "low": "graves, abaixo de 250 Hz",
+            "mid": "médios, 250 Hz a 4 kHz",
+            "high": "agudos, acima de 4 kHz",
+            "under": "{{db}} abaixo da sua voz",
+            "audible": "audível"
+          }
+        },
+        "noiseCut": {
+          "cut": "Cortar o ruído",
+          "nothing": "Nada para cortar",
+          "help": "Tira o ruído medido aqui: os apitos constantes com cortes estreitos no EQ, e o resto com o seu removedor de ruído, subindo aos poucos enquanto sua voz é conferida.",
+          "amount": {
+            "label": "Quanto ruído cortar",
+            "light": "Leve",
+            "normal": "Normal",
+            "strong": "Forte"
+          },
+          "strongWarning": "Forte pode deixar a voz com som aguado.",
+          "applied": "Corte de ruído aplicado ({{amount}}).",
+          "undo": "Desfazer",
+          "trying": "Testando o Noise Removal em {{strength, number(maximumFractionDigits: 0)}}…",
+          "notes": {
+            "noReaFir": "Não há ReaFIR ligado nos seus efeitos, então o chiado não foi mexido.",
+            "reaFirUnknown": "As configurações do seu ReaFIR estão num formato que este app não conhece, então ficaram como estão.",
+            "noBand": "Sem banda livre no ReaEQ para o apito em {{hz, number(maximumFractionDigits: 0)}} Hz: deixe o ganho de uma banda em 0 para usá-la.",
+            "removerLimit": "O Noise Removal subiu até onde sua voz permite; ainda sobra um pouco de ruído.",
+            "removerNoHelp": "Um Noise Removal mais forte não baixou o ruído nesta gravação.",
+
+            "noNoise": "Esta gravação não tem um trecho de silêncio para medir o ruído."
+          }
         }
       }
     },
@@ -659,6 +707,7 @@
       "listLabel": "Mudanças",
       "nothing": "Nada para salvar: seus efeitos estão iguais aos do Wave Link.",
       "state": "{{plugin}}: novos ajustes",
+      "noiseProfile": "{{plugin}}: perfil de ruído da sua gravação",
       "chain": "{{plugin}}: a lista de efeitos é diferente",
       "unsaved": "{{plugin}}: as mudanças neste efeito ainda não podem ser salvas, então o Wave Link mantém o ajuste dele.",
       "saving": "Salvando… o Wave Link fecha e abre de novo.",

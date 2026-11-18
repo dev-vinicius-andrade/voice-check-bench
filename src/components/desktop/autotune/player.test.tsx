@@ -5,9 +5,9 @@ import i18n from '../../../i18n'
 import en from '../../../i18n/locales/en/desktop.json'
 import type { SaveWav } from '../../../desktop/bridge'
 import { theme } from '../../../theme'
-import { AbPlayer } from './AbPlayer'
+import { AbPlayer, AbPlayerView } from './AbPlayer'
 import { installFakeAudio, type FakeAudio } from './testAudio'
-import { TICK_MS } from './useAbPlayer'
+import { TICK_MS, useAbPlayer, type NoisePair } from './useAbPlayer'
 
 const U = en.desktop.autotune.ui.result
 const SR = 48000
@@ -177,5 +177,111 @@ describe('Download', () => {
     expect(screen.getByText(U.noAudio)).toBeTruthy()
     fireEvent.click(button(U.download.before))
     expect(await screen.findByTestId('autotune-download-saved')).toBeTruthy()
+  })
+})
+
+const NOISE: NoisePair = { before: new Float32Array(SR * 5).fill(0.125), after: new Float32Array(SR * 5).fill(0.0625) }
+
+/** The result step's way: the player state owned outside the view, with noise-only audio. */
+function Owned({ noise, saveWav }: { noise: NoisePair | null; saveWav?: SaveWav }) {
+  const p = useAbPlayer(BEFORE, AFTER, noise)
+  return <AbPlayerView before={BEFORE} after={AFTER} saveWav={saveWav} p={p} />
+}
+function owned(noise: NoisePair | null = NOISE, saveWav?: SaveWav) {
+  return render(
+    <ThemeProvider theme={theme}>
+      <Owned noise={noise} saveWav={saveWav} />
+    </ThemeProvider>,
+  )
+}
+const noiseSwitch = (): HTMLElement => screen.getByLabelText(U.player.noiseOnly)
+const played = (i: number): number => audio.sources[i].buffer?.data[0] ?? NaN
+
+describe('Noise only', () => {
+  it('is not there without noise-only audio (and not on the plain player)', () => {
+    owned(null)
+    expect(screen.queryByLabelText(U.player.noiseOnly)).toBeNull()
+    cleanup()
+    view()
+    expect(screen.queryByLabelText(U.player.noiseOnly)).toBeNull()
+  })
+
+  it('off: the take and its render as before, no help line', () => {
+    vi.useFakeTimers()
+    owned()
+    expect(time()).toBe('0:00 / 0:25')
+    expect(screen.queryByTestId('autotune-noise-only-help')).toBeNull()
+    fireEvent.click(button(U.play))
+    expect(played(0)).toBe(1) // After, clamped
+  })
+
+  it('on: plays the noise-only audio of the picked side, Before / After keeps the position, duration and seek follow it', () => {
+    vi.useFakeTimers()
+    owned()
+    fireEvent.click(noiseSwitch())
+    expect(screen.getByTestId('autotune-noise-only-help').textContent).toBe(U.player.noiseOnlyHelp)
+    expect(time()).toBe('0:00 / 0:05')
+    fireEvent.click(button(U.play))
+    expect(played(0)).toBe(0.0625)
+    audio.ctx().currentTime = 2
+    fireEvent.click(button(U.before))
+    expect(played(1)).toBe(0.125)
+    expect(audio.sources[1].start).toHaveBeenCalledWith(0, 2)
+    fireEvent.change(screen.getByRole('slider', { name: U.position }), { target: { value: '4' } })
+    expect(audio.sources[2].start).toHaveBeenCalledWith(0, 4)
+    expect(time()).toBe('0:04 / 0:05')
+  })
+
+  it('switching the mode stops and goes back to the start, both ways', () => {
+    vi.useFakeTimers()
+    owned()
+    fireEvent.click(button(U.play))
+    audio.ctx().currentTime = 7
+    tick()
+    expect(time()).toBe('0:07 / 0:25')
+    fireEvent.click(noiseSwitch())
+    expect(audio.sources[0].stop).toHaveBeenCalled()
+    expect(button(U.play)).toBeTruthy()
+    expect(time()).toBe('0:00 / 0:05')
+    fireEvent.click(button(U.play))
+    expect(audio.sources[1].start).toHaveBeenCalledWith(0, 0)
+    audio.ctx().currentTime = 10
+    tick()
+    fireEvent.click(noiseSwitch())
+    expect(audio.sources[1].stop).toHaveBeenCalled()
+    expect(time()).toBe('0:00 / 0:25')
+    expect(screen.queryByTestId('autotune-noise-only-help')).toBeNull()
+    fireEvent.click(button(U.play))
+    expect(audio.sources[2].start).toHaveBeenCalledWith(0, 0)
+    expect(played(2)).toBe(1)
+  })
+
+  it('a new noise-only After (a new render) switches the sound at the same position', () => {
+    vi.useFakeTimers()
+    const tree = (noise: NoisePair) => (
+      <ThemeProvider theme={theme}>
+        <Owned noise={noise} />
+      </ThemeProvider>
+    )
+    const r = render(tree(NOISE))
+    fireEvent.click(noiseSwitch())
+    fireEvent.click(button(U.play))
+    audio.ctx().currentTime = 3
+    tick()
+    r.rerender(tree({ before: NOISE.before, after: new Float32Array(SR * 5).fill(0.03125) }))
+    expect(audio.sources[0].stop).toHaveBeenCalled()
+    expect(audio.sources[1].start).toHaveBeenCalledWith(0, 3)
+    expect(played(1)).toBe(0.03125)
+    expect(time()).toBe('0:03 / 0:05')
+  })
+
+  it('downloads stay the full files', async () => {
+    const saveWav = vi.fn(async () => 'saved.wav')
+    owned(NOISE, saveWav)
+    fireEvent.click(noiseSwitch())
+    fireEvent.click(button(U.download.after))
+    await waitFor(() => expect(saveWav).toHaveBeenCalledTimes(1))
+    const wav = saveWav.mock.calls[0] as unknown as [string, ArrayBuffer]
+    expect(new DataView(wav[1]).getUint32(40, true)).toBe(SR * 25 * 2)
   })
 })

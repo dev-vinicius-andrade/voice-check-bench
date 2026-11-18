@@ -395,16 +395,27 @@
           "changedMeanwhile": "Wave Link's settings changed after this recording was tuned, so nothing was written. Press Record again to tune from your settings as they are now.",
           "fineTune": "Fine-tune live",
           "calibrateHint": "Pauses still not quiet enough?",
-          "calibrate": "Calibrate noise live"
+          "calibrate": "Calibrate noise live",
+          "player": {
+            "noiseOnly": "Noise only",
+            "noiseOnlyHelp": "Plays only the moments when you are not talking: the quiet start and the pauses."
+          }
         },
         "spectrum": {
           "title": "Spectrum",
           "help": "Drag a point to change the EQ: your recording is rendered again and After plays the change.",
           "aria": "Spectrum of your recording from 20 Hz to 20 kHz: before and after, with the ReaEQ curve and its bands.",
           "readout": "{{hz}} · {{level}} after",
+          "view": {
+            "label": "What the spectrum shows",
+            "whole": "Whole recording",
+            "voiceNoise": "Voice and noise"
+          },
           "legend": {
             "before": "Before",
-            "after": "After"
+            "after": "After",
+            "voice": "Voice",
+            "noise": "Noise (when you are not talking)"
           },
           "noEq": "No ReaEQ is switched on in your effects, so there is no curve to change here.",
           "rendering": "Rendering your recording with your changes…",
@@ -413,7 +424,44 @@
             "undo": "Undo my changes"
           },
           "changedByYou": "changed by you afterwards",
-          "measuredBefore": "Measured before your own changes."
+          "measuredBefore": "Measured before your own changes.",
+          "voiceNoise": {
+            "aria": "Spectrum of your recording from 20 Hz to 20 kHz: your voice and the noise when you are not talking, with the ReaEQ curve and its bands.",
+            "readout": "{{hz}} · {{level}} voice"
+          },
+          "noise": {
+            "title": "In your noise",
+            "caption": "Measured where you are not talking: the 3 quiet seconds at the start and the pauses.",
+            "low": "low, under 250 Hz",
+            "mid": "mid, 250 Hz–4 kHz",
+            "high": "high, over 4 kHz",
+            "under": "{{db}} under your voice",
+            "audible": "audible"
+          }
+        },
+        "noiseCut": {
+          "cut": "Cut the noise",
+          "nothing": "Nothing to cut",
+          "help": "Takes the noise measured here out: steady whistles with narrow EQ cuts, and the rest with your noise remover, raised step by step while your voice is checked.",
+          "amount": {
+            "label": "How much noise to cut",
+            "light": "Light",
+            "normal": "Normal",
+            "strong": "Strong"
+          },
+          "strongWarning": "Strong can make the voice sound watery.",
+          "applied": "Noise cut applied ({{amount}}).",
+          "undo": "Undo",
+          "trying": "Trying Noise Removal at {{strength, number(maximumFractionDigits: 0)}}…",
+          "notes": {
+            "noReaFir": "There is no ReaFIR switched on in your effects, so the hiss was not touched.",
+            "reaFirUnknown": "Your ReaFIR settings are in a form this app does not know, so they were left as they are.",
+            "noBand": "No free ReaEQ band for the whistle at {{hz, number(maximumFractionDigits: 0)}} Hz: set one band's gain to 0 to use it.",
+            "removerLimit": "Noise Removal was raised as far as your voice allows; some noise is still there.",
+            "removerNoHelp": "A stronger Noise Removal did not lower the noise in this recording.",
+
+            "noNoise": "This recording has no quiet stretch to measure the noise from."
+          }
         }
       }
     },
@@ -657,6 +705,7 @@
       "listLabel": "Changes",
       "nothing": "Nothing to save: your effects are the same as in Wave Link.",
       "state": "{{plugin}}: new settings",
+      "noiseProfile": "{{plugin}}: noise profile from your recording",
       "chain": "{{plugin}}: the list of effects is different",
       "unsaved": "{{plugin}}: changes to this effect can't be saved yet, so Wave Link keeps its own setting.",
       "saving": "Saving… Wave Link closes and starts again.",

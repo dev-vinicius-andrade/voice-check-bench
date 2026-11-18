@@ -39,7 +39,7 @@ const UNWRITTEN = report({ backupPath: null, wasRunning: false, restarted: false
 const NO_CHAIN: ChainSlot[] = []
 
 function Harness({ bridge, snap }: { bridge: DesktopBridge; snap: WlSnapshot }) {
-  const run: TuneRun = { state: { step: 'done', result: RESULT }, snapshot: snap, chain: NO_CHAIN, exportChanges: async () => WL, render: async () => TAKE, run: async () => undefined, adjust: async () => undefined, cancel: () => undefined }
+  const run: TuneRun = { state: { step: 'done', result: RESULT }, snapshot: snap, chain: NO_CHAIN, exportChanges: async () => WL, render: async () => TAKE, run: async () => undefined, adjust: async () => undefined, rerun: async () => undefined, setState: async () => undefined, cancel: () => undefined }
   const manual = useManualEq(TAKE, run.chain, RESULT, run.render)
   const save = useTuneSave(bridge, run, RESULT, manual.edits)
   return <ResultStep take={TAKE} result={RESULT} manual={manual} save={save} onAdjust={() => undefined} onRecordAgain={() => undefined} />

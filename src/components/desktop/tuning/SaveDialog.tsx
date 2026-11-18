@@ -18,17 +18,19 @@ interface SaveDialogProps {
   entries: readonly WlChainEntry[]
   /** Short plugin name of a slot, for the "can't be saved" note. */
   nameOf: (slot: number) => string
+  /** A message key (params: plugin) for a slot's whole new state, in place of the generic one (describeDiff). */
+  stateKeys?: ReadonlyMap<number, string>
 }
 
 /** Diff, confirm, save; when Wave Link does not close it asks again before forcing it; then the verify result. */
-export function SaveDialog({ flow, entries, nameOf }: SaveDialogProps) {
+export function SaveDialog({ flow, entries, nameOf, stateKeys }: SaveDialogProps) {
   const { t } = useTranslation()
   const tm = useMsg()
   const s = flow.state
   const busy = s.step === 'loading' || s.step === 'saving'
   const asking = s.step === 'confirm' || s.step === 'force' || s.step === 'saving'
   const plan = asking ? s.plan : null
-  const lines = s.step === 'confirm' ? describeDiff(s.lines, s.plan.changes, entries) : []
+  const lines = s.step === 'confirm' ? describeDiff(s.lines, s.plan.changes, entries, stateKeys) : []
   return (
     <Dialog open={s.step !== 'closed'} onClose={busy ? undefined : flow.close} maxWidth="sm" fullWidth aria-labelledby="tune-save-title">
       <DialogTitle id="tune-save-title">{t('desktop.save.title')}</DialogTitle>

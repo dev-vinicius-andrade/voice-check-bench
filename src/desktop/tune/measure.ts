@@ -12,8 +12,8 @@ import { N_BANDS, styleOffsets } from './targets'
 export const TUNE_SAMPLE_RATE = 48000
 /** Frame length, seconds (as analyze()). */
 const FRAME_SEC = 0.05
-/** Long-term spectrum (as analyze()): FFT size and hop. */
-const FFT_N = 8192
+/** Long-term spectrum (as analyze()): FFT size and hop (FFT_N is the length of TakeMask.windows). */
+export const FFT_N = 8192
 const FFT_HOP = 4096
 /** Each band is split into this many log-spaced cells, so the EQ model sees the spectrum inside a band. */
 export const CELLS_PER_BAND = 6

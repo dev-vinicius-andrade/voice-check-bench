@@ -3,6 +3,12 @@ import { forPlayback } from '../../../desktop/autotune/results'
 
 export type AbSide = 'before' | 'after'
 
+/** What "Noise only" plays instead of the take and its render: only the moments without talking, of each side. */
+export interface NoisePair {
+  before: Float32Array
+  after: Float32Array
+}
+
 export interface AbPlayer {
   /** Web Audio is there. */
   supported: boolean
@@ -10,8 +16,14 @@ export interface AbPlayer {
   playing: boolean
   /** Where the take is, seconds (kept while paused; 0 after Stop or the end). */
   position: number
-  /** Length of the picked side, seconds. */
+  /** Length of the picked side, seconds (of its noise-only audio in "Noise only"). */
   duration: number
+  /** "Noise only" can be switched on (there is noise-only audio). */
+  canNoiseOnly: boolean
+  /** Before / After play the noise-only audio instead of the take and its render. */
+  noiseOnly: boolean
+  /** Switch "Noise only": playback stops and goes back to the start. */
+  setNoiseOnly(on: boolean): void
   /** Play or pause the picked side. */
   toggle(): void
   /** Stop and go back to the start. */
@@ -33,17 +45,24 @@ export const TICK_MS = 100
 
 const ctxClass = (): typeof AudioContext | null => (typeof window !== 'undefined' && 'AudioContext' in window ? window.AudioContext : null)
 
-/** Before / After of the same take through Web Audio: one plays at a time, switching keeps the position (instant A/B). */
-export function useAbPlayer(before: Float32Array, after: Float32Array, sampleRate = 48000): AbPlayer {
+/**
+ * Before / After of the same take through Web Audio: one plays at a time, switching keeps the position (instant A/B).
+ * With `noise`, "Noise only" plays its two sides instead (same switch, same controls).
+ */
+export function useAbPlayer(before: Float32Array, after: Float32Array, noise: NoisePair | null = null, sampleRate = 48000): AbPlayer {
   const ctx = useRef<AudioContext | null>(null)
-  /** Decoded playback buffers, each with the samples it was made from (new samples → a new buffer). */
-  const buffers = useRef<Partial<Record<AbSide, { from: Float32Array; buf: AudioBuffer }>>>({})
+  /** Decoded playback buffers per mode and side, each with the samples it was made from (new samples → a new buffer). */
+  const buffers = useRef<Partial<Record<string, { from: Float32Array; buf: AudioBuffer }>>>({})
   const now = useRef<Playing | null>(null)
   const pos = useRef(0)
   const [side, setSide] = useState<AbSide>('after')
   const [playing, setPlaying] = useState(false)
   const [position, setPosition] = useState(0)
-  const duration = (side === 'before' ? before : after).length / sampleRate
+  const [noiseMode, setNoiseMode] = useState(false)
+  const noiseOnly = noiseMode && noise !== null
+  /** The samples a side plays now. */
+  const srcOf = (s: AbSide): Float32Array => (noiseOnly && noise ? noise[s] : s === 'before' ? before : after)
+  const duration = srcOf(side).length / sampleRate
 
   /** The playing position, or the kept one. */
   const current = (): number => {
@@ -88,13 +107,14 @@ export function useAbPlayer(before: Float32Array, after: Float32Array, sampleRat
     if (!C) return
     const c = (ctx.current ??= new C())
     void c.resume?.()
-    const from = s === 'before' ? before : after
-    let buf = buffers.current[s]?.from === from ? buffers.current[s]?.buf : undefined
+    const from = srcOf(s)
+    const key = `${noiseOnly ? 'noise' : 'take'}:${s}`
+    let buf = buffers.current[key]?.from === from ? buffers.current[key]?.buf : undefined
     if (!buf) {
       const x = forPlayback(from)
       buf = c.createBuffer(1, Math.max(1, x.length), sampleRate)
       buf.copyToChannel(x, 0)
-      buffers.current[s] = { from, buf }
+      buffers.current[key] = { from, buf }
     }
     const offset = pos.current < buf.duration ? pos.current : 0
     const src = c.createBufferSource()
@@ -114,22 +134,35 @@ export function useAbPlayer(before: Float32Array, after: Float32Array, sampleRat
     setPlaying(true)
   }
 
-  // new samples for the side that plays (a new render of After): the sound switches to them at the same position;
-  // paused, the next Play builds its buffer from them (startAt)
-  const played = useRef({ before, after })
+  const stop = (): void => {
+    halt()
+    pos.current = 0
+    setPosition(0)
+    setPlaying(false)
+  }
+
+  // new samples for the side that plays (a new render of After, or its noise-only audio): the sound switches to them at
+  // the same position; paused, the next Play builds its buffer from them (startAt). The mode changing (also "Noise only"
+  // no longer available) stops and goes back to the start instead.
+  const playsBefore = srcOf('before')
+  const playsAfter = srcOf('after')
+  const played = useRef({ before: playsBefore, after: playsAfter, noiseOnly })
   const restart = useRef<(s: AbSide) => void>(() => undefined)
+  const rewind = useRef<() => void>(() => undefined)
   useEffect(() => {
     restart.current = (s) => {
       if (!now.current || s !== side) return
       halt()
       startAt(s)
     }
+    rewind.current = stop
   })
   useEffect(() => {
     const was = played.current
-    played.current = { before, after }
+    played.current = { before: playsBefore, after: playsAfter, noiseOnly }
+    if (was.noiseOnly !== noiseOnly) return rewind.current()
     for (const s of ['before', 'after'] as const) if (was[s] !== played.current[s]) restart.current(s)
-  }, [before, after])
+  }, [playsBefore, playsAfter, noiseOnly])
 
   const toggle = (): void => {
     if (now.current) {
@@ -137,13 +170,6 @@ export function useAbPlayer(before: Float32Array, after: Float32Array, sampleRat
       setPosition(pos.current)
       setPlaying(false)
     } else startAt(side)
-  }
-
-  const stop = (): void => {
-    halt()
-    pos.current = 0
-    setPosition(0)
-    setPlaying(false)
   }
 
   const seek = (sec: number): void => {
@@ -163,5 +189,10 @@ export function useAbPlayer(before: Float32Array, after: Float32Array, sampleRat
     } else if (!now.current) setPosition(current())
   }
 
-  return { supported: ctxClass() !== null, side, playing, position, duration, toggle, stop, seek, pick }
+  const setNoiseOnly = (on: boolean): void => {
+    stop()
+    setNoiseMode(on)
+  }
+
+  return { supported: ctxClass() !== null, side, playing, position, duration, canNoiseOnly: noise !== null, noiseOnly, setNoiseOnly, toggle, stop, seek, pick }
 }

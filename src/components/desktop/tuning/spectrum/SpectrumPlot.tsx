@@ -9,7 +9,7 @@ import { PlotAxes } from './PlotAxes'
 import { EqCurve, ToneMarkers } from './PlotLayers'
 import { hzOfX, nearestIndex, type PlotBox } from './plotScale'
 import type { EqDrag } from './useEqDrag'
-import { useSpectrumCanvas } from './useSpectrumCanvas'
+import { useSpectrumCanvas, type RawLine } from './useSpectrumCanvas'
 
 /** Below this level nothing was heard there yet (the analyzer's −200). */
 const SILENT_DB = -150
@@ -30,16 +30,18 @@ interface SpectrumPlotProps {
   /** i18n keys of the plot's label and hover readout ({{hz}}, {{level}}); the live screen's by default. */
   ariaKey?: string
   readoutKey?: string
+  /** Theme colour of the thin (raw) curve; text.secondary by default. */
+  rawLine?: RawLine
 }
 
 /**
  * The plot: grid and spectra on a canvas (useSpectrumCanvas), then in SVG the axis labels, the EQ curve, the
  * steady-tone markers and the band handles; the hover readout (frequency, level as heard) in the corner.
  */
-export function SpectrumPlot({ frame, svg, size, box, freqs, analyzer, tones, bands, selected, drag, ariaKey = 'desktop.tune.spectrum.aria', readoutKey = 'desktop.tune.spectrum.readout' }: SpectrumPlotProps) {
+export function SpectrumPlot({ frame, svg, size, box, freqs, analyzer, tones, bands, selected, drag, ariaKey = 'desktop.tune.spectrum.aria', readoutKey = 'desktop.tune.spectrum.readout', rawLine }: SpectrumPlotProps) {
   const { t } = useTranslation()
   const [hoverHz, setHoverHz] = useState<number | null>(null)
-  const canvas = useSpectrumCanvas(analyzer, size.w, size.h)
+  const canvas = useSpectrumCanvas(analyzer, size.w, size.h, rawLine)
 
   // the wheel over a handle changes its width; a native listener, so the page does not scroll meanwhile
   const wheel = useRef(drag.wheel)

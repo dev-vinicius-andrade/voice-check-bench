@@ -28,6 +28,13 @@ export interface TuneRun {
   run(take: Float32Array, goals: TuneGoals): Promise<void>
   /** Tune again from the current result with what the person said. */
   adjust(feedback: readonly Bother[] | 'tooProcessed'): Promise<void>
+  /**
+   * Tune the same take again from the untouched chain with the current result's goals and limit (after a plugin
+   * state was loaded or restored: "Cut the noise"). Nothing when there is no result.
+   */
+  rerun(): Promise<void>
+  /** Loads a plugin state into a slot of the open session for every later render; null puts its own back (rejects when none is open). */
+  setState(slot: number, parameterState: string | null): Promise<void>
   /** Stop waiting for the run and close the session. */
   cancel(): void
 }
@@ -40,6 +47,10 @@ export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
   const session = useRef<{ take: Float32Array; s: TuneSession } | null>(null)
   const runId = useRef(0)
   const take = useRef<Float32Array | null>(null)
+  // plugin states loaded or restored in the session so far, and how many there were when the shown result's job
+  // started: a result from before the last one rendered other audio, so its render is no start for the next run
+  const states = useRef(0)
+  const resultStates = useRef(0)
 
   const closeSession = useCallback(() => {
     session.current?.s.close().catch(() => undefined)
@@ -76,8 +87,11 @@ export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
         }
         const current = session.current
         if (!current) return
+        const at = states.current
         const result = await job(current.s, progress)
-        if (id === runId.current) setState({ step: 'done', result })
+        if (id !== runId.current) return
+        resultStates.current = at
+        setState({ step: 'done', result })
       } catch (e) {
         if (id === runId.current) setState({ step: 'error', msg: errorMsg(e) })
       }
@@ -91,8 +105,24 @@ export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
   const adjust = async (feedback: readonly Bother[] | 'tooProcessed'): Promise<void> => {
     const t = take.current
     if (state.step !== 'done' || !t) return
-    const next = retune(state.result, feedback)
+    const { startRender, ...rest } = retune(state.result, feedback)
+    const next = resultStates.current === states.current ? { ...rest, startRender } : rest
     return go(t, (s, onStage) => tune({ take: t, chain: s.chain, render: s.render, ...next, onProgress: onStage }))
+  }
+
+  const rerun = async (): Promise<void> => {
+    const t = take.current
+    if (state.step !== 'done' || !t) return
+    const { goals, limit } = state.result
+    return go(t, (s, onStage) => tune({ take: t, goals, limit, chain: s.chain, render: s.render, onProgress: onStage }))
+  }
+
+  const loadState: TuneRun['setState'] = async (slot, parameterState) => {
+    const current = session.current
+    if (!current) throw new Error('no tune session')
+    // counted before it lands: a load that fails half way leaves the plugin in a state no result was rendered with
+    states.current++
+    await current.s.setState(slot, parameterState)
   }
 
   const cancel = (): void => {
@@ -106,5 +136,5 @@ export function useTuneRun(bridge: TuneBridge, open: OpenTuneSession): TuneRun {
     session.current ? session.current.s.exportChanges(changes) : Promise.reject(new Error('no tune session'))
   const render: TuneRun['render'] = (changes) => (session.current ? session.current.s.render(changes) : Promise.reject(new Error('no tune session')))
 
-  return { state, snapshot, chain, exportChanges, render, run, adjust, cancel }
+  return { state, snapshot, chain, exportChanges, render, run, adjust, rerun, setState: loadState, cancel }
 }

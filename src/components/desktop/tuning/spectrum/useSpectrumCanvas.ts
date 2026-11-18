@@ -12,14 +12,19 @@ export interface Colors {
   raw: string
 }
 
+/** The theme colour of the thin line (the raw curve): the mic alone by default, the noise in "Voice and noise". */
+export type RawLine = 'text.secondary' | 'error.main'
+
+const RAW_VAR: Record<RawLine, string> = { 'text.secondary': '--mui-palette-text-secondary', 'error.main': '--mui-palette-error-main' }
+
 /** Theme colours as the page shows them now (the CSS variables follow light / dark), the theme's values as a fallback. */
-function colorsOf(el: Element, fallback: Colors): Colors {
+function colorsOf(el: Element, fallback: Colors, rawLine: RawLine): Colors {
   const css = getComputedStyle(el)
   const v = (name: string, alt: string): string => css.getPropertyValue(name).trim() || alt
   return {
     grid: v('--mui-palette-divider', fallback.grid),
     heard: v('--mui-palette-primary-main', fallback.heard),
-    raw: v('--mui-palette-text-secondary', fallback.raw),
+    raw: v(RAW_VAR[rawLine], fallback.raw),
   }
 }
 
@@ -78,11 +83,13 @@ export function drawSpectrum(ctx: CanvasRenderingContext2D, b: PlotBox, analyzer
 /**
  * Draws the grid and the two spectra on the canvas from requestAnimationFrame, at most FPS times a second, reading
  * analyzer.read() each time (no React state per frame). Sized for the device pixel ratio. Returns the canvas ref.
+ * `rawLine`: the theme colour of the thin line (text.secondary by default).
  */
-export function useSpectrumCanvas(analyzer: SpectrumAnalyzer, w: number, h: number): RefObject<HTMLCanvasElement | null> {
+export function useSpectrumCanvas(analyzer: SpectrumAnalyzer, w: number, h: number, rawLine: RawLine = 'text.secondary'): RefObject<HTMLCanvasElement | null> {
   const canvas = useRef<HTMLCanvasElement>(null)
   const theme = useTheme()
-  const fallback: Colors = { grid: theme.palette.divider, heard: theme.palette.primary.main, raw: theme.palette.text.secondary }
+  const rawFallback = rawLine === 'error.main' ? theme.palette.error.main : theme.palette.text.secondary
+  const fallback: Colors = { grid: theme.palette.divider, heard: theme.palette.primary.main, raw: rawFallback }
   const { grid, heard, raw } = fallback
   useEffect(() => {
     const el = canvas.current
@@ -100,10 +107,10 @@ export function useSpectrumCanvas(analyzer: SpectrumAnalyzer, w: number, h: numb
       last = now
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
-      drawSpectrum(ctx, b, analyzer, colorsOf(el, { grid, heard, raw }))
+      drawSpectrum(ctx, b, analyzer, colorsOf(el, { grid, heard, raw }, rawLine))
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [analyzer, w, h, grid, heard, raw])
+  }, [analyzer, w, h, grid, heard, raw, rawLine])
   return canvas
 }

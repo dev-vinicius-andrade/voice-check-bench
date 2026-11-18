@@ -36,7 +36,7 @@ export function AutoTuneScreen({ openSession = openTuneSession }: { openSession?
       {a.step === 'goals' && <GoalsStep goals={a.goals} onTune={a.startTuning} onBack={a.back} />}
       {a.step === 'tune' &&
         (a.result && a.take ? (
-          <ResultStep take={a.take} result={a.result} manual={a.manual} save={a.save} onAdjust={(f) => void a.adjust(f)} onRecordAgain={a.recordAgain} />
+          <ResultStep take={a.take} result={a.result} manual={a.manual} save={a.save} noise={a.noise} onAdjust={(f) => void a.adjust(f)} onRecordAgain={a.recordAgain} />
         ) : (
           <TuningStep state={a.run.state} onCancel={a.cancel} onRetry={a.startTuning} onBack={a.cancel} />
         ))}

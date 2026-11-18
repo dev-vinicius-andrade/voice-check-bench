@@ -58,7 +58,7 @@ function fakes() {
     wavelinkPreview: vi.fn(async (c: WlChainChange[]) => c.map((x) => ({ inputKey: x.inputKey, input: 'Wave XLR', index: x.index, plugin: 'ReaComp (ReaPlugs Edition)', field: 'parameterState' as const, from: 'a', to: 'b' }))),
     wavelinkExport: vi.fn(async () => REPORT),
   }
-  const session: TuneSession = { chain: [], render: vi.fn(async () => TAKE), exportChanges: vi.fn(async () => WL_CHANGES), close: vi.fn(async () => undefined) }
+  const session: TuneSession = { chain: [], render: vi.fn(async () => TAKE), exportChanges: vi.fn(async () => WL_CHANGES), setState: vi.fn(async () => undefined), close: vi.fn(async () => undefined) }
   const open = vi.fn(async () => session)
   const push = (frames: AudioFrame[]) => act(() => frames.forEach((f) => onFrame?.(f)))
   return { bridge, session, open, push }

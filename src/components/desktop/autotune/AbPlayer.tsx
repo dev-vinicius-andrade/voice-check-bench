@@ -1,5 +1,7 @@
 import Button from '@mui/material/Button'
+import FormControlLabel from '@mui/material/FormControlLabel'
 import Slider from '@mui/material/Slider'
+import Switch from '@mui/material/Switch'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
@@ -20,7 +22,7 @@ interface AbPlayerProps {
 
 /**
  * Before / After on the same take: Play / Pause, Stop (back to the start), a switch that keeps the position, a seek bar
- * with elapsed / total time, and a WAV download of each side.
+ * with elapsed / total time, and a WAV download of each side. "Noise only" when the player has noise-only audio.
  */
 export function AbPlayer(props: AbPlayerProps) {
   const p = useAbPlayer(props.before, props.after)
@@ -49,7 +51,18 @@ export function AbPlayerView({ before, after, saveWav, p }: AbPlayerProps & { p:
               <ToggleButton value="before">{t('desktop.autotune.ui.result.before')}</ToggleButton>
               <ToggleButton value="after">{t('desktop.autotune.ui.result.after')}</ToggleButton>
             </ToggleButtonGroup>
+            {p.canNoiseOnly && (
+              <FormControlLabel
+                control={<Switch size="small" checked={p.noiseOnly} onChange={(_, on) => p.setNoiseOnly(on)} />}
+                label={t('desktop.autotune.ui.result.player.noiseOnly')}
+              />
+            )}
           </div>
+          {p.noiseOnly && (
+            <Typography variant="body2" color="text.secondary" data-testid="autotune-noise-only-help">
+              {t('desktop.autotune.ui.result.player.noiseOnlyHelp')}
+            </Typography>
+          )}
           <div className="flex items-center gap-4">
             <Slider
               size="small"

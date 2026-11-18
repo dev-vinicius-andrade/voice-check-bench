@@ -121,6 +121,7 @@ function fakes(chain: ChainSlot[] = CHAIN) {
         }),
     ),
     exportChanges: vi.fn(async () => WL),
+    setState: vi.fn(async () => undefined),
     close: vi.fn(async () => undefined),
   }
   const open = vi.fn(async () => session)

@@ -9,7 +9,8 @@ import type { WlChainChange, WlChainEntry, WlDiffLine } from './types'
 
 const fieldMsg = (c: WlChange): Msg => ({ key: 'profiles.wl.preview.value', params: { plugin: c.plugin, field: c.field, from: c.from, to: c.to } })
 
-function stateLines(line: WlDiffLine, plugin: string, changes: readonly WlChainChange[], entries: readonly WlChainEntry[]): Msg[] {
+function stateLines(line: WlDiffLine, plugin: string, changes: readonly WlChainChange[], entries: readonly WlChainEntry[], own?: string): Msg[] {
+  if (own) return [{ key: own, params: { plugin } }]
   const kind = cockosKind(line.plugin)
   const before = entries.find((e) => e.index === line.index)?.parameterState
   const after = changes.find((c) => c.index === line.index && c.inputKey === line.inputKey)?.parameterState
@@ -24,12 +25,15 @@ function stateLines(line: WlDiffLine, plugin: string, changes: readonly WlChainC
   return [{ key: 'desktop.save.state', params: { plugin } }]
 }
 
-/** One Msg per changed field, in diff order. */
-export function describeDiff(lines: readonly WlDiffLine[], changes: readonly WlChainChange[], entries: readonly WlChainEntry[]): Msg[] {
+/**
+ * One Msg per changed field, in diff order. `stateKeys`: the message key (params: plugin) for a slot's whole-state
+ * line where the caller knows what changed (ReaFIR's noise profile from "Cut the noise").
+ */
+export function describeDiff(lines: readonly WlDiffLine[], changes: readonly WlChainChange[], entries: readonly WlChainEntry[], stateKeys?: ReadonlyMap<number, string>): Msg[] {
   return lines.flatMap((line): Msg[] => {
     const plugin = canonicalName(line.plugin)
     if (line.field === 'bypass') return [{ key: line.to === 'off' ? 'profiles.wl.preview.turnOff' : 'profiles.wl.preview.turnOn', params: { plugin } }]
     if (line.field === 'chain') return [{ key: 'desktop.save.chain', params: { plugin: line.input } }]
-    return stateLines(line, plugin, changes, entries)
+    return stateLines(line, plugin, changes, entries, stateKeys?.get(line.index))
   })
 }

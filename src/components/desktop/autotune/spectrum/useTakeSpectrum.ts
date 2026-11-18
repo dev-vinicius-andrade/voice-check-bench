@@ -6,6 +6,7 @@ import { plotBox, plotFreqs } from '../../tuning/spectrum/plotScale'
 import { useBoxSize } from '../../tuning/spectrum/useBoxSize'
 import { useEqDrag } from '../../tuning/spectrum/useEqDrag'
 import { sameTone } from '../../tuning/spectrum/useToneCuts'
+import type { AbSide } from '../useAbPlayer'
 import type { ManualEq, TakeCut } from '../useManualEq'
 
 /** Until the plot has been measured. */
@@ -13,10 +14,11 @@ const FALLBACK_SIZE = { w: 800, h: 260 }
 /** A drag only moves what the plot shows: the take is rendered once the handle is let go. */
 const noPreview = (): void => undefined
 
-/** Where the player is: the plot follows it while it plays (or stands paused somewhere). */
+/** Where the player is: the plot follows it while it plays (or stands paused somewhere); "Voice and noise" its side. */
 export interface PlayerAt {
   position: number
   playing: boolean
+  side: AbSide
 }
 
 /**

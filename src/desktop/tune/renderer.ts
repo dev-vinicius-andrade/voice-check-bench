@@ -9,7 +9,7 @@ import type { ChainSlot, Change, ValueChange } from '../advice/types'
 import type { DesktopBridge, RenderBridge } from '../bridge'
 import { exportPlan } from '../exportPlan'
 import { chainOf, engineOp, ownBypassOn, type EngineOp } from '../slots'
-import type { AudioSlot, WlChainChange, WlChainInput, WlSnapshot } from '../types'
+import type { AudioExportedState, AudioSlot, WlChainChange, WlChainInput, WlSnapshot } from '../types'
 import { engineChanges, type TuneRender } from './types'
 
 /** What a tune session needs from the desktop bridge (a fake in tests, the CLI harness in tools/tune-real). */
@@ -26,6 +26,14 @@ export interface TuneSession {
    * plugin taken off its own bypass as its exported state, which carries that bypass.
    */
   exportChanges(changes: readonly (Change & { also?: readonly ValueChange[] })[]): Promise<WlChainChange[]>
+  /**
+   * Loads a whole plugin state into a slot (ReaFIR with a noise profile) for every later render, or with null puts
+   * back the state the session opened with. A slot with a loaded state is part of exportChanges (its state as the
+   * plugin saves it then), whatever the changes given. Rejects for a slot the session does not host. Serialized with
+   * the renders. The session's values of that slot stay as they were (the state replaces the plugin's own values;
+   * meant for a slot the tuner does not change, ReaFIR). Null for a slot without a loaded state does nothing.
+   */
+  setState(slot: number, parameterState: string | null): Promise<void>
   close(): Promise<void>
 }
 
@@ -108,6 +116,8 @@ export async function openTuneSession(bridge: TuneBridge, take: Float32Array): P
   const base = listed.map((c) => (c.on && slots0.some((s) => s.index === c.index && ownBypassOn(s)) ? { ...c, on: false } : c))
   let slots: AudioSlot[] = [...slots0]
   let applied: ChainSlot[] = base
+  /** Slots with a whole state loaded by setState: exportChanges writes them as the plugin saves them. */
+  const loaded = new Set<number>()
   let queue: Promise<unknown> = Promise.resolve()
   const serial = <T>(f: () => Promise<T>): Promise<T> => {
     const p = queue.then(f)
@@ -128,6 +138,19 @@ export async function openTuneSession(bridge: TuneBridge, take: Float32Array): P
     }
   }
 
+  /** `changes` with every loaded slot's state as the session exports it (a switch of the same slot kept), in slot order. */
+  const withLoaded = (changes: readonly WlChainChange[], exported: readonly AudioExportedState[]): WlChainChange[] => {
+    const out = [...changes]
+    for (const index of loaded) {
+      const parameterState = exported.find((e) => e.index === index)?.parameterState
+      if (!parameterState) throw new Error(`slot ${index} has a loaded state but the render session did not export it`)
+      const at = out.findIndex((c) => c.index === index)
+      if (at >= 0) out[at] = { ...out[at], parameterState }
+      else out.push({ inputKey, index, parameterState })
+    }
+    return out.sort((a, b) => a.index - b.index)
+  }
+
   return {
     chain: base.map((s) => ({ ...s, values: { ...s.values } })),
     render: (changes) =>
@@ -142,9 +165,21 @@ export async function openTuneSession(bridge: TuneBridge, take: Float32Array): P
         // Wave Link lists a plugin on its own bypass as on: one the changes switched on starts as off here too, so the
         // export sees it changed and writes the state that takes it off that bypass
         const start = listed.map((c) => (c.on && !base.some((b) => b.index === c.index && b.on) && target.some((x) => x.index === c.index && x.on) ? { ...c, on: false } : c))
-        const plan = exportPlan(inputKey, start, chainWith(start, changes), slots, entries, await bridge.renderExportStates())
+        const exported = await bridge.renderExportStates()
+        const plan = exportPlan(inputKey, start, chainWith(start, changes), slots, entries, exported)
         if (plan.unsaved.length) throw new Error(`slots ${plan.unsaved.join(', ')} changed but cannot be written`)
-        return plan.changes
+        return withLoaded(plan.changes, exported)
+      }),
+    setState: (slot, parameterState) =>
+      serial(async () => {
+        const own = slots0.find((s) => s.index === slot)
+        const entry = entries.find((e) => e.index === slot)
+        if (!own || own.status.status !== 'hosted' || !entry) throw new Error(`slot ${slot} is not hosted by the render session`)
+        if (parameterState === null && !loaded.has(slot)) return
+        const reply = await bridge.renderLoadState(slot, parameterState ?? entry.parameterState)
+        slots = slots.map((s) => (s.index === reply.index ? reply : s))
+        if (parameterState === null) loaded.delete(slot)
+        else loaded.add(slot)
       }),
     close: () => serial(() => bridge.renderClose()),
   }
