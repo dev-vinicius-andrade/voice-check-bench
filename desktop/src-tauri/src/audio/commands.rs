@@ -19,7 +19,8 @@ fn engine() -> MutexGuard<'static, Option<Engine>> {
     ENGINE.lock().unwrap_or_else(|p| p.into_inner())
 }
 
-async fn blocking<T: Send + 'static>(
+/// Run `f` on a blocking worker thread (never the main thread); also used by `render::commands`.
+pub(crate) async fn blocking<T: Send + 'static>(
     f: impl FnOnce() -> AudioResult<T> + Send + 'static,
 ) -> AudioResult<T> {
     tauri::async_runtime::spawn_blocking(f)

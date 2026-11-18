@@ -340,6 +340,20 @@ impl Vst3Plugin {
         Ok(())
     }
 
+    /// Deactivate and activate again (setProcessing off, setActive off/on, setProcessing on): JUCE runs
+    /// releaseResources + prepareToPlay, which clears the processing state; parameters, bus setup and state stay.
+    /// Host thread; exclusive.
+    pub fn reset(&self) {
+        unsafe {
+            self.processor.setProcessing(0);
+            self.component.setActive(0);
+            self.component.setActive(1);
+            self.processor.setProcessing(1);
+        }
+        pump_messages();
+        self.refresh_latency();
+    }
+
     /// IComponent::getState (plus IEditController::getState when it succeeds) wrapped as Wave Link stores it. Exclusive.
     pub fn save_state(&self) -> HostResult<String> {
         let s = ComWrapper::new(MemStream::default());

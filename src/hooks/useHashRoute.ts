@@ -1,12 +1,12 @@
 // Hash routing without a router library (SPEC "Site pages"): the URL hash and the store's screen follow each other.
-// #/ home · #/how-it-works · #/community · #/privacy · #/download · #/check (setup or step) · #/results · #/guide · #/profiles · #/live · #/desktop (desktop app only).
+// #/ home · #/how-it-works · #/community · #/privacy · #/download · #/check (setup or step) · #/results · #/guide · #/profiles · #/live · #/desktop and #/desktop/live (desktop app only).
 import { useEffect } from 'react'
 import { isDesktop } from '../desktop/bridge'
 import type { BenchState } from '../store/api'
 import { useBench } from '../store/benchStore'
 import type { Screen, StepRef } from '../types'
 
-export type Route = 'home' | 'how' | 'community' | 'privacy' | 'download' | 'check' | 'results' | 'guide' | 'profiles' | 'live' | 'desktop'
+export type Route = 'home' | 'how' | 'community' | 'privacy' | 'download' | 'check' | 'results' | 'guide' | 'profiles' | 'live' | 'desktop' | 'desktopLive'
 
 const ROUTE_HASH: Record<Route, string> = {
   home: '#/',
@@ -20,6 +20,7 @@ const ROUTE_HASH: Record<Route, string> = {
   profiles: '#/profiles',
   live: '#/live',
   desktop: '#/desktop',
+  desktopLive: '#/desktop/live',
 }
 
 export interface RouteContext {
@@ -34,13 +35,13 @@ export interface RouteTarget {
   step?: StepRef
 }
 
-/** null when there is no route in the hash ('' or '#'); unknown hashes are home, and so is #/desktop outside the desktop app. */
+/** null when there is no route in the hash ('' or '#'); unknown hashes are home, and so are the desktop routes outside the desktop app. */
 export function hashToRoute(hash: string): Route | null {
   const path = hash.replace(/^#/, '')
   if (path === '') return null
   const clean = '#/' + path.replace(/^\/+/, '').replace(/\/+$/, '')
   const route = (Object.keys(ROUTE_HASH) as Route[]).find((r) => ROUTE_HASH[r] === clean) ?? 'home'
-  return route === 'desktop' && !isDesktop() ? 'home' : route
+  return (route === 'desktop' || route === 'desktopLive') && !isDesktop() ? 'home' : route
 }
 
 export function screenToHash(screen: Screen): string {
@@ -101,7 +102,7 @@ export function useHashRoute(): void {
     }
     const sync = (): void => {
       synced = true
-      // the desktop app opens on its live tuning screen unless a hash asks for another page
+      // the desktop app opens on its main screen (tune from a recording) unless a hash asks for another page
       const hash = isDesktop() && !hashToRoute(location.hash) ? '#/desktop' : location.hash
       go(hashToScreen(hash, routeContext(useBench.getState())))
       canonicalize()

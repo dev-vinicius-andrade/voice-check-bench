@@ -363,6 +363,22 @@ impl ChainControl {
         })
     }
 
+    /// Clear every hosted plugin's processing state ([`Plugin::reset`]: delay lines, envelopes, adaptive estimates),
+    /// keeping parameters, bypass and state, so the next audio starts from rest. A slot passes audio through while it
+    /// resets.
+    pub fn reset(&self) -> HostResult<()> {
+        self.on_host(|s| {
+            for slot in &s.slots {
+                let Some(p) = slot.plugin() else { continue };
+                let held = slot.hold();
+                p.reset();
+                slot.refresh_latency(p);
+                drop(held);
+            }
+            Ok(())
+        })
+    }
+
     pub fn save_state(&self, i: usize) -> HostResult<String> {
         self.on_host(move |s| {
             let (slot, p) = s.hosted(i)?;

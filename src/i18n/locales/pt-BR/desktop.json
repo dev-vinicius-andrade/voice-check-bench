@@ -53,6 +53,238 @@
       "conflict": "Esse valor mudou depois que você aplicou isto, então Desfazer apagaria sua mudança. Volte o valor pelo controle deslizante.",
       "missing": "Esse efeito ou valor não está mais na cadeia."
     },
+    "autotune": {
+      "reason": {
+        "level": {
+          "up": "Sua voz estava baixa ({{from, number(maximumFractionDigits: 1)}} dBFS): o Wet do compressor, o ganho de compensação dele, sobe {{db, number(maximumFractionDigits: 1)}} dB para sua fala ficar perto de {{target, number(maximumFractionDigits: 1)}} dBFS.",
+          "down": "Sua voz estava alta demais ({{from, number(maximumFractionDigits: 1)}} dBFS): o Wet do compressor desce {{db, number(maximumFractionDigits: 1)}} dB para sua fala ficar perto de {{target, number(maximumFractionDigits: 1)}} dBFS.",
+          "peaks": "Seus momentos mais altos estavam perto demais de distorcer (pico de {{peak, number(maximumFractionDigits: 1)}} dBFS): o Wet do compressor desce {{db, number(maximumFractionDigits: 1)}} dB para dar folga.",
+          "gateFollows": "O ReaGate vem depois do compressor: o Threshold dele acompanha o Wet em {{db, number(maximumFractionDigits: 1)}} dB, para o gate continuar fechando nas pausas e abrindo nas suas palavras."
+        },
+        "trim": {
+          "up": "As outras mudanças deixaram sua voz em {{from, number(maximumFractionDigits: 1)}} dBFS: o Wet do compressor sobe {{db, number(maximumFractionDigits: 1)}} dB para sua fala voltar para perto de {{target, number(maximumFractionDigits: 1)}} dBFS.",
+          "down": "As outras mudanças deixaram sua voz em {{from, number(maximumFractionDigits: 1)}} dBFS: o Wet do compressor desce {{db, number(maximumFractionDigits: 1)}} dB para sua fala voltar para perto de {{target, number(maximumFractionDigits: 1)}} dBFS."
+        },
+        "gateDoubled": "O Dry do ReaGate estava em {{from, number(maximumFractionDigits: 1)}} dB com o Wet aberto, então sua voz passava duas vezes e as pausas não eram reduzidas: o Dry vai para {{to, number(maximumFractionDigits: 1)}} dB.",
+        "dead": {
+          "gateDry": "O gate cortava suas pausas para silêncio total: o Dry dele vai para {{to, number(maximumFractionDigits: 1)}} dB, assim as pausas ficam baixinhas em vez de mortas.",
+          "strength": "A remoção de ruído estava cortando sua voz ou deixando silêncio total nas pausas: a força dela diminui.",
+          "threshold": "O gate estava fechando em cima das suas palavras mais baixas: o Threshold dele desce {{db, number(maximumFractionDigits: 1)}} dB para ele abrir antes."
+        },
+        "noise": {
+          "strength": "Suas pausas tinham ruído do ambiente (sua voz ficava só {{snr, number(maximumFractionDigits: 1)}} dB acima dele): a remoção de ruído fica mais forte.",
+          "threshold": "O gate ficava aberto entre as suas palavras: o Threshold dele sobe para {{to, number(maximumFractionDigits: 1)}} dB para ele fechar nas pausas."
+        },
+        "tone": {
+          "high": {
+            "boom": "Grave demais (80–160 Hz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Sua voz soava encorpada demais (160–320 Hz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Sua voz soava abafada ou de caixa (320–640 Hz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB.",
+            "body": "Sua voz soava de megafone (640 Hz–1,25 kHz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB.",
+            "definition": "Sua voz soava nasal (1,25–2,5 kHz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Sua voz soava áspera (2,5–5 kHz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Seus S soavam cortantes (5–10 kHz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB.",
+            "air": "Chiado demais no topo (10–16 kHz): esta banda do EQ desce {{db, number(maximumFractionDigits: 1)}} dB."
+          },
+          "low": {
+            "boom": "Faltava grave na sua voz (80–160 Hz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Sua voz soava fina (160–320 Hz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Sua voz soava oca (320–640 Hz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
+            "body": "Faltava corpo na sua voz (640 Hz–1,25 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
+            "definition": "Faltava definição na sua voz (1,25–2,5 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Sua voz soava sem brilho ou distante (2,5–5 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Faltava nitidez na sua voz (5–10 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB.",
+            "air": "Faltava ar na sua voz (10–16 kHz): esta banda do EQ sobe {{db, number(maximumFractionDigits: 1)}} dB."
+          }
+        },
+        "comp": {
+          "ratio": "Seu volume variava {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos: o Ratio do compressor vai para {{to, number(maximumFractionDigits: 1)}}:1 para nivelar mais.",
+          "threshold": "Seu volume variava {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos: o Threshold do compressor desce para {{to, number(maximumFractionDigits: 1)}} dB para ele começar a agir antes."
+        }
+      },
+      "unmet": {
+        "notEnoughSpeech": "Não há fala suficiente nesta gravação para ajustar. Grave de novo: fique em silêncio por 3 segundos e depois fale por uns 20.",
+        "silent": "Nada da sua voz sai da cadeia: algum efeito está cortando tudo. Desligue os efeitos um por um para achar qual e rode de novo.",
+        "clipped": "A própria gravação distorce ({{count, number}} amostras no máximo). Os efeitos não consertam isso: abaixe o ganho do microfone e grave de novo.",
+        "level": {
+          "noToolQuiet": "Sua voz termina {{db, number(maximumFractionDigits: 1)}} dB abaixo do alvo e não há compressor ligado para compensar: ligue o ReaComp ou suba o ganho do microfone.",
+          "noToolLoud": "Sua voz termina {{db, number(maximumFractionDigits: 1)}} dB acima do alvo e não há compressor ligado para abaixar: abaixe o ganho do microfone.",
+          "capQuiet": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB abaixo do alvo com o Wet do compressor no máximo: suba o ganho do microfone.",
+          "capLoud": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB acima do alvo com o Wet do compressor no mínimo: abaixe o ganho do microfone.",
+          "peaks": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB abaixo do alvo: mais alto que isso, seus momentos mais fortes distorceriam.",
+          "held": "Sua voz ainda está {{db, number(maximumFractionDigits: 1)}} dB longe do alvo: mexer mais no Wet do compressor fez o resto medir pior (um efeito depois dele reage ao volume), então ele fica aqui. Ajuste o ganho do microfone."
+        },
+        "dead": "Suas pausas ainda caem para silêncio total. Outro efeito está cortando o som: desligue os efeitos um por um para achar qual.",
+        "chopped": "Palavras mais baixas ainda estão sendo cortadas. Outro efeito está cortando o som: desligue os efeitos um por um para achar qual.",
+        "noise": {
+          "noTool": "Sua voz está só {{snr, number(maximumFractionDigits: 1)}} dB acima do ruído do ambiente (o desejado é {{target, number(maximumFractionDigits: 1)}}) e nada na sua cadeia consegue reduzir isso: adicione o Elgato Noise Removal ou chegue mais perto do microfone.",
+          "limit": "Sua voz ainda está só {{snr, number(maximumFractionDigits: 1)}} dB acima do ruído do ambiente (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais remoção cortaria sua voz ou passaria da quantidade que você escolheu: chegue mais perto do microfone ou deixe o ambiente mais quieto."
+        },
+        "tone": {
+          "noEq": "Sua cadeia não tem EQ ligado, então o timbre não pode ser mudado: adicione o ReaEQ.",
+          "noBand": "Nenhuma banda do seu ReaEQ alcança {{lo, number}}–{{hi, number}} Hz: adicione uma banda ali.",
+          "sharpS": "Seus S ainda estão {{db, number(maximumFractionDigits: 1)}} dB fortes demais. As bandas de EQ da sua cadeia quase não alcançam eles (5–10 kHz): ligue um De-Esser ou adicione uma banda no ReaEQ por volta de 6–7 kHz.",
+          "limitHigh": "{{lo, number}}–{{hi, number}} Hz ainda está {{db, number(maximumFractionDigits: 1)}} dB acima do seu alvo. O EQ não consegue tirar mais sem exagerar ou prejudicar outras partes da sua voz.",
+          "limitLow": "{{lo, number}}–{{hi, number}} Hz ainda está {{db, number(maximumFractionDigits: 1)}} dB abaixo do seu alvo. O EQ não consegue colocar mais sem exagerar ou levantar o ruído do ambiente."
+        },
+        "spread": {
+          "noComp": "Seu volume varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}) e não há compressor ligado: ligue o ReaComp.",
+          "limit": "Seu volume ainda varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais compressão não ajudou ou levantaria o ruído do ambiente: mantenha a mesma distância do microfone."
+        },
+        "budget": "Parei depois de {{renders, number}} testes. Rode de novo para continuar daqui."
+      },
+      "ui": {
+        "nav": {
+          "label": "Telas do app",
+          "record": "Ajustar com uma gravação",
+          "live": "Ajuste fino ao vivo"
+        },
+        "title": "Faça seu microfone soar melhor",
+        "subtitle": "Grave sua voz uma vez, diga o que você quer, e o app ajusta seus próprios efeitos do Wave Link nessa gravação.",
+        "steps": {
+          "label": "Etapas",
+          "record": "Gravar",
+          "goals": "O que você quer",
+          "tuning": "Ajustando",
+          "result": "Ouvir e salvar"
+        },
+        "record": {
+          "title": "Grave seu microfone puro",
+          "lead": "Uns 25 segundos: fique em silêncio por 3 segundos para o app ouvir o ambiente, depois leia o texto em voz alta. Seus efeitos não entram aqui, e nada toca enquanto você grava.",
+          "mic": "Microfone",
+          "start": "Começar a gravar",
+          "starting": "Iniciando…",
+          "quiet": "Fique em silêncio, o app está ouvindo o ambiente… {{sec, number}}",
+          "talk": "Agora leia em voz alta, com sua voz e distância de sempre:",
+          "keepTalking": "Terminou o texto? Continue falando sobre qualquer coisa até a barra encher.",
+          "progress": "{{sec, number}} de {{total, number}} segundos",
+          "level": "Nível do microfone",
+          "stop": "Parar",
+          "stopHint": "Você pode parar depois de {{sec, number}} segundos.",
+          "checking": "Conferindo sua gravação…",
+          "or": "Ou use uma gravação que você já tem:",
+          "wav": "Usar um arquivo WAV",
+          "wavHint": "Seu microfone puro, sem efeitos: 3 segundos de silêncio primeiro, depois pelo menos 10 segundos de fala.",
+          "again": "Gravar de novo",
+          "problem": {
+            "gap": "Parte do áudio se perdeu durante a gravação (o computador estava ocupado demais), então esta gravação tem falhas. Grave de novo.",
+            "clipped": "Sua gravação está alta demais: ela bate no topo da escala (clipping), e efeitos não consertam isso. Baixe um pouco o ganho do microfone e grave de novo.",
+            "quietBroken": "Ouvimos som nos primeiros 3 segundos, então o app não sabe como o seu ambiente soa. Grave de novo e fique em silêncio até a contagem acabar.",
+            "tooShort": "Esta gravação é curta demais. Ela precisa de 3 segundos de silêncio e depois pelo menos 10 segundos de fala.",
+            "silent": "Só veio silêncio. Escolha o microfone em que você fala e tente de novo.",
+            "tooQuiet": "Sua voz quase não chegou ao microfone. Aumente o ganho do microfone ou chegue mais perto, depois grave de novo.",
+            "noisyPause": "A parte em silêncio estava quase tão alta quanto a sua fala. Fique em silêncio até a contagem acabar e pause músicas ou chamadas neste microfone.",
+            "notEnoughSpeech": "Faltou fala. Leia o texto todo depois da contagem e continue até a barra encher.",
+            "notWav": "Este não é um arquivo WAV. Escolha uma gravação .wav.",
+            "format": "Este formato de WAV não é aceito. Use um WAV mono ou estéreo (16, 24 ou 32 bits)."
+          }
+        },
+        "goals": {
+          "title": "O que você quer?",
+          "use": "Uso",
+          "uses": {
+            "streaming": "Live",
+            "calls": "Chamadas",
+            "recording": "Gravação"
+          },
+          "style": "Som",
+          "bothers": "O que incomoda você (escolha quantos quiser, ou nenhum)",
+          "bother": {
+            "roomNoise": "Ruído do ambiente",
+            "boomy": "Graves demais",
+            "muffled": "Abafada",
+            "thin": "Fina",
+            "harsh": "Áspera",
+            "sharpS": "S estridente",
+            "dull": "Sem brilho",
+            "tooQuiet": "Baixa demais",
+            "unevenVolume": "Volume irregular"
+          },
+          "amount": "Processamento",
+          "amountHint": "Quanto o app pode mexer nos seus efeitos a partir de onde eles estão agora.",
+          "tune": "Ajustar meus efeitos",
+          "back": "Voltar"
+        },
+        "tuning": {
+          "title": "Ajustando seus efeitos",
+          "lead": "O app toca sua gravação pelos seus próprios efeitos, testa mudanças e só fica com as que medem melhor. O Wave Link não é alterado.",
+          "baseline": "Ouvindo sua gravação pelos seus efeitos como estão agora…",
+          "stages": {
+            "level": "Volume",
+            "noise": "Ruído e gate",
+            "tone": "Timbre",
+            "compression": "Compressão",
+            "trim": "Volume final"
+          },
+          "done": "Pronto",
+          "waiting": "Aguardando",
+          "pass": "Passada {{n, number}} de {{of, number}}…",
+          "cancel": "Cancelar",
+          "failed": "O ajuste não funcionou",
+          "retry": "Tentar de novo",
+          "back": "Voltar"
+        },
+        "result": {
+          "title": "Ouvir e salvar",
+          "listen": "Compare na mesma gravação",
+          "abHint": "Troque enquanto toca para ouvir o mesmo momento antes e depois.",
+          "before": "Antes",
+          "after": "Depois",
+          "play": "Tocar",
+          "pause": "Pausar",
+          "noAudio": "A reprodução não está disponível aqui.",
+          "metrics": {
+            "title": "O que mudou",
+            "label": "Antes e depois",
+            "speech": "Volume da voz",
+            "peak": "Momento mais alto",
+            "noise": "Ruído do ambiente nas pausas",
+            "snr": "Voz acima do ambiente (SNR: quanto sua voz se destaca do ambiente)",
+            "spread": "Estabilidade (diferença entre momentos altos e baixos)",
+            "band": "Timbre: {{band}} (distância do seu alvo)",
+            "better": "Melhor",
+            "worse": "Pior",
+            "same": "Quase igual"
+          },
+          "bands": {
+            "rumble": "ronco, 40–80 Hz",
+            "boom": "graves, 80–160 Hz",
+            "warmth": "calor, 160–320 Hz",
+            "mud": "embolado, 320–640 Hz",
+            "body": "corpo, 640 Hz–1,25 kHz",
+            "definition": "definição, 1,25–2,5 kHz",
+            "presence": "presença, 2,5–5 kHz",
+            "sibilance": "sons de S, 5–10 kHz",
+            "air": "ar, 10–16 kHz"
+          },
+          "changes_one": "{{count, number}} mudança, cada uma com seu motivo",
+          "changes_many": "{{count, number}} mudanças, cada uma com seu motivo",
+          "changes_other": "{{count, number}} mudanças, cada uma com seu motivo",
+          "effect": {
+            "speechDb": "Medido: volume da voz {{before}} → {{after}}",
+            "peakDb": "Medido: momento mais alto {{before}} → {{after}}",
+            "snrDb": "Medido: voz acima do ambiente {{before}} → {{after}}",
+            "tone": "Medido: {{band}} {{before}} → {{after}} do seu alvo",
+            "spreadDb": "Medido: estabilidade {{before}} → {{after}}",
+            "deadSilence": "Medido: silêncio morto {{before}} → {{after}} da gravação",
+            "wordLossDb": "Medido: palavras baixas cortadas em {{before}} → {{after}}"
+          },
+          "none": "Seu som já atende a esses objetivos: nada nos seus efeitos precisa mudar.",
+          "unmet": "O que não deu para fazer",
+          "showAll": "Mostrar tudo ({{count, number}})",
+          "showFewer": "Mostrar menos",
+          "save": "Salvar no Wave Link",
+          "adjust": "Não ficou bom, ajustar",
+          "again": "Gravar de novo",
+          "adjustTitle": "O que ainda não está bom?",
+          "tooProcessed": "Processado demais",
+          "retune": "Ajustar de novo",
+          "cancelAdjust": "Cancelar",
+          "saved": "Salvo. O Wave Link agora usa estas configurações.",
+          "fineTune": "Ajuste fino ao vivo"
+        }
+      }
+    },
     "tune": {
       "idle": "Escolha seu microfone e seus fones, depois aperte Iniciar. Nada muda no Wave Link até você salvar.",
       "talk": "Fale normalmente, como se estivesse em live. Os números aparecem depois de um ou dois segundos.",

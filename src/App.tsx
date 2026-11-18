@@ -41,6 +41,7 @@ export default function App() {
         {screen === 'profiles' && <ProfilesPage />}
         {screen === 'live' && <LiveScreen />}
         {screen === 'desktop' && isDesktop() && <DesktopScreen />}
+        {screen === 'desktopLive' && isDesktop() && <DesktopScreen page="live" />}
       </main>
       <Footer />
       <StatusSnackbar />

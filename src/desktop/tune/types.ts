@@ -1,0 +1,152 @@
+// "Tune from a recording" contract (SPEC "Desktop app (v2.0)" → Tune from a recording). Framework-free: no React, no
+// Tauri. The tuner gets one raw take, what the person wants and the live chain, renders the take through the real
+// chain with candidate values (an injected, expensive `render`), measures the whole take and keeps only the changes
+// that measurably help.
+import type { Msg } from '../../plain/types'
+import type { VoiceStyle } from '../../types'
+import type { ProcessingAmount } from '../advice/prefs'
+import type { ChainSlot, ValueChange } from '../advice/types'
+
+/** What the voice is for. It moves the noise and consistency targets (./targets.ts). */
+export type TuneUse = 'streaming' | 'calls' | 'recording'
+
+/** What bothers the person about their sound. Each one moves a target or allows a stronger tool (./targets.ts). */
+export type Bother = 'roomNoise' | 'boomy' | 'muffled' | 'thin' | 'harsh' | 'sharpS' | 'dull' | 'tooQuiet' | 'unevenVolume'
+
+export interface TuneGoals {
+  use: TuneUse
+  /** The tone target: the reference curve plus the style's offsets (src/audio/reference.ts). */
+  style: VoiceStyle
+  bothers: Bother[]
+  /** How far any single value may move from where the chain started, and how much EQ in total. */
+  amount: ProcessingAmount
+}
+
+/** Stages in the order they run. `baseline` is the first render (the chain as it is). */
+export type TuneStage = 'baseline' | 'level' | 'noise' | 'tone' | 'compression' | 'trim'
+
+/**
+ * Renders the WHOLE take through the chain with these value changes applied on top of the chain as it started
+ * (an empty list = the chain as it is). The output has the take's length and is aligned to it, sample for sample.
+ * Expensive (seconds): the tuner counts every call against its budget.
+ */
+export type TuneRender = (changes: readonly ValueChange[]) => Promise<Float32Array>
+
+/** Score of a rendered take in penalty points: 0 = nothing left to fix, lower is better (./score.ts). */
+export interface TuneScore {
+  /** Speech level away from the target, peaks too close to clipping, clipped samples. */
+  level: number
+  /** Voice over pause noise below the wanted SNR. */
+  noise: number
+  /** Bands further from the goal's tone target than their tolerance. */
+  tone: number
+  /** Level spread above the wanted spread. */
+  consistency: number
+  /** Processing damage: dead digital silence, words cut off. */
+  damage: number
+  total: number
+}
+
+/** What a rendered take measures, over the whole take, on the speech and pause frames of the RAW take. */
+export interface TakeSummary {
+  /** Median level of the speech frames, dBFS. */
+  speechDb: number
+  /** Highest sample, dBFS. */
+  peakDb: number
+  /** Samples at full scale. */
+  clipped: number
+  /** Median level of the pause frames (room noise between and before the words), dBFS, never below −100. */
+  pauseDb: number
+  /** speechDb − pauseDb. */
+  snrDb: number
+  /**
+   * Per BANDS entry (rumble … air): dB away from the goal style's target, level-matched on the middle bands so a deep
+   * low-cut or one loud band cannot shift the others (./measure.ts robustTone). Positive = too much.
+   */
+  tone: number[]
+  /** Consistency: spread of the loudest level of each second of speech (P90 − P10), dB. */
+  spreadDb: number
+  /** Share of samples inside runs of exact zeros (digital silence from a gate or noise remover), 0..1. */
+  deadSilence: number
+  /** Runs of exact zeros that start, per 10 s. */
+  gateSwitches: number
+  /** How much less gain the quietest speech frames get than the loud ones, dB (above 2: words are being cut off). */
+  wordLossDb: number
+  score: TuneScore
+}
+
+export type TuneMetric = 'speechDb' | 'peakDb' | 'snrDb' | 'tone' | 'spreadDb' | 'deadSilence' | 'wordLossDb'
+
+/** The metric a change was made for: its value right before the change and in the final render. */
+export interface TuneEffect {
+  metric: TuneMetric
+  /** BANDS index, for `tone`. */
+  band?: number
+  before: number
+  after: number
+}
+
+/**
+ * One kept change. `titleMsg` is the reason in plain words (desktop.autotune.reason.*), `changeMsg` the exact change
+ * line ("ReaComp Wet 6 → 14.5 dB"). `reason` is the nearest "Try this" reason, kept so the change is a ValueChange
+ * the engine adapter already applies (compression changes use 'tooLoud'); `stage` says what the tuner did it for.
+ */
+export interface TuneChange extends ValueChange {
+  stage: TuneStage
+  changeMsg: Msg
+  effect: TuneEffect
+}
+
+export type TuneLogEvent = 'info' | 'render' | 'keep' | 'revert' | 'skip'
+
+/** Debug trail, English only (never shown as is). */
+export interface TuneLogEntry {
+  stage: TuneStage
+  event: TuneLogEvent
+  text: string
+  /** Judged score of the render this entry is about. */
+  score?: TuneScore
+}
+
+export interface TuneInput {
+  /** Mono raw mic take: QUIET_SEC of room noise, then speech. */
+  take: Float32Array
+  /** Sample rate of the take and of every render (default 48000). */
+  sampleRate?: number
+  goals: TuneGoals
+  /** The live chain in real units, as it is before tuning. Only switched-on slots with the needed keys are tuned. */
+  chain: readonly ChainSlot[]
+  render: TuneRender
+  /** Before each render: the stage, the render's number (from 1) and the budget. */
+  onProgress?: (stage: TuneStage, pass: number, of: number) => void
+  /** Render budget (default DEFAULT_MAX_RENDERS). */
+  maxRenders?: number
+  /** 0..1: scales the amount's caps (retune 'tooProcessed' on the lightest amount). Default 1. */
+  limit?: number
+  /** Changes of a previous result to start from (retune). They are kept only if they still beat the untouched chain. */
+  start?: readonly TuneChange[]
+  /** The render of `start`, when the caller still has it (the previous result's `processed`): saves one render. */
+  startRender?: Float32Array
+}
+
+export interface TuneResult {
+  /** Kept changes in chain order; empty = the chain is already good (or nothing could help). */
+  changes: TuneChange[]
+  /** The chain as it started. */
+  before: TakeSummary
+  /** The chain with `changes`. */
+  after: TakeSummary
+  /** The render of the chain with `changes`. */
+  processed: Float32Array
+  /** Renders used. */
+  renders: number
+  /** Goals the tuner could not reach, and why. */
+  unmet: Msg[]
+  log: TuneLogEntry[]
+  /** What this run aimed for (retune starts from them). */
+  goals: TuneGoals
+  limit: number
+}
+
+/** What retune() hands to the next tune() call. */
+export type TuneResume = Pick<TuneInput, 'goals' | 'limit' | 'start' | 'startRender'>

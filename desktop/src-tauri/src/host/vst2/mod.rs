@@ -143,6 +143,13 @@ impl Vst2Plugin {
         }
     }
 
+    /// Suspend and resume (effMainsChanged off/on): the plugin clears its processing state (delay lines, envelopes,
+    /// FIR history) and keeps its parameters and chunk. Exclusive.
+    pub fn reset(&self) {
+        self.suspend();
+        self.resume();
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }

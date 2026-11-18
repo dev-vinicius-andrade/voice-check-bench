@@ -11,8 +11,16 @@ import {
   audioStart,
   audioStatus,
   audioStop,
+  desktopBridge,
   engineInfo,
   isDesktop,
+  renderClose,
+  renderExportStates,
+  renderLoadState,
+  renderOpen,
+  renderRun,
+  renderSetBypass,
+  renderSetParam,
   wavelinkBackups,
   wavelinkExport,
   wavelinkPreview,
@@ -119,5 +127,43 @@ describe('wavelink commands', () => {
       ['wavelink_backups'],
       ['wavelink_restore', { path: 'C:/b.json', force: true }],
     ])
+  })
+})
+
+describe('render commands', () => {
+  it('invoke the render_* commands with camelCase arguments', async () => {
+    invoke.mockResolvedValue(null)
+    await renderOpen()
+    await renderSetParam(7, 11, 3.98)
+    await renderSetBypass(9, true)
+    await renderLoadState(6, 'QQ==')
+    await renderExportStates()
+    await renderClose()
+    expect(invoke.mock.calls).toEqual([
+      ['render_open'],
+      ['render_set_param', { slot: 7, id: 11, value: 3.98 }],
+      ['render_set_bypass', { slot: 9, bypassed: true }],
+      ['render_load_state', { slot: 6, parameterState: 'QQ==' }],
+      ['render_export_states'],
+      ['render_close'],
+    ])
+    expect(desktopBridge.renderRun).toBe(renderRun)
+  })
+
+  it('renderRun sends raw little-endian f32 bytes and decodes the raw reply', async () => {
+    const reply = new Float32Array([0.5, -1, 2])
+    invoke.mockResolvedValue(reply.buffer.slice(0))
+    // A view into a larger buffer: only its own samples are sent.
+    const input = new Float32Array([9, 0.25, -0.5, 9]).subarray(1, 3)
+    await expect(renderRun(input)).resolves.toEqual(reply)
+    const [cmd, body] = invoke.mock.calls[0] as [string, Uint8Array]
+    expect(cmd).toBe('render_run')
+    expect(body).toBeInstanceOf(Uint8Array)
+    expect(Array.from(body)).toEqual([0x00, 0x00, 0x80, 0x3e, 0x00, 0x00, 0x00, 0xbf])
+  })
+
+  it('renderRun also decodes a reply of byte values (postMessage IPC)', async () => {
+    invoke.mockResolvedValue([0x00, 0x00, 0x80, 0x3f, 0x00, 0x00, 0x00, 0x00])
+    await expect(renderRun(new Float32Array(2))).resolves.toEqual(new Float32Array([1, 0]))
   })
 })

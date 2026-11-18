@@ -32,7 +32,7 @@ const MIC_KEY = 'vcb-mic'
 const MAINS_KEY = 'vcb-mains'
 const GOAL_KEY = 'vcb-goal'
 const APPLIED_KEY = 'vcb-applied'
-const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'download', 'setup', 'step', 'results', 'guide', 'profiles', 'live', 'desktop']
+const SCREENS: readonly Screen[] = ['home', 'how', 'community', 'privacy', 'download', 'setup', 'step', 'results', 'guide', 'profiles', 'live', 'desktop', 'desktopLive']
 const VIEWS: readonly ChartView[] = ['a', 'ab', 'diff']
 const MIC_KINDS: readonly MicProfile['kind'][] = ['dynamic', 'condenser', 'unknown']
 const MIC_PATTERNS: readonly MicProfile['pattern'][] = ['cardioid', 'supercardioid', 'omni', 'figure8', 'unknown']
@@ -61,6 +61,9 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const idOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
 
+/** Screens of the desktop app only. */
+const DESKTOP_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['desktop', 'desktopLive'])
+
 /** The desktop app always opens on its own screen; the web never shows it. */
 const launchScreen = (): Screen | null => (isDesktop() ? 'desktop' : null)
 
@@ -78,7 +81,7 @@ export function loadUiPrefs(): UiPrefs {
       ? raw.step
       : d.step
   return {
-    screen: launchScreen() ?? SCREENS.find((s) => s === raw.screen && s !== 'desktop') ?? d.screen,
+    screen: launchScreen() ?? SCREENS.find((s) => s === raw.screen && !DESKTOP_SCREENS.has(s)) ?? d.screen,
     step,
     session: typeof raw.session === 'string' && raw.session !== '' ? raw.session : d.session,
     A: idOrNull(raw.A),

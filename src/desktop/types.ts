@@ -163,6 +163,16 @@ export interface AudioFrame {
   processed: Float32Array
 }
 
+// ---- Offline render session (desktop/src-tauri/src/render). Commands reject with an AudioError; `notRunning` = no session open. ----
+
+/** `render_open` result (render/mod.rs RenderStatus): the session's own instance of the Wave Link mic chain. */
+export interface RenderStatus {
+  sampleRate: number
+  /** Delay of the slots that process now; `renderRun` removes it, so its output lines up with its input. */
+  latencySamples: number
+  slots: AudioSlot[]
+}
+
 // ---- Wave Link file (desktop/src-tauri/src/wavelink, PLAN task 40). Commands reject with a WlError ({ code, message }). ----
 
 /** `wavelink_*` command error (wavelink/error.rs WlErrorCode). */

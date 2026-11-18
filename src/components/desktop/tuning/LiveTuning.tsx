@@ -2,6 +2,8 @@ import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
+import { slotAt } from '../../../desktop/advice/chain'
+import { canonicalName } from '../../../wavelink/plugins'
 import { useMsg } from '../../common/MsgText'
 import { AdviceList } from './AdviceList'
 import { ApplyFeedback } from './ApplyFeedback'
@@ -68,7 +70,11 @@ export function LiveTuning() {
           {t('desktop.tune.save')}
         </Button>
       </footer>
-      <SaveDialog flow={s.save} model={chain.model} />
+      <SaveDialog
+        flow={s.save}
+        entries={chain.model?.entries ?? []}
+        nameOf={(i) => canonicalName((chain.model && slotAt(chain.model.undo.chain, i)?.name) ?? '')}
+      />
       <RestoreDialog flow={s.restore} />
     </div>
   )

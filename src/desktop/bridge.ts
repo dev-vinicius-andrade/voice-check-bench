@@ -10,6 +10,7 @@ import type {
   AudioStartOptions,
   AudioStatus,
   EngineInfo,
+  RenderStatus,
   WlBackupInfo,
   WlChainChange,
   WlDiffLine,
@@ -97,6 +98,57 @@ export async function audioExportStates(): Promise<AudioExportedState[]> {
   return call<AudioExportedState[]>('audio_export_states')
 }
 
+// ---- Offline render session (desktop/src-tauri/src/render): a recorded take through the person's real chain, faster
+// than real time, without audio devices. Its own plugin instances: it may run while the engine runs. Commands reject
+// with an AudioError ({ code, message }); `notRunning` means no session is open. ----
+
+/** Open the session on the current Wave Link mic chain (Settings.json is only read); replaces an open one. */
+export async function renderOpen(): Promise<RenderStatus> {
+  return call<RenderStatus>('render_open')
+}
+
+/** Same as `audioSetParam`, on the session's chain; applies from the next `renderRun`. */
+export async function renderSetParam(slot: number, id: number, value: number): Promise<AudioSlot> {
+  return call<AudioSlot>('render_set_param', { slot, id, value })
+}
+
+/** Same as `audioSetBypass`, on the session's chain (a bypassed slot adds no delay to the render). */
+export async function renderSetBypass(slot: number, bypassed: boolean): Promise<AudioSlot> {
+  return call<AudioSlot>('render_set_bypass', { slot, bypassed })
+}
+
+/** Same as `audioLoadState`, on the session's chain. */
+export async function renderLoadState(slot: number, parameterState: string): Promise<AudioSlot> {
+  return call<AudioSlot>('render_load_state', { slot, parameterState })
+}
+
+/** Raw response body → samples (an ArrayBuffer; an array of byte values if the IPC fell back to postMessage). */
+function toSamples(body: ArrayBuffer | number[]): Float32Array {
+  const bytes = Array.isArray(body) ? Uint8Array.from(body) : new Uint8Array(body)
+  return new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 4))
+}
+
+/**
+ * Render mono 48 kHz samples through the session's chain. The result has the input's length and lines up with it
+ * sample by sample (chain latency removed); the same samples and settings always give the same output. Not clamped:
+ * peaks above 1 stay. Samples cross the IPC as raw little-endian f32 bytes (no JSON).
+ */
+export async function renderRun(samples: Float32Array): Promise<Float32Array> {
+  const { invoke } = await import('@tauri-apps/api/core')
+  const body = new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength)
+  return toSamples(await invoke<ArrayBuffer | number[]>('render_run', body))
+}
+
+/** Every hosted slot's current state in the session's chain (same shape as `audioExportStates`). */
+export async function renderExportStates(): Promise<AudioExportedState[]> {
+  return call<AudioExportedState[]>('render_export_states')
+}
+
+/** Close the session and unload its plugins (no-op when none is open). */
+export async function renderClose(): Promise<void> {
+  return call<void>('render_close')
+}
+
 // ---- Wave Link Settings.json (desktop/src-tauri/src/wavelink). Commands reject with a WlError ({ code, message }). ----
 
 /** Settings.json path, hash and inputs with their effect chains (read-only). */
@@ -127,6 +179,19 @@ export async function wavelinkRestore(path: string, force: boolean): Promise<WlF
   return call<WlFlowReport>('wavelink_restore', { path, force })
 }
 
+/** The offline render commands in one object; code that renders takes a `RenderBridge` (a fake in tests). */
+export const renderBridge = {
+  renderOpen,
+  renderSetParam,
+  renderSetBypass,
+  renderLoadState,
+  renderRun,
+  renderExportStates,
+  renderClose,
+}
+
+export type RenderBridge = typeof renderBridge
+
 /** Every command in one object, so screens can take a fake in tests. */
 export const desktopBridge = {
   engineInfo,
@@ -145,6 +210,8 @@ export const desktopBridge = {
   wavelinkExport,
   wavelinkBackups,
   wavelinkRestore,
+  ...renderBridge,
 }
 
+/** What screens take (a fake in tests): every command, the render session's included. */
 export type DesktopBridge = typeof desktopBridge

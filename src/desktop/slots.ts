@@ -138,6 +138,14 @@ export function slotValues(kind: SlotKind, slot: AudioSlot, entry: WlChainEntry 
   return {}
 }
 
+/**
+ * A hosted plugin whose own bypass parameter is on (the engine's rule, render/session.rs): it passes audio through
+ * even while its Wave Link BypassState says on. Elgato Noise Removal's stored state carries its own Bypass = 1 while
+ * Wave Link lists it as on (spike/vst3-probe/FINDINGS.md); the engine loads that state as it is.
+ */
+export const ownBypassOn = (s: AudioSlot): boolean =>
+  s.status.status === 'hosted' && s.status.hasOwnBypass && s.params.some((p) => p.isBypass && p.normalized >= 0.5)
+
 /** The advice chain of the engine's slots; `entries` are the same input's Wave Link entries (by index), if read. */
 export function chainOf(slots: readonly AudioSlot[], entries: readonly WlChainEntry[] | null): ChainSlot[] {
   return slots.map((s) => {

@@ -3,6 +3,7 @@ use serde::Serialize;
 pub mod audio;
 pub mod chain;
 pub mod host;
+pub mod render;
 pub mod wavelink;
 
 /// What the engine reports about itself; proves the JS ↔ Rust bridge (`src/desktop/types.ts` EngineInfo).
@@ -48,13 +49,21 @@ pub fn run() {
             audio::commands::audio_set_gain,
             audio::commands::audio_status,
             audio::commands::audio_export_states,
+            render::commands::render_open,
+            render::commands::render_set_param,
+            render::commands::render_set_bypass,
+            render::commands::render_load_state,
+            render::commands::render_run,
+            render::commands::render_export_states,
+            render::commands::render_close,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Voice Check Bench")
         .run(|_, event| {
-            // Stop the audio streams and unload the plugins before the process goes away.
+            // Stop the audio streams and unload the plugins (engine and render session) before the process goes away.
             if let tauri::RunEvent::Exit = event {
                 audio::commands::shutdown();
+                render::commands::close();
             }
         })
 }

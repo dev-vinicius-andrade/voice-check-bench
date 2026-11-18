@@ -76,6 +76,14 @@ function fakeBridge(dryAmp = 0) {
       { path: 'C:/b1.json', name: 'Settings.before-1.json', modifiedMs: 1e12, size: 10 },
     ]),
     wavelinkRestore: vi.fn(async () => ({ ...REPORT, forced: false, restoredFrom: 'C:/b1.json' })),
+    // the offline render session is not used by the live screen
+    renderOpen: vi.fn(async () => ({ sampleRate: 48000, latencySamples: 0, slots: status.slots })),
+    renderSetParam: vi.fn(async (slot: number) => slotReply(slot)),
+    renderSetBypass: vi.fn(async (slot: number) => slotReply(slot)),
+    renderLoadState: vi.fn(async (slot: number) => slotReply(slot)),
+    renderRun: vi.fn(async (samples: Float32Array) => samples.slice()),
+    renderExportStates: vi.fn(async () => []),
+    renderClose: vi.fn(async () => undefined),
   }
   const push = (frames: AudioFrame[]) => act(() => frames.forEach((f) => onFrame?.(f)))
   return { bridge, push }
@@ -84,7 +92,7 @@ function fakeBridge(dryAmp = 0) {
 const view = (bridge: DesktopBridge) =>
   render(
     <ThemeProvider theme={theme}>
-      <DesktopScreen bridge={bridge} />
+      <DesktopScreen bridge={bridge} page="live" />
     </ThemeProvider>,
   )
 

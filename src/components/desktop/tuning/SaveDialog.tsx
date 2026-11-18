@@ -6,24 +6,29 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
-import { slotAt } from '../../../desktop/advice/chain'
 import { describeDiff } from '../../../desktop/diffLines'
-import { canonicalName } from '../../../wavelink/plugins'
+import type { WlChainEntry } from '../../../desktop/types'
 import { useMsg } from '../../common/MsgText'
 import { FlowReportView } from './FlowReportView'
-import type { ChainModel } from './useChainState'
 import type { SaveFlow } from './useSaveFlow'
 
+interface SaveDialogProps {
+  flow: SaveFlow
+  /** The Wave Link entries the changes apply to (the diff lines are described per plugin field). */
+  entries: readonly WlChainEntry[]
+  /** Short plugin name of a slot, for the "can't be saved" note. */
+  nameOf: (slot: number) => string
+}
+
 /** Diff, confirm, save; when Wave Link does not close it asks again before forcing it; then the verify result. */
-export function SaveDialog({ flow, model }: { flow: SaveFlow; model: ChainModel | null }) {
+export function SaveDialog({ flow, entries, nameOf }: SaveDialogProps) {
   const { t } = useTranslation()
   const tm = useMsg()
   const s = flow.state
   const busy = s.step === 'loading' || s.step === 'saving'
   const asking = s.step === 'confirm' || s.step === 'force' || s.step === 'saving'
   const plan = asking ? s.plan : null
-  const lines = s.step === 'confirm' ? describeDiff(s.lines, s.plan.changes, model?.entries ?? []) : []
-  const name = (i: number): string => canonicalName((model && slotAt(model.undo.chain, i)?.name) ?? '')
+  const lines = s.step === 'confirm' ? describeDiff(s.lines, s.plan.changes, entries) : []
   return (
     <Dialog open={s.step !== 'closed'} onClose={busy ? undefined : flow.close} maxWidth="sm" fullWidth aria-labelledby="tune-save-title">
       <DialogTitle id="tune-save-title">{t('desktop.save.title')}</DialogTitle>
@@ -47,7 +52,7 @@ export function SaveDialog({ flow, model }: { flow: SaveFlow; model: ChainModel 
           ))}
         {s.step === 'confirm' && s.plan.unsaved.length > 0 && (
           <Alert severity="warning" data-testid="tune-save-unsaved">
-            {s.plan.unsaved.map((i) => t('desktop.save.unsaved', { plugin: name(i) })).join(' ')}
+            {s.plan.unsaved.map((i) => t('desktop.save.unsaved', { plugin: nameOf(i) })).join(' ')}
           </Alert>
         )}
         {s.step === 'force' && <Alert severity="warning">{t('desktop.save.force')}</Alert>}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { DesktopBridge } from '../../../desktop/bridge'
 import { errorCode, errorMsg } from '../../../desktop/errors'
 import { exportPlan, type ExportPlan } from '../../../desktop/exportPlan'
@@ -23,36 +23,63 @@ export interface SaveFlow {
   close(): void
 }
 
-/** "Save to Wave Link": diff (wavelink_preview) → confirm → export, with a second confirmation to force-close Wave Link. */
-export function useSaveFlow(bridge: DesktopBridge, model: ChainModel | null, onSaved: (snap: WlSnapshot) => void): SaveFlow {
+/** What to write and the Settings.json hash it was planned against (wavelink_export refuses a file changed since). */
+export interface SavePlan {
+  plan: ExportPlan
+  hash: string
+}
+
+/**
+ * The Save state machine for any plan: `prepare` (→ diff via wavelink_preview) → confirm → export, with a second
+ * confirmation to force-close Wave Link; `onDone` gets the report of a finished export.
+ */
+export function useExportFlow(
+  bridge: Pick<DesktopBridge, 'wavelinkPreview' | 'wavelinkExport'>,
+  prepare: () => Promise<SavePlan>,
+  onDone?: (report: WlFlowReport) => void,
+): SaveFlow {
   const [state, setState] = useState<SaveStep>({ step: 'closed' })
+  const hash = useRef('')
 
   const open = async (): Promise<void> => {
-    if (!model?.entries || !model.inputKey) return
     setState({ step: 'loading' })
-    // Elgato states come from the engine; when it is stopped they cannot be read and are listed as not saved
-    const exported = await bridge.audioExportStates().catch(() => null)
-    const plan = exportPlan(model.inputKey, model.start, model.undo.chain, model.slots, model.entries, exported)
     try {
-      const lines = plan.changes.length ? await bridge.wavelinkPreview(plan.changes) : []
-      setState({ step: 'confirm', plan, lines })
+      const p = await prepare()
+      hash.current = p.hash
+      const lines = p.plan.changes.length ? await bridge.wavelinkPreview(p.plan.changes) : []
+      setState({ step: 'confirm', plan: p.plan, lines })
     } catch (e) {
       setState({ step: 'error', msg: errorMsg(e) })
     }
   }
 
   const confirm = async (force: boolean): Promise<void> => {
-    if ((state.step !== 'confirm' && state.step !== 'force') || !model?.hash) return
+    if ((state.step !== 'confirm' && state.step !== 'force') || !hash.current) return
     const { plan } = state
     setState({ step: 'saving', plan })
     try {
-      const report = await bridge.wavelinkExport(plan.changes, model.hash, force)
+      const report = await bridge.wavelinkExport(plan.changes, hash.current, force)
       setState({ step: 'done', report })
-      bridge.wavelinkRead().then(onSaved, () => undefined)
+      onDone?.(report)
     } catch (e) {
       setState(errorCode(e) === 'closeTimeout' && !force ? { step: 'force', plan } : { step: 'error', msg: errorMsg(e) })
     }
   }
 
   return { state, open, confirm, close: () => setState({ step: 'closed' }) }
+}
+
+/** "Save to Wave Link" of the live chain: the engine's state export → exportPlan, then useExportFlow; re-reads the file after. */
+export function useSaveFlow(bridge: DesktopBridge, model: ChainModel | null, onSaved: (snap: WlSnapshot) => void): SaveFlow {
+  const flow = useExportFlow(
+    bridge,
+    async () => {
+      if (!model?.entries || !model.inputKey) throw new Error('no Wave Link chain')
+      // Elgato states come from the engine; when it is stopped they cannot be read and are listed as not saved
+      const exported = await bridge.audioExportStates().catch(() => null)
+      return { plan: exportPlan(model.inputKey, model.start, model.undo.chain, model.slots, model.entries, exported), hash: model.hash ?? '' }
+    },
+    () => void bridge.wavelinkRead().then(onSaved, () => undefined),
+  )
+  return { ...flow, open: () => (model?.entries && model.inputKey ? flow.open() : Promise.resolve()) }
 }

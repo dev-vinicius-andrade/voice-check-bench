@@ -53,6 +53,237 @@
       "conflict": "That value was changed after you applied this, so Undo would overwrite your change. Set it back with its slider instead.",
       "missing": "That effect or value isn't in the chain any more."
     },
+    "autotune": {
+      "reason": {
+        "level": {
+          "up": "Your voice was quiet ({{from, number(maximumFractionDigits: 1)}} dBFS): the compressor's Wet, its make-up gain, goes up {{db, number(maximumFractionDigits: 1)}} dB so your speech sits near {{target, number(maximumFractionDigits: 1)}} dBFS.",
+          "down": "Your voice was too loud ({{from, number(maximumFractionDigits: 1)}} dBFS): the compressor's Wet comes down {{db, number(maximumFractionDigits: 1)}} dB so your speech sits near {{target, number(maximumFractionDigits: 1)}} dBFS.",
+          "peaks": "Your loudest moments were too close to clipping (peak {{peak, number(maximumFractionDigits: 1)}} dBFS): the compressor's Wet comes down {{db, number(maximumFractionDigits: 1)}} dB to leave room.",
+          "gateFollows": "ReaGate comes after the compressor: its Threshold moves {{db, number(maximumFractionDigits: 1)}} dB with the Wet, so the gate still closes in the pauses and stays open on your words."
+        },
+        "trim": {
+          "up": "The other changes left your voice at {{from, number(maximumFractionDigits: 1)}} dBFS: the compressor's Wet goes up {{db, number(maximumFractionDigits: 1)}} dB so your speech is back near {{target, number(maximumFractionDigits: 1)}} dBFS.",
+          "down": "The other changes left your voice at {{from, number(maximumFractionDigits: 1)}} dBFS: the compressor's Wet comes down {{db, number(maximumFractionDigits: 1)}} dB so your speech is back near {{target, number(maximumFractionDigits: 1)}} dBFS."
+        },
+        "gateDoubled": "ReaGate's Dry was at {{from, number(maximumFractionDigits: 1)}} dB with Wet open, so your voice passed twice and the pauses were not reduced: Dry goes to {{to, number(maximumFractionDigits: 1)}} dB.",
+        "dead": {
+          "gateDry": "The gate cut your pauses to dead silence: its Dry goes to {{to, number(maximumFractionDigits: 1)}} dB, so pauses stay quiet instead of dead.",
+          "strength": "The noise removal was cutting into your voice or leaving dead silence in the pauses: its strength comes down.",
+          "threshold": "The gate was closing on your quiet words: its Threshold goes {{db, number(maximumFractionDigits: 1)}} dB lower so it opens earlier."
+        },
+        "noise": {
+          "strength": "Your pauses carried room noise (your voice was only {{snr, number(maximumFractionDigits: 1)}} dB above it): the noise removal gets stronger.",
+          "threshold": "The gate stayed open between your words: its Threshold goes up to {{to, number(maximumFractionDigits: 1)}} dB so it closes in the pauses."
+        },
+        "tone": {
+          "high": {
+            "boom": "Too much boom (80–160 Hz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Your voice sounded thick (160–320 Hz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Your voice sounded muddy or boxy (320–640 Hz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB.",
+            "body": "Your voice sounded honky (640 Hz–1.25 kHz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB.",
+            "definition": "Your voice sounded nasal (1.25–2.5 kHz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Your voice sounded harsh (2.5–5 kHz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Your S sounds were sharp (5–10 kHz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB.",
+            "air": "Too much hiss on top (10–16 kHz): this EQ band comes down {{db, number(maximumFractionDigits: 1)}} dB."
+          },
+          "low": {
+            "boom": "Your voice lacked bass (80–160 Hz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
+            "warmth": "Your voice sounded thin (160–320 Hz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
+            "mud": "Your voice sounded hollow (320–640 Hz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
+            "body": "Your voice lacked body (640 Hz–1.25 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
+            "definition": "Your voice lacked definition (1.25–2.5 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
+            "presence": "Your voice sounded dull or far away (2.5–5 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
+            "sibilance": "Your voice lacked crispness (5–10 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB.",
+            "air": "Your voice lacked air (10–16 kHz): this EQ band goes up {{db, number(maximumFractionDigits: 1)}} dB."
+          }
+        },
+        "comp": {
+          "ratio": "Your volume swung {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments: the compressor's Ratio goes to {{to, number(maximumFractionDigits: 1)}}:1 so it evens them out more.",
+          "threshold": "Your volume swung {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments: the compressor's Threshold goes down to {{to, number(maximumFractionDigits: 1)}} dB so it starts working earlier."
+        }
+      },
+      "unmet": {
+        "notEnoughSpeech": "There isn't enough speech in this recording to tune on. Record again: stay quiet for 3 seconds, then talk for about 20.",
+        "silent": "Nothing of your voice comes out of the chain: an effect is cutting everything. Switch effects off one at a time to find it, then run this again.",
+        "clipped": "The recording itself clips ({{count, number}} samples at full scale). Effects can't repair that: lower your mic gain and record again.",
+        "level": {
+          "noToolQuiet": "Your voice ends {{db, number(maximumFractionDigits: 1)}} dB under the target and no compressor is switched on to make it up: switch ReaComp on, or raise your mic gain.",
+          "noToolLoud": "Your voice ends {{db, number(maximumFractionDigits: 1)}} dB over the target and no compressor is switched on to bring it down: lower your mic gain.",
+          "capQuiet": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB under the target with the compressor's Wet as high as it goes: raise your mic gain.",
+          "capLoud": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB over the target with the compressor's Wet as low as it goes: lower your mic gain.",
+          "peaks": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB under the target: any louder and your loudest moments would clip.",
+          "held": "Your voice is still {{db, number(maximumFractionDigits: 1)}} dB away from the target: moving the compressor's Wet further made the rest measure worse (an effect after it reacts to the level), so it stays here. Adjust your mic gain instead."
+        },
+        "dead": "Your pauses still drop to dead silence. Another effect is cutting the sound: switch effects off one at a time to find it.",
+        "chopped": "Quiet words are still being cut off. Another effect is cutting the sound: switch effects off one at a time to find it.",
+        "noise": {
+          "noTool": "Your voice is only {{snr, number(maximumFractionDigits: 1)}} dB above the room noise ({{target, number(maximumFractionDigits: 1)}} wanted) and nothing in your chain can reduce it: add Elgato Noise Removal, or move closer to the mic.",
+          "limit": "Your voice is still only {{snr, number(maximumFractionDigits: 1)}} dB above the room noise ({{target, number(maximumFractionDigits: 1)}} wanted). More removal would cut into your voice or go past the amount you chose: move closer to the mic or quiet the room."
+        },
+        "tone": {
+          "noEq": "Your chain has no EQ switched on, so the tone can't be changed: add ReaEQ.",
+          "noBand": "No band in your ReaEQ reaches {{lo, number}}–{{hi, number}} Hz: add a band there.",
+          "sharpS": "Your S sounds are still {{db, number(maximumFractionDigits: 1)}} dB too strong. The EQ bands in your chain barely reach them (5–10 kHz): switch on a De-Esser, or add a ReaEQ band around 6–7 kHz.",
+          "limitHigh": "{{lo, number}}–{{hi, number}} Hz is still {{db, number(maximumFractionDigits: 1)}} dB above your target. The EQ can't take more off without overdoing it or hurting other parts of your voice.",
+          "limitLow": "{{lo, number}}–{{hi, number}} Hz is still {{db, number(maximumFractionDigits: 1)}} dB under your target. The EQ can't add more without overdoing it or lifting room noise."
+        },
+        "spread": {
+          "noComp": "Your volume swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted) and no compressor is switched on: switch ReaComp on.",
+          "limit": "Your volume still swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted). More compression didn't help or would lift the room noise: keep the same distance to the mic."
+        },
+        "budget": "Stopped after {{renders, number}} test runs. Run it again to keep going from here."
+      },
+      "ui": {
+        "nav": {
+          "label": "Desktop app screens",
+          "record": "Tune from a recording",
+          "live": "Fine-tune live"
+        },
+        "title": "Make your mic sound better",
+        "subtitle": "Record your voice once, say what you want, and the app tunes your own Wave Link effects on that recording.",
+        "steps": {
+          "label": "Steps",
+          "record": "Record",
+          "goals": "What you want",
+          "tuning": "Tuning",
+          "result": "Listen and save"
+        },
+        "record": {
+          "title": "Record your raw mic",
+          "lead": "About 25 seconds: stay quiet for 3 seconds so the app hears your room, then read the text out loud. Your effects aren't used here, and nothing plays back while you record.",
+          "mic": "Microphone",
+          "start": "Start recording",
+          "starting": "Starting…",
+          "quiet": "Stay quiet, the app is listening to your room… {{sec, number}}",
+          "talk": "Now read this out loud, at your usual voice and distance:",
+          "keepTalking": "Finished the text? Keep talking about anything until the bar is full.",
+          "progress": "{{sec, number}} of {{total, number}} seconds",
+          "level": "Mic level",
+          "stop": "Stop",
+          "stopHint": "You can stop after {{sec, number}} seconds.",
+          "checking": "Checking your recording…",
+          "or": "Or use a recording you already have:",
+          "wav": "Use a WAV file",
+          "wavHint": "Your raw mic without effects: 3 seconds of quiet first, then at least 10 seconds of talking.",
+          "again": "Record again",
+          "problem": {
+            "gap": "Some of the audio got lost while recording (the computer was too busy), so this take has gaps. Record again.",
+            "clipped": "Your recording is too loud: it hits the top of the scale (clipping), and effects can't repair that. Turn your mic gain down a little and record again.",
+            "quietBroken": "We heard sound during the first 3 seconds, so the app can't tell what your room sounds like. Record again and stay quiet until the countdown ends.",
+            "tooShort": "This recording is too short. It needs 3 seconds of quiet and then at least 10 seconds of talking.",
+            "silent": "We only got silence. Pick the microphone you talk into and try again.",
+            "tooQuiet": "Your voice barely reached the mic. Turn up your mic gain or move closer, then record again.",
+            "noisyPause": "The quiet part was almost as loud as your talking. Stay silent until the countdown ends, and pause music or calls on this mic.",
+            "notEnoughSpeech": "There wasn't enough talking. Read the whole text after the countdown and keep going until the bar is full.",
+            "notWav": "This isn't a WAV file. Pick a .wav recording.",
+            "format": "This WAV format isn't supported. Use a mono or stereo WAV (16, 24 or 32-bit)."
+          }
+        },
+        "goals": {
+          "title": "What do you want?",
+          "use": "Used for",
+          "uses": {
+            "streaming": "Streaming",
+            "calls": "Calls",
+            "recording": "Recording"
+          },
+          "style": "Sound",
+          "bothers": "What bothers you (pick any, or none)",
+          "bother": {
+            "roomNoise": "Room noise",
+            "boomy": "Boomy",
+            "muffled": "Muffled",
+            "thin": "Thin",
+            "harsh": "Harsh",
+            "sharpS": "Sharp S sounds",
+            "dull": "Dull",
+            "tooQuiet": "Too quiet",
+            "unevenVolume": "Uneven volume"
+          },
+          "amount": "Processing",
+          "amountHint": "How far the app may move your effects from where they are now.",
+          "tune": "Tune my effects",
+          "back": "Back"
+        },
+        "tuning": {
+          "title": "Tuning your effects",
+          "lead": "The app plays your recording through your own effects, tries changes and keeps only the ones that measure better. Wave Link isn't changed.",
+          "baseline": "Listening to your recording through your effects as they are now…",
+          "stages": {
+            "level": "Level",
+            "noise": "Noise and gate",
+            "tone": "Tone",
+            "compression": "Compression",
+            "trim": "Final level"
+          },
+          "done": "Done",
+          "waiting": "Waiting",
+          "pass": "Pass {{n, number}} of {{of, number}}…",
+          "cancel": "Cancel",
+          "failed": "Tuning didn't work",
+          "retry": "Try again",
+          "back": "Back"
+        },
+        "result": {
+          "title": "Listen and save",
+          "listen": "Compare on the same recording",
+          "abHint": "Switch while it plays to hear the same moment before and after.",
+          "before": "Before",
+          "after": "After",
+          "play": "Play",
+          "pause": "Pause",
+          "noAudio": "Playback isn't available here.",
+          "metrics": {
+            "title": "What changed",
+            "label": "Before and after",
+            "speech": "Voice level",
+            "peak": "Loudest moment",
+            "noise": "Room noise in pauses",
+            "snr": "Voice over room (SNR: how far your voice stands above the room)",
+            "spread": "Steadiness (difference between loud and quiet moments)",
+            "band": "Tone: {{band}} (distance from your target)",
+            "better": "Better",
+            "worse": "Worse",
+            "same": "About the same"
+          },
+          "bands": {
+            "rumble": "rumble, 40–80 Hz",
+            "boom": "boom, 80–160 Hz",
+            "warmth": "warmth, 160–320 Hz",
+            "mud": "mud, 320–640 Hz",
+            "body": "body, 640 Hz–1.25 kHz",
+            "definition": "definition, 1.25–2.5 kHz",
+            "presence": "presence, 2.5–5 kHz",
+            "sibilance": "S sounds, 5–10 kHz",
+            "air": "air, 10–16 kHz"
+          },
+          "changes_one": "{{count, number}} change, each with its reason",
+          "changes_other": "{{count, number}} changes, each with its reason",
+          "effect": {
+            "speechDb": "Measured: voice level {{before}} → {{after}}",
+            "peakDb": "Measured: loudest moment {{before}} → {{after}}",
+            "snrDb": "Measured: voice over room {{before}} → {{after}}",
+            "tone": "Measured: {{band}} {{before}} → {{after}} from your target",
+            "spreadDb": "Measured: steadiness {{before}} → {{after}}",
+            "deadSilence": "Measured: dead silence {{before}} → {{after}} of the recording",
+            "wordLossDb": "Measured: quiet words cut by {{before}} → {{after}}"
+          },
+          "none": "Your sound already meets these goals: nothing in your effects needs to change.",
+          "unmet": "What it could not do",
+          "showAll": "Show all ({{count, number}})",
+          "showFewer": "Show fewer",
+          "save": "Save to Wave Link",
+          "adjust": "Not right, adjust",
+          "again": "Record again",
+          "adjustTitle": "What's still not right?",
+          "tooProcessed": "Too processed",
+          "retune": "Tune again",
+          "cancelAdjust": "Cancel",
+          "saved": "Saved. Wave Link now uses these settings.",
+          "fineTune": "Fine-tune live"
+        }
+      }
+    },
     "tune": {
       "idle": "Pick your mic and headphones, then press Start. Nothing changes in Wave Link until you save.",
       "talk": "Talk normally, as if you were streaming. The numbers fill in after a second or two.",

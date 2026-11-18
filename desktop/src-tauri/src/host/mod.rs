@@ -234,6 +234,15 @@ impl Plugin {
         }
     }
 
+    /// Clear the processing state (delay lines, envelopes, adaptive estimates) as a host does on stop/start, keeping
+    /// parameters and state: VST2 suspend + resume, VST3 deactivate + activate. Exclusive; host thread.
+    pub fn reset(&self) {
+        match self {
+            Plugin::Vst2(p) => p.reset(),
+            Plugin::Vst3(p) => p.reset(),
+        }
+    }
+
     /// Whether changes need [`SETTLE`] of message pumping before the output is trustworthy (VST3).
     pub fn needs_settle(&self) -> bool {
         matches!(self, Plugin::Vst3(_))
