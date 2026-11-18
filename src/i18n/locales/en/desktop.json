@@ -169,7 +169,7 @@
           "problem": {
             "gap": "Some of the audio got lost while recording (the computer was too busy), so this take has gaps. Record again.",
             "clipped": "Your recording is too loud: it hits the top of the scale (clipping), and effects can't repair that. Turn your mic gain down a little and record again.",
-            "quietBroken": "We heard sound during the first 3 seconds, so the app can't tell what your room sounds like. Record again and stay quiet until the countdown ends.",
+            "quietBroken": "It sounds like you talked during the first 3 seconds, so the app can't tell your room from your voice. Record again and stay quiet until the countdown ends.",
             "tooShort": "This recording is too short. It needs 3 seconds of quiet and then at least 10 seconds of talking.",
             "silent": "We only got silence. Pick the microphone you talk into and try again.",
             "tooQuiet": "Your voice barely reached the mic. Turn up your mic gain or move closer, then record again.",

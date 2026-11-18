@@ -169,7 +169,7 @@
           "problem": {
             "gap": "Parte do áudio se perdeu durante a gravação (o computador estava ocupado demais), então esta gravação tem falhas. Grave de novo.",
             "clipped": "Sua gravação está alta demais: ela bate no topo da escala (clipping), e efeitos não consertam isso. Baixe um pouco o ganho do microfone e grave de novo.",
-            "quietBroken": "Ouvimos som nos primeiros 3 segundos, então o app não sabe como o seu ambiente soa. Grave de novo e fique em silêncio até a contagem acabar.",
+            "quietBroken": "Parece que você falou nos primeiros 3 segundos, então o app não consegue separar o ambiente da sua voz. Grave de novo e fique em silêncio até a contagem acabar.",
             "tooShort": "Esta gravação é curta demais. Ela precisa de 3 segundos de silêncio e depois pelo menos 10 segundos de fala.",
             "silent": "Só veio silêncio. Escolha o microfone em que você fala e tente de novo.",
             "tooQuiet": "Sua voz quase não chegou ao microfone. Aumente o ganho do microfone ou chegue mais perto, depois grave de novo.",

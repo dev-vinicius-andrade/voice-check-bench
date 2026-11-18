@@ -5,6 +5,7 @@ import { testTake } from '../tune/testTake'
 import { AUTOTUNE_GOALS_KEY, DEFAULT_TUNE_GOALS, loadTuneGoals, parseTuneGoals, saveTuneGoals, toggleBother } from './goals'
 import { RECORD_SEC, TakeRecorder } from './recorder'
 import { forPlayback, metricRows } from './results'
+import { prepareTake } from '../tune/measure'
 import { checkTake } from './takeCheck'
 import { testFrames } from './testRecording'
 import { encodeWav, framesOf } from './testWav'
@@ -129,6 +130,20 @@ describe('TakeRecorder', () => {
 describe('checkTake', () => {
   it('accepts a quiet lead then talking', () => {
     expect(checkTake(testTake({ quietSec: 3, speechSec: 20 }))).toBeNull()
+  })
+
+  it('accepts a loud, uneven room in the quiet lead: only talking over it asks for a new recording', () => {
+    // the room is at −45 dBFS during the lead and the talking (voice at −24), then drops to −60 for the last seconds
+    // (a fan cycling off): the lead is far louder than the quietest part of the take, which analyze() flags
+    const loudRoom = testTake({ quietSec: 3, speechSec: 17, noiseDb: -45 })
+    const calmRoom = testTake({ quietSec: 4, speechSec: 0, noiseDb: -60 })
+    const take = new Float32Array(loudRoom.length + calmRoom.length)
+    take.set(loudRoom)
+    take.set(calmRoom, loudRoom.length)
+    expect(prepareTake(take)?.analysis.quietBroken).toBe(true)
+    expect(checkTake(take)).toBeNull()
+    // the same room, but talking starts after half a second
+    expect(checkTake(testTake({ quietSec: 0.5, speechSec: 20, noiseDb: -45 }))).toBe('quietBroken')
   })
 
   it('names what is wrong', () => {
