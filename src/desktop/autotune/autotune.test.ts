@@ -6,7 +6,7 @@ import { AUTOTUNE_GOALS_KEY, DEFAULT_TUNE_GOALS, loadTuneGoals, parseTuneGoals, 
 import { RECORD_SEC, TakeRecorder } from './recorder'
 import { forPlayback, metricRows } from './results'
 import { prepareTake } from '../tune/measure'
-import { checkTake } from './takeCheck'
+import { checkTake, quietTalkedOver } from './takeCheck'
 import { testFrames } from './testRecording'
 import { encodeWav, framesOf } from './testWav'
 import { decodeWav, resampleLinear } from './wavDecode'
@@ -144,6 +144,22 @@ describe('checkTake', () => {
     expect(checkTake(take)).toBeNull()
     // the same room, but talking starts after half a second
     expect(checkTake(testTake({ quietSec: 0.5, speechSec: 20, noiseDb: -45 }))).toBe('quietBroken')
+  })
+
+  it('a steady room close to the voice in the quiet lead is a noisy room, not talking (user-reported)', () => {
+    // hot mic gain: the room sits 7 dB under the voice, steadily, and nobody talks in the lead
+    const take = testTake({ quietSec: 3, speechSec: 20, speechDb: -28, noiseDb: -35 })
+    const speech = prepareTake(take)?.analysis.speechMed ?? NaN
+    expect(quietTalkedOver(take, SR, speech)).toBe(false)
+    expect(checkTake(take)).not.toBe('quietBroken')
+    // a 150 ms knock at the voice's level in the lead is not talking either…
+    const knock = take.slice()
+    knock.set(take.subarray(SR * 5, SR * 5 + Math.round(0.15 * SR)), SR)
+    expect(quietTalkedOver(knock, SR, speech)).toBe(false)
+    // …a word of 0.6 s is
+    const word = take.slice()
+    word.set(take.subarray(SR * 5, SR * 5 + Math.round(0.6 * SR)), SR)
+    expect(quietTalkedOver(word, SR, speech)).toBe(true)
   })
 
   it('names what is wrong', () => {
