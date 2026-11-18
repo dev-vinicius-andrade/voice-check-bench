@@ -5,6 +5,7 @@
 import { TONE_BANDS, TONE_MAX_DB } from '../../live/hints'
 import { CONFIRM_DB } from '../../plain/perceived'
 import { HARSH_K } from '../../plain/refine'
+import { isNotch } from '../../settings/suggest'
 import type { PerceivedIssue, VoiceGoal } from '../../types'
 import type { EqTypeName } from '../../wavelink/fxp'
 import { eqBands, eqKey, slotsWith, type EqBandView } from './chain'
@@ -39,6 +40,8 @@ function findBand(chain: readonly ChainSlot[], type: EqTypeName, freq: number): 
   for (const slot of slotsWith(chain, 'reaeq')) {
     for (const band of eqBands(slot)) {
       if (!band.on || band.type !== type || !(band.freqHz > 0) || !Number.isFinite(band.gainDb)) continue
+      // a narrow cut (a steady tone cut on the live spectrum) is not a tone band, however near it sits
+      if (isNotch({ type: band.type, bw: band.bwOct })) continue
       const dist = Math.abs(Math.log2(band.freqHz / freq))
       if (dist <= BAND_MATCH_OCT && (!best || dist < best.dist)) best = { slot, band, dist }
     }

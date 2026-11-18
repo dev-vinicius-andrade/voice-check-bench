@@ -47,7 +47,10 @@
         "ratio": "{{plugin}} Ratio {{from, number(maximumFractionDigits: 1)}}:1 → {{to, number(maximumFractionDigits: 1)}}:1",
         "hz": "{{plugin}} Band {{n}} {{from, number}} → {{to, number}} Hz",
         "on": "{{plugin}} ligado",
-        "off": "{{plugin}} desligado"
+        "off": "{{plugin}} desligado",
+        "oct": "{{plugin}} Band {{n}} largura {{from, number(maximumFractionDigits: 2)}} → {{to, number(maximumFractionDigits: 2)}} oct",
+        "bandOn": "{{plugin}} Band {{n}} ligada",
+        "bandOff": "{{plugin}} Band {{n}} desligada"
       },
       "undo": "Voltar como estava.",
       "conflict": "Esse valor mudou depois que você aplicou isto, então Desfazer apagaria sua mudança. Volte o valor pelo controle deslizante.",
@@ -446,6 +449,41 @@
         "processed": "Com efeitos",
         "raw": "Só o mic",
         "target": "Alvo {{db}} dBFS"
+      },
+      "spectrum": {
+        "title": "Espectro ao vivo",
+        "idle": "Aperte Iniciar para ver o espectro.",
+        "noEq": "Ligue o ReaEQ para moldar a curva aqui.",
+        "aria": "Espectro da sua voz de 20 Hz a 20 kHz: o microfone puro e como você ouve, com a curva do ReaEQ e as bandas dele.",
+        "readout": "{{hz}} · {{level}} como você ouve",
+        "legend": {
+          "raw": "Microfone puro",
+          "processed": "Como você ouve",
+          "eq": "Curva do EQ",
+          "tone": "Tom constante"
+        },
+        "band": "Banda {{n}}",
+        "handle": "Banda {{n}}, {{hz}}, {{db}}",
+        "handleText": "{{hz}}, {{db}}, largura {{oct}} oct",
+        "fields": {
+          "freq": "Frequência (Hz)",
+          "gain": "Ganho (dB)",
+          "width": "Largura (oct)",
+          "on": "Ligada"
+        },
+        "tones": {
+          "listening": "Procurando tons constantes…",
+          "none": "Nenhum tom constante encontrado.",
+          "tone": "Tom constante em {{hz}}",
+          "over": "{{db}} dB acima do entorno",
+          "cut": "Cortar",
+          "cutAria": "Cortar o tom constante em {{hz}}",
+          "cutWith": "Cortado com a banda {{n}}",
+          "undo": "Desfazer",
+          "undoAria": "Desfazer o corte em {{hz}}",
+          "noBand": "Nenhuma banda do ReaEQ livre: deixe o ganho de uma banda em 0 para usá-la no corte.",
+          "cutTitle": "Cortar o tom constante em {{hz}}."
+        }
       },
       "try": {
         "title": "Experimente",

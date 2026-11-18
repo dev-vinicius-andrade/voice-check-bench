@@ -47,7 +47,10 @@
         "ratio": "{{plugin}} Ratio {{from, number(maximumFractionDigits: 1)}}:1 → {{to, number(maximumFractionDigits: 1)}}:1",
         "hz": "{{plugin}} Band {{n}} {{from, number}} → {{to, number}} Hz",
         "on": "{{plugin}} on",
-        "off": "{{plugin}} off"
+        "off": "{{plugin}} off",
+        "oct": "{{plugin}} Band {{n}} width {{from, number(maximumFractionDigits: 2)}} → {{to, number(maximumFractionDigits: 2)}} oct",
+        "bandOn": "{{plugin}} Band {{n}} on",
+        "bandOff": "{{plugin}} Band {{n}} off"
       },
       "undo": "Put it back the way it was.",
       "conflict": "That value was changed after you applied this, so Undo would overwrite your change. Set it back with its slider instead.",
@@ -445,6 +448,41 @@
         "processed": "With effects",
         "raw": "Mic alone",
         "target": "Target {{db}} dBFS"
+      },
+      "spectrum": {
+        "title": "Live spectrum",
+        "idle": "Press Start to see the spectrum.",
+        "noEq": "Switch ReaEQ on to shape the curve here.",
+        "aria": "Spectrum of your voice from 20 Hz to 20 kHz: the mic alone and as you hear it, with the ReaEQ curve and its bands.",
+        "readout": "{{hz}} · {{level}} as you hear it",
+        "legend": {
+          "raw": "Mic alone",
+          "processed": "As you hear it",
+          "eq": "EQ curve",
+          "tone": "Steady tone"
+        },
+        "band": "Band {{n}}",
+        "handle": "Band {{n}}, {{hz}}, {{db}}",
+        "handleText": "{{hz}}, {{db}}, width {{oct}} oct",
+        "fields": {
+          "freq": "Frequency (Hz)",
+          "gain": "Gain (dB)",
+          "width": "Width (oct)",
+          "on": "On"
+        },
+        "tones": {
+          "listening": "Listening for steady tones…",
+          "none": "No steady tone found.",
+          "tone": "Steady tone at {{hz}}",
+          "over": "{{db}} dB over its surroundings",
+          "cut": "Cut",
+          "cutAria": "Cut the steady tone at {{hz}}",
+          "cutWith": "Cut with band {{n}}",
+          "undo": "Undo",
+          "undoAria": "Undo the cut at {{hz}}",
+          "noBand": "No free ReaEQ band: set one band's gain to 0 to use it for the cut.",
+          "cutTitle": "Cut the steady tone at {{hz}}."
+        }
       },
       "try": {
         "title": "Try this",

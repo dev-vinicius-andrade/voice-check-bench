@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sameValue, slotAt, withChange } from '../../../desktop/advice/chain'
-import type { Advice, Change } from '../../../desktop/advice/types'
+import type { Advice, Change, ValueChange } from '../../../desktop/advice/types'
 import { apply, setChain, undo } from '../../../desktop/advice/undo'
 import type { DesktopBridge } from '../../../desktop/bridge'
 import { changeLineMsg } from '../../../desktop/changeMsg'
@@ -51,29 +51,62 @@ export function useChainState(bridge: DesktopBridge, markChange: (m: Msg) => voi
     setLastChange(nowMs())
   }
 
+  // a batch or a commit may come from a stream frame before the last one rendered: it builds on what the last one left
+  const latest = useRef({ model, applied })
+  useEffect(() => {
+    latest.current = { model, applied }
+  }, [model, applied])
+
+  /**
+   * Values being dragged and not released yet, per slot: a preview of one key carries the others (a ReaEQ handle moves
+   * frequency and gain at once, and its engine command is the whole band state).
+   */
+  const pending = useRef(new Map<number, Record<string, number>>())
+
   const load = useCallback((status: AudioStatus, snap: WlSnapshot | null) => {
+    pending.current.clear()
     setModel(modelOf(status, snap))
     setApplied([])
     setLastChange(undefined)
   }, [])
 
-  const preview = (slot: number, key: string, value: number): void => {
-    const s = model && slotAt(model.undo.chain, slot)
-    const op = s && opOf(model, edit(slot, key, s.values[key], value))
-    if (op) throttled(`${slot}:${key}`).push(op)
+  /** The engine command of `c` on the latest chain plus the slot's pending values, and the throttle it goes through. */
+  const sendOf = (m: ChainModel, c: ValueChange) => {
+    const s = slotAt(m.undo.chain, c.slot)
+    const extra = pending.current.get(c.slot)
+    const base = s && extra ? { ...m, undo: setChain(m.undo, m.undo.chain.map((x) => (x === s ? { ...s, values: { ...s.values, ...extra } } : x))) } : m
+    const op = opOf(base, c)
+    // a whole-state command (ReaEQ) has one throttle per slot, so its keys never race each other
+    return { op, t: throttled(op?.op === 'state' ? `${c.slot}:state` : `${c.slot}:${c.key}`) }
   }
 
+  const preview = (slot: number, key: string, value: number): void => {
+    const m = latest.current.model
+    const s = m && slotAt(m.undo.chain, slot)
+    if (!m || !s) return
+    pending.current.set(slot, { ...pending.current.get(slot), [key]: value })
+    const { op, t } = sendOf(m, edit(slot, key, s.values[key], value))
+    if (op) t.push(op)
+  }
+
+  /** Builds on the latest chain, so several commits in one event (a ReaEQ handle released) add up. */
   const commit = (slot: number, key: string, value: number): void => {
-    const s = model && slotAt(model.undo.chain, slot)
-    if (!model || !s) return
+    const m = latest.current.model
+    const s = m && slotAt(m.undo.chain, slot)
+    if (!m || !s) return
+    const rest = { ...pending.current.get(slot) }
+    delete rest[key]
+    if (Object.keys(rest).length) pending.current.set(slot, rest)
+    else pending.current.delete(slot)
     const c = edit(slot, key, s.values[key], value)
-    const t = throttled(`${slot}:${key}`)
-    const op = opOf(model, c)
+    const { op, t } = sendOf(m, c)
     if (op) t.push(op)
     t.flush()
     if (sameValue(c.from, c.to)) return
-    setModel({ ...model, undo: setChain(model.undo, withChange(model.undo.chain, c)) })
-    changed(model, c)
+    const next = { ...m, undo: setChain(m.undo, withChange(m.undo.chain, c)) }
+    latest.current = { ...latest.current, model: next }
+    setModel((cur) => (cur ? { ...cur, undo: setChain(cur.undo, withChange(cur.undo.chain, c)) } : cur))
+    changed(m, c)
   }
 
   const setOn = (slot: number, on: boolean): void => {
@@ -108,11 +141,6 @@ export function useChainState(bridge: DesktopBridge, markChange: (m: Msg) => voi
     changed(model, r.revert)
   }
 
-  // a batch may come from a stream frame before the last one rendered: it builds on what the last batch left
-  const latest = useRef({ model, applied })
-  useEffect(() => {
-    latest.current = { model, applied }
-  }, [model, applied])
   const applyBatch = (batch: readonly BatchOp[]): (string | null)[] => {
     const now = latest.current
     if (!now.model) return batch.map(() => null)

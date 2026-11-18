@@ -15,11 +15,12 @@ import { MonitorAlert } from './MonitorAlert'
 import { RestoreDialog } from './RestoreDialog'
 import { SaveDialog } from './SaveDialog'
 import { SegmentsTable } from './SegmentsTable'
+import { SpectrumCard } from './spectrum/SpectrumCard'
 import { TuningBar } from './TuningBar'
 import { useTuningSession } from './useTuningSession'
 import { YourSoundPanel } from './YourSoundPanel'
 
-/** The live tuning screen (SPEC "Desktop app (v2.0)" → Live tuning screen, approved mockup, + "Calibrate noise live"), top to bottom. */
+/** The live tuning screen (SPEC "Desktop app (v2.0)" → Live tuning screen, approved mockup, + "Calibrate noise live", "Live spectrum"), top to bottom. */
 export function LiveTuning() {
   const { t } = useTranslation()
   const tm = useMsg()
@@ -49,6 +50,7 @@ export function LiveTuning() {
         <Typography color="text.secondary">{t(running ? 'desktop.tune.talk' : 'desktop.tune.idle')}</Typography>
       )}
       <HistoryChart history={update?.history ?? { points: [], markers: [] }} />
+      <SpectrumCard engine={engine} chain={chain} />
       <CalibrateCard cal={s.calibration} monitor={running ? (engine.status?.monitor ?? 'off') : null} onMonitor={(m) => void engine.setMonitor(m)} />
       <div className="grid items-start gap-4 md:grid-cols-2">
         <AdviceList

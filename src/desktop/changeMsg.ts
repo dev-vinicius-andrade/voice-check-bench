@@ -47,6 +47,8 @@ export function changeLineMsg(slot: ChainSlot, c: Change): Msg {
     const n = Number(band[1])
     const type = eqTypeName(slot.values[`band${n}.type`] ?? -1)
     if (band[2] === 'gainDb') return eqChangeMsg(slot, type === 'Other' ? `Band ${n}` : type, Math.round(slot.values[`band${n}.freqHz`] ?? 0), from, to)
+    if (band[2] === 'bwOct') return msg('oct', { plugin, n, from, to })
+    if (band[2] === 'on') return msg(to !== 0 ? 'bandOn' : 'bandOff', { plugin, n })
     return msg('hz', { plugin, n, from: Math.round(from), to: Math.round(to) })
   }
   if (key === 'strength') return strengthChangeMsg(slot, from, to)

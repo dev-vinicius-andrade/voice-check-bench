@@ -37,7 +37,8 @@ function paths(points: readonly HistoryPoint[], x: (t: number) => number, v: (p:
   return out
 }
 
-function Legend({ items }: { items: { label: string; color: string; dashed?: boolean }[] }) {
+/** A chart legend: a short line (solid or dashed) in each series colour and its label. */
+export function Legend({ items }: { items: { label: string; color: string; dashed?: boolean }[] }) {
   return (
     <div className="flex flex-wrap gap-4">
       {items.map((it) => (
