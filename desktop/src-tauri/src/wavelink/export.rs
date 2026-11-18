@@ -26,7 +26,8 @@ pub struct Timings {
 impl Default for Timings {
     fn default() -> Self {
         Self {
-            close_wait: Duration::from_secs(10),
+            // Wave Link takes about 30 s to shut down with a full plugin chain (measured: 16:49:57 → 16:50:27)
+            close_wait: Duration::from_secs(45),
             force_wait: Duration::from_secs(5),
             start_wait: Duration::from_secs(20),
             settle: Duration::from_secs(3),

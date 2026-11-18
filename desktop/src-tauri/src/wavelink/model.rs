@@ -40,9 +40,16 @@ pub struct WlSnapshot {
     pub inputs: Vec<WlInput>,
 }
 
-/// SHA-256 of the file bytes, lowercase hex.
+/// What export compares to tell "the effects changed since they were read": SHA-256 (lowercase hex) of every
+/// input's effect chain (all_chains: keys, order, names, bypass, parameter states). Wave Link rewrites Settings.json
+/// for things that are not effects (its usage events when it closes or starts, window placement), and those must
+/// not look like a change. A text that is not a Wave Link settings file hashes as its bytes.
 pub fn hash_text(text: &str) -> String {
-    Sha256::digest(text.as_bytes())
+    let chains = all_chains(text)
+        .ok()
+        .and_then(|c| serde_json::to_vec(&c).ok());
+    let bytes = chains.as_deref().unwrap_or(text.as_bytes());
+    Sha256::digest(bytes)
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect()

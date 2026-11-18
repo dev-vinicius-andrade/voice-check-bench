@@ -490,3 +490,53 @@ fn export_on_a_copy_of_the_real_file() {
     assert!(r.written);
     assert_eq!(read_text(&settings).unwrap(), text);
 }
+
+/// Wave Link rewrites Settings.json when it closes or starts (usage events, window placement): not a change.
+#[test]
+fn other_settings_rewritten_by_wave_link_are_not_a_change() {
+    let dir = TempDir::new("telemetry");
+    let text = fixture();
+    let rewritten = text.replacen(
+        '{',
+        "{\r\n  \"General\": { \"DataMasterEventPersistence\": \"[{\\\"event\\\":\\\"$session_end\\\"}]\" },",
+        1,
+    );
+    assert_ne!(rewritten, text);
+    assert_eq!(hash_text(&rewritten), hash_text(&text));
+    let settings = dir.settings(&rewritten);
+    let fake = Fake::new(true);
+    let report = export(
+        &settings,
+        &fake,
+        &gate_change(),
+        &hash_text(&text),
+        &opts(false),
+    )
+    .unwrap();
+    assert!(report.written);
+    let after = read_text(&settings).unwrap();
+    assert!(after.contains("DataMasterEventPersistence"));
+}
+
+/// An effect switched in Wave Link since the read is a change: nothing is written.
+#[test]
+fn an_effect_changed_in_wave_link_is_changed_meanwhile() {
+    let dir = TempDir::new("effect-changed");
+    let text = fixture();
+    let changed = text.replacen("\"BypassState\": false", "\"BypassState\": true", 1);
+    assert_ne!(changed, text);
+    assert_ne!(hash_text(&changed), hash_text(&text));
+    let settings = dir.settings(&changed);
+    let fake = Fake::new(true);
+    let e = export(
+        &settings,
+        &fake,
+        &gate_change(),
+        &hash_text(&text),
+        &opts(true),
+    )
+    .unwrap_err();
+    assert_eq!(e.code, WlErrorCode::ChangedMeanwhile);
+    assert_eq!(read_text(&settings).unwrap(), changed);
+    assert!(fake.log().is_empty());
+}

@@ -267,7 +267,8 @@ A Windows app that runs the person's real Wave Link plugins live on the raw mic.
   - `wavelink`: reads Settings.json (read-only) and lists inputs and their chains. Export runs these steps:
     1. Show the diff and ask for confirmation.
     2. Back up to `Settings.backup-<date>.json` (same naming as the web flow).
-    3. Close Wave Link: close its window and wait up to 10 s; force it only after a second confirmation.
+    3. Close Wave Link: close its window and wait up to 45 s (it takes about 30 s to shut down with a full plugin chain); force it only after a second confirmation.
+       - "Changed since it was read" compares the effect chains only (`hash_text`: SHA-256 of every input's chain — keys, order, names, bypass, parameter states), not the file bytes: Wave Link rewrites Settings.json when it closes or starts (usage events, window placement), and that is not a change.
     4. Write Settings.json.
     5. Start Wave Link again.
     6. Re-read the file and verify every changed `ParameterState`.
