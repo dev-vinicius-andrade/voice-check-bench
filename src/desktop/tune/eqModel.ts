@@ -473,7 +473,7 @@ export function calibrate(
   const rho = prev.slice()
   if (!movedIdx.length) return rho
   let top = 0
-  for (let c = CELLS_PER_BAND; c < N_CELLS; c++) top = Math.max(top, before[c])
+  for (let c = CELLS_PER_BAND; c < N_CELLS; c++) if (before[c] > top) top = before[c]
   const rows: number[] = []
   for (let c = CELLS_PER_BAND; c < N_CELLS; c++) if (before[c] > top * 1e-6 && after[c] > 0) rows.push(c)
   if (rows.length < movedIdx.length + 2) return rho

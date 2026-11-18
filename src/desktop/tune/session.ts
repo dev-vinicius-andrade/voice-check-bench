@@ -68,7 +68,10 @@ export function metricOf(m: Measured, t: TuneTargets, metric: TuneMetric, band?:
 export class Session {
   readonly chain: readonly ChainSlot[]
   readonly mask: TakeMask
-  readonly targets: TuneTargets
+  /** The run's targets; a kept Noise Removal relaxes them (dead-silent pauses are its doing, ./switches.ts). */
+  targets: TuneTargets
+  /** The targets allow dead silence only because a Noise Removal was switched on. */
+  silentByRemover = false
   readonly maxRenders: number
   readonly log: TuneLogEntry[] = []
   renders = 0
@@ -195,16 +198,19 @@ export class Session {
     if (!this.gatesWorking(set).length) {
       m.cutShare = 0
       m.cutEvents = 0
+      m.pumpDb = 0
       return true
     }
     if (ref) {
       const c = cutOf(this.mask, audio, ref)
       m.cutShare = c.share
       m.cutEvents = c.events
+      m.pumpDb = c.pump
       return true
     }
     m.cutShare = like ? like.cutShare : NaN
     m.cutEvents = like ? like.cutEvents : NaN
+    m.pumpDb = like ? like.pumpDb : NaN
     this.stale.add(m)
     return false
   }

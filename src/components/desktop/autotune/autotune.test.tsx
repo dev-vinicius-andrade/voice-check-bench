@@ -26,7 +26,7 @@ const SR = 48000
 const TAKE = testTake({ quietSec: 3, speechSec: 22 })
 
 const summary = (speechDb: number, pauseDb: number, boom = 3): TuneResult['before'] => ({
-  speechDb, peakDb: -8, clipped: 0, pauseDb, snrDb: speechDb - pauseDb, tone: [0, boom, 0, 0, 0, 0, 0, 0, 0], spreadDb: 9, deadSilence: 0, gateSwitches: 0, wordLossDb: 0, cutSpeech: 0, cutEvents: 0,
+  speechDb, peakDb: -8, clipped: 0, pauseDb, snrDb: speechDb - pauseDb, tone: [0, boom, 0, 0, 0, 0, 0, 0, 0], spreadDb: 9, deadSilence: 0, gateSwitches: 0, wordLossDb: 0, cutSpeech: 0, cutEvents: 0, pumpDb: 0,
   score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
 })
 const CHANGE: TuneChange = {

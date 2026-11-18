@@ -152,7 +152,11 @@
           "limit": "Your volume still swings {{spread, number(maximumFractionDigits: 1)}} dB between loud and quiet moments ({{target, number(maximumFractionDigits: 1)}} wanted). More compression didn't help or would lift the room noise: keep the same distance to the mic."
         },
         "budget": "Stopped after {{renders, number}} test runs. Run it again to keep going from here.",
-        "cut": "The gate still cuts the starts or ends of some words ({{pct, number(maximumFractionDigits: 1)}} % of your speech, about {{events, number(maximumFractionDigits: 1)}} times every 10 seconds) and making it gentler did not stop it. Switch ReaGate off, or quiet the room and run this again."
+        "cut": "The gate still cuts the starts or ends of some words ({{pct, number(maximumFractionDigits: 1)}} % of your speech, about {{events, number(maximumFractionDigits: 1)}} times every 10 seconds) and making it gentler did not stop it. Switch ReaGate off, or quiet the room and run this again.",
+        "room": {
+          "loud": "Your room noise is loud: your voice is only {{snr, number(maximumFractionDigits: 1)}} dB above it in the recording itself. Effects can hide it, but lowering it at the source helps most: move closer to the mic, turn the mic gain down, and quiet or move away from what makes the noise (fan, PC, air conditioning)."
+        },
+        "silentPauses": "Your pauses now go fully silent: that is Noise Removal taking the room out, and no word is cut. If it sounds unnatural, lower its strength a little."
       },
       "change": {
         "band": "{{plugin}} {{band}}: {{fromHz, number}} Hz, {{fromOct, number(maximumFractionDigits: 2)}} oct, {{fromDb, number(maximumFractionDigits: 1)}} dB → {{toHz, number}} Hz, {{toOct, number(maximumFractionDigits: 2)}} oct, {{toDb, number(maximumFractionDigits: 1)}} dB"

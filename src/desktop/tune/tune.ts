@@ -29,6 +29,8 @@ export const UNMET_SPREAD_DB = 0.5
 export const LEVEL_ROOM_DB = 0.5
 /** A complaint is contradicted by the measurement from this far on the other side of the style target, dB. */
 export const CONTRADICT_DB = 1
+/** A raw take whose voice is less than this over its room gets the note about the room itself, dB. */
+export const LOUD_ROOM_SNR_DB = 20
 /** A band hides a higher one from this far over its target, dB. */
 export const MASK_MIN_DB = 4
 
@@ -45,6 +47,7 @@ const nanSummary = (): TakeSummary => ({
   wordLossDb: NaN,
   cutSpeech: NaN,
   cutEvents: NaN,
+  pumpDb: NaN,
   score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
 })
 
@@ -131,6 +134,8 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
   const m = s.m
   const a = s.mask.analysis
   if (a.clip > 0) out.push(unmetMsg('clipped', { count: a.clip }))
+  // the room itself: effects can hide it, the source is where it is fixed
+  if (a.snr < LOUD_ROOM_SNR_DB) out.push(unmetMsg('room.loud', { snr: a.snr }))
   if (m.silent) {
     // the voice does not come out at all: nothing else can be said about this render
     out.push(unmetMsg('silent'))
@@ -150,8 +155,11 @@ function unmetOf(s: Session, tone: ToneNotes): Msg[] {
     else out.push(unmetMsg(err < 0 ? 'level.capLoud' : 'level.capQuiet', { db }))
   }
 
-  const dead = !t.allowDeadSilence && (m.deadSilence > CHOPPED_ZERO || m.gateSwitches > OVER_SWITCH_WARN)
+  const zeros = m.deadSilence > CHOPPED_ZERO || m.gateSwitches > OVER_SWITCH_WARN
   const chopped = m.wordLossDb > CHOP_OK_DB
+  // a Noise Removal the tuner switched on makes its pauses fully silent by itself: said as what it is
+  const dead = zeros && !t.allowDeadSilence
+  if (zeros && s.silentByRemover) out.push(unmetMsg('silentPauses'))
   if (dead) out.push(unmetMsg('dead'))
   if (chopped) out.push(unmetMsg('chopped'))
   if (cutsSpeech(m)) out.push(unmetMsg('cut', { pct: 100 * m.cutShare, events: m.cutEvents }))
@@ -255,6 +263,8 @@ export async function tune(input: TuneInput): Promise<TuneResult> {
 
   await repairSwitches(s)
   await levelStage(s, 'level')
+  // a remover that sits switched off first: when it takes the room out, the gate has nothing left to pump
+  await noiseRemovalOn(s)
   await noiseStage(s)
   await protectWords(s)
   await noiseRemovalOn(s)
@@ -270,7 +280,7 @@ export async function tune(input: TuneInput): Promise<TuneResult> {
   // a shallower floor or a remover moved the level once more
   if (s.set !== gate) await levelStage(s, 'trim')
 
-  return { changes: s.result(), before, after: summarize(s.m, targets), processed: s.audio, renders: s.renders, unmet: unmetOf(s, tone), log: s.log, goals, limit }
+  return { changes: s.result(), before, after: summarize(s.m, s.targets), processed: s.audio, renders: s.renders, unmet: unmetOf(s, tone), log: s.log, goals, limit }
 }
 
 /**

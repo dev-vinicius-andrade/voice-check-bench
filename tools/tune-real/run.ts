@@ -58,7 +58,7 @@ const SETS: [string, TuneGoals][] = [
 
 const f = (v: number, d = 1): string => (Number.isFinite(v) ? v.toFixed(d) : String(v))
 const summary = (s: TakeSummary): string =>
-  `speech ${f(s.speechDb)} · peak ${f(s.peakDb)} (clipped ${s.clipped}) · pauses ${f(s.pauseDb)} · SNR ${f(s.snrDb)} · spread ${f(s.spreadDb)} · dead ${f(100 * s.deadSilence)} % / ${f(s.gateSwitches)} per 10 s · word loss ${f(s.wordLossDb)} · speech cut ${f(100 * s.cutSpeech)} % / ${f(s.cutEvents)} per 10 s · score ${f(s.score.total)} (L ${f(s.score.level)} N ${f(s.score.noise)} T ${f(s.score.tone)} C ${f(s.score.consistency)} D ${f(s.score.damage)})`
+  `speech ${f(s.speechDb)} · peak ${f(s.peakDb)} (clipped ${s.clipped}) · pauses ${f(s.pauseDb)} · SNR ${f(s.snrDb)} · spread ${f(s.spreadDb)} · dead ${f(100 * s.deadSilence)} % / ${f(s.gateSwitches)} per 10 s · word loss ${f(s.wordLossDb)} · speech cut ${f(100 * s.cutSpeech)} % / ${f(s.cutEvents)} per 10 s · room moved by the gate ${f(s.pumpDb)} dB · score ${f(s.score.total)} (L ${f(s.score.level)} N ${f(s.score.noise)} T ${f(s.score.tone)} C ${f(s.score.consistency)} D ${f(s.score.damage)})`
 const toneLine = (s: TakeSummary): string => s.tone.map((d, i) => `${BAND_KEYS[i]} ${f(d)}`).join(' · ')
 
 function checks(r: TuneResult): string[] {
@@ -71,7 +71,10 @@ function checks(r: TuneResult): string[] {
   const off = a.speechDb - t.speechDb
   mark(Math.abs(off) <= 1.5 || unmet.some((k) => k.includes('.level.')), `speech ${f(a.speechDb)} vs target ${t.speechDb} (${f(off)} dB)${Math.abs(off) > 1.5 ? ' — unmet says why' : ''}`)
   const dead = a.deadSilence > CHOPPED_ZERO || a.gateSwitches > OVER_SWITCH_WARN
-  mark(!dead || t.allowDeadSilence, `dead silence ${f(100 * a.deadSilence)} %, ${f(a.gateSwitches)} cut-outs per 10 s${t.allowDeadSilence ? ' (allowed)' : ''}`)
+  const byRemover = unmet.some((k) => k.endsWith('.silentPauses'))
+  mark(!dead || t.allowDeadSilence || byRemover, `dead silence ${f(100 * a.deadSilence)} %, ${f(a.gateSwitches)} cut-outs per 10 s${t.allowDeadSilence ? ' (allowed)' : byRemover ? ' (Noise Removal silencing the pauses, said in the result)' : ''}`)
+  mark(!(a.cutEvents > 1) && !(100 * a.cutSpeech > 1), `speech cut by the gate ${f(100 * a.cutSpeech)} %, ${f(a.cutEvents)} per 10 s`)
+  mark(!(a.pumpDb > 13), `room moved by the gate ${f(a.pumpDb)} dB ≤ 13`)
   mark(a.wordLossDb <= CHOP_OK_DB, `word loss ${f(a.wordLossDb)} dB ≤ ${CHOP_OK_DB}`)
   return out
 }

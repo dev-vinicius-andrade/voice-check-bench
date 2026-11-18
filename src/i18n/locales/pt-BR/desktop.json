@@ -152,7 +152,11 @@
           "limit": "Seu volume ainda varia {{spread, number(maximumFractionDigits: 1)}} dB entre os momentos altos e baixos (o desejado é {{target, number(maximumFractionDigits: 1)}}). Mais compressão não ajudou ou levantaria o ruído do ambiente: mantenha a mesma distância do microfone."
         },
         "budget": "Parei depois de {{renders, number}} testes. Rode de novo para continuar daqui.",
-        "cut": "O gate ainda corta o começo ou o fim de algumas palavras ({{pct, number(maximumFractionDigits: 1)}} % da sua fala, umas {{events, number(maximumFractionDigits: 1)}} vezes a cada 10 segundos) e deixar ele mais suave não resolveu. Desligue o ReaGate, ou deixe o ambiente mais quieto e rode de novo."
+        "cut": "O gate ainda corta o começo ou o fim de algumas palavras ({{pct, number(maximumFractionDigits: 1)}} % da sua fala, umas {{events, number(maximumFractionDigits: 1)}} vezes a cada 10 segundos) e deixar ele mais suave não resolveu. Desligue o ReaGate, ou deixe o ambiente mais quieto e rode de novo.",
+        "room": {
+          "loud": "O ruído do seu ambiente é alto: sua voz fica só {{snr, number(maximumFractionDigits: 1)}} dB acima dele na própria gravação. Os efeitos conseguem esconder, mas baixar o ruído na origem é o que mais ajuda: chegue mais perto do microfone, abaixe o ganho dele e silencie ou afaste o que faz o barulho (ventilador, PC, ar-condicionado)."
+        },
+        "silentPauses": "Suas pausas agora ficam totalmente em silêncio: é o Noise Removal tirando o ruído do ambiente, e nenhuma palavra é cortada. Se soar artificial, abaixe um pouco a força dele."
       },
       "change": {
         "band": "{{plugin}} {{band}}: {{fromHz, number}} Hz, {{fromOct, number(maximumFractionDigits: 2)}} oct, {{fromDb, number(maximumFractionDigits: 1)}} dB → {{toHz, number}} Hz, {{toOct, number(maximumFractionDigits: 2)}} oct, {{toDb, number(maximumFractionDigits: 1)}} dB"

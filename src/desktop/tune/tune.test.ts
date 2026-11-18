@@ -254,13 +254,13 @@ describe('tune: noise & gate', () => {
 
   it('a hard gate leaving dead silence gets the soft Dry', async () => {
     const { result: r } = await run({ noiseDb: -60 }, [gate({ thresholdDb: -45, dryDb: -100 }), eq(), comp(GOOD_WET)])
-    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: -100, to: -20, stage: 'noise' })
+    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: -100, stage: 'noise' })
     expect(r.after.deadSilence).toBeLessThan(0.05)
   }, TIMEOUT)
 
   it('a doubled gate over noisy pauses gets Dry −20', async () => {
     const { result: r } = await run({ noiseDb: -48 }, [gate({ thresholdDb: -40, dryDb: 0 }), eq(), comp(GOOD_WET)])
-    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, to: -20, reason: 'gateDoubled' })
+    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, reason: 'gateDoubled' })
     expect(r.after.snrDb).toBeGreaterThan(r.before.snrDb + 5)
     expect(Math.abs(r.after.speechDb - TARGET_SPEECH_DB)).toBeLessThanOrEqual(1.01)
   }, TIMEOUT)
@@ -271,12 +271,14 @@ describe('tune: noise & gate', () => {
 
   it('a doubled gate behind a compressor is placed on what it receives, and follows the make-up gain', async () => {
     const { result: r } = await run({ ...quietTake, noiseDb: -55 }, behindComp())
-    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, to: -20, reason: 'gateDoubled' })
+    expect(vals(r.changes).find((c) => c.key === 'dryDb')).toMatchObject({ from: 0, reason: 'gateDoubled' })
     const thr = vals(r.changes).find((c) => c.key === 'thresholdDb')
     // the raw take's room (−55) + 6 would be −49: under what the gate receives behind 12 dB of make-up
     expect(thr?.to).toBeGreaterThan(-40)
     expect(thr?.titleMsg).toEqual({ key: 'desktop.autotune.reason.noise.threshold', params: { to: thr?.to } })
-    expect(r.after.snrDb).toBeGreaterThan(r.before.snrDb + 10)
+    // a floor shallow enough not to pump the room it sits on (Dry −12 or −6, not −20)
+    expect(r.after.snrDb).toBeGreaterThan(r.before.snrDb + 4)
+    expect(r.after.pumpDb).toBeLessThanOrEqual(13)
     expect(r.after.wordLossDb).toBeLessThan(2)
     expect(Math.abs(r.after.speechDb - TARGET_SPEECH_DB)).toBeLessThanOrEqual(1.01)
     // the final trim moved the Wet and the threshold together

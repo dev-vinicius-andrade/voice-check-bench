@@ -54,6 +54,8 @@ const ALL: Readonly<Record<string, readonly string[]>> = {
   'unmet.level.held': ['db'],
   'unmet.dead': [],
   'unmet.chopped': [],
+  'unmet.silentPauses': [],
+  'unmet.room.loud': ['snr'],
   'unmet.cut': ['pct', 'events'],
   'unmet.noise.wouldCut': ['snr', 'target'],
   'unmet.noise.noTool': ['snr', 'target'],

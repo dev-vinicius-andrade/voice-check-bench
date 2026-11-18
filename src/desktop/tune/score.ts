@@ -34,6 +34,11 @@ export const CUT_POINTS = 8
 /** Cut events (word starts or ends cut) per 10 s that pass, and points per event beyond them. */
 export const CUT_OK_EVENTS = 1
 export const CUT_EVENT_POINTS = 3
+/** A gate may move an audible room this much between pauses and words, dB; points per dB beyond it. */
+export const PUMP_OK_DB = 13
+export const PUMP_POINTS = 1.5
+/** Whether a render's gate pumps the room audibly (false while not measured). */
+export const pumps = (m: Pick<Measured, 'pumpDb'>): boolean => m.pumpDb > PUMP_OK_DB
 /** Whether a render's gates cut speech audibly (false while not measured). */
 export const cutsSpeech = (m: Pick<Measured, 'cutShare' | 'cutEvents'>): boolean => 100 * m.cutShare > CUT_OK_PCT || m.cutEvents > CUT_OK_EVENTS
 
@@ -111,7 +116,8 @@ export function scoreOf(m: Measured, t: TuneTargets, trim: TrimRange | null = nu
         clamp((m.gateSwitches - OVER_SWITCH_WARN) / (OVER_SWITCH_FULL - OVER_SWITCH_WARN), 0, 1),
       )
   const cut = Number.isFinite(m.cutShare) ? CUT_POINTS * Math.max(0, 100 * m.cutShare - CUT_OK_PCT) + CUT_EVENT_POINTS * Math.max(0, m.cutEvents - CUT_OK_EVENTS) : 0
-  const damage = dead + CHOP_POINTS * Math.max(0, m.wordLossDb - CHOP_OK_DB) + cut
+  const pump = Number.isFinite(m.pumpDb) ? PUMP_POINTS * Math.max(0, m.pumpDb - PUMP_OK_DB) : 0
+  const damage = dead + CHOP_POINTS * Math.max(0, m.wordLossDb - CHOP_OK_DB) + cut + pump
   return { level, noise, tone, consistency, damage, total: level + noise + tone + consistency + damage }
 }
 
@@ -150,6 +156,7 @@ export function summarize(m: Measured, t: TuneTargets): TakeSummary {
     wordLossDb: m.wordLossDb,
     cutSpeech: m.cutShare,
     cutEvents: m.cutEvents,
+    pumpDb: m.pumpDb,
     score: scoreOf(m, t),
   }
 }

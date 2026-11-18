@@ -75,7 +75,8 @@ export interface TakeSummary {
   snrDb: number
   /**
    * Per BANDS entry (rumble … air): dB away from the goal style's target, level-matched on the middle bands so a deep
-   * low-cut or one loud band cannot shift the others (./measure.ts robustTone). Positive = too much.
+   * low-cut or one loud band cannot shift the others (./measure.ts robustTone). Positive = too much. Without the room:
+   * the render's pause spectrum is taken off, and a band where the raw take has no measurable voice over the room is NaN.
    */
   tone: number[]
   /** Consistency: spread of the loudest level of each second of speech (P90 − P10), dB. */
@@ -93,6 +94,8 @@ export interface TakeSummary {
    */
   cutSpeech: number
   cutEvents: number
+  /** How far a gate moves an audible room between pauses and words, dB (0 without a working gate or with a quiet room; NaN when not measured). */
+  pumpDb: number
   score: TuneScore
 }
 

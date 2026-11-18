@@ -9,7 +9,7 @@ import type { ChainSlot } from '../advice/types'
 import { EqCurves, eqHandles, planShaped, planTone, reshape, sameShape, SHAPE_BW, shapeVariants } from './eqModel'
 import { fakeRenderer, type FakeOptions } from './fakeRenderer'
 import { cutOf, fineLevels, measure, prepareTake } from './measure'
-import { cutsSpeech, scoreOf, worseBecause } from './score'
+import { cutsSpeech, pumps, scoreOf, toneOf, worseBecause } from './score'
 import { DEFAULT_MAX_RENDERS, STAGE_RENDERS } from './session'
 import { targetsOf } from './targets'
 import { testTake, type TestTakeOptions } from './testTake'
@@ -138,8 +138,9 @@ describe('tune: Noise Removal on as a candidate', () => {
     }
     const { result: r, calls } = await run({ noiseDb: -50 }, nrChain(), {}, {}, { post: dulls })
     const tries = calls.filter((c) => c.some((x) => x.kind === 'switch' && x.on))
-    // strength 0 removes nothing in the fake (tried, too little); the next one removes the room and dulls the voice: stop
-    expect(tries.length).toBe(2)
+    // every strength inside the cap is tried once (lightest first), each dulls the voice: none kept, and not asked again later
+    expect(tries.length).toBeGreaterThanOrEqual(2)
+    expect(tries.length).toBeLessThanOrEqual(5)
     expect(switches(r)).toEqual([])
     expect(valueChanges(r.changes).some((c) => c.key === 'strength')).toBe(false)
     expect(unmetKeys(r)).toContain('noise.limit')
@@ -357,7 +358,7 @@ describe('speech cut by a gate: measured against the ungated chain, never traded
     const mask = prepareTake(x)
     if (!mask) throw new Error('no take')
     const open = fineLevels(x, SR)
-    expect(cutOf(mask, x, open)).toEqual({ share: 0, events: 0 })
+    expect(cutOf(mask, x, open)).toMatchObject({ share: 0, events: 0 })
     // a plain gain is not a cut (the open gate's own gain is taken out)
     expect(cutOf(mask, x.map((v) => v * 0.5), open).share).toBe(0)
     const hard = cutOf(mask, chopped(x, 60, -20), open)
@@ -400,5 +401,83 @@ describe('speech cut by a gate: measured against the ungated chain, never traded
     // the room is still there and the result says why, in the words for it
     if (r.after.snrDb < 44) expect(unmetKeys(r).some((k) => k === 'noise.wouldCut' || k === 'noise.limit')).toBe(true)
     expect(unmetKeys(r)).not.toContain('cut')
+  }, TIMEOUT)
+})
+
+describe('the room in the measurement: masked bands, pumping, the loud-room note', () => {
+  const noisyMids = (x: Float32Array): Float32Array => {
+    // a room that is as loud as the voice at 640 Hz–2.5 kHz and quiet elsewhere
+    const out = x.slice()
+    let seed = 7
+    const c = biquad({ type: 'Band', freq: 1250, gain: 20, bw: 2 }, 48000)
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0
+    for (let i = 0; i < out.length; i++) {
+      seed = (seed * 1664525 + 1013904223) >>> 0
+      const n = (seed / 2 ** 32 - 0.5) * 4e-2
+      const y0 = (c.b0 * n + c.b1 * x1 + c.b2 * x2 - c.a1 * y1 - c.a2 * y2) / c.a0
+      x2 = x1
+      x1 = n
+      y2 = y1
+      y1 = y0
+      out[i] += y0
+    }
+    return out
+  }
+
+  it('a band where the raw take is room, not voice, is masked in every render; taking the room out there is not tone damage', () => {
+    const x = noisyMids(testTake({ speechDb: -21, noiseDb: -80, tone: [0, 0, 0, 0, -12, -12] }))
+    const mask = prepareTake(x)
+    if (!mask) throw new Error('no take')
+    expect(mask.masked[4] || mask.masked[5]).toBe(true)
+    expect(mask.masked[2]).toBe(false)
+    const t = targetsOf(goalsOf())
+    const withRoom = measure(mask, x)
+    // the same voice with the room gone (what a remover leaves)
+    const clean = measure(mask, testTake({ speechDb: -21, noiseDb: -80, tone: [0, 0, 0, 0, -12, -12] }))
+    const [a, b] = [scoreOf(withRoom, t), scoreOf(clean, t)]
+    mask.masked.forEach((m, band) => m && expect(Number.isNaN(toneOf(withRoom, t)[band])).toBe(true))
+    expect(Math.abs(a.tone - b.tone)).toBeLessThan(1.5)
+    // a quiet take masks nothing
+    expect(prepareTake(testTake({ speechDb: -21, noiseDb: -80 }))?.masked.some(Boolean)).toBe(false)
+  })
+
+  it('pumping: a deep gate over an audible room is damage, a shallow one or a quiet room is not', () => {
+    const x = testTake({ speechDb: -21, noiseDb: -45 })
+    const mask = prepareTake(x)
+    if (!mask) throw new Error('no take')
+    const open = fineLevels(x, 48000)
+    const gated = (db: number): Float32Array => {
+      const out = x.slice()
+      const speech = new Set(mask.speech)
+      for (let f = 0; f < mask.frames; f++) if (!speech.has(f) && !speech.has(f - 1) && !speech.has(f + 1)) for (let i = f * mask.win; i < (f + 1) * mask.win; i++) out[i] *= 10 ** (db / 20)
+      return out
+    }
+    expect(cutOf(mask, gated(-20), open).pump).toBeGreaterThan(17)
+    expect(cutOf(mask, gated(-6), open).pump).toBeLessThan(8)
+    expect(pumps({ pumpDb: cutOf(mask, gated(-20), open).pump })).toBe(true)
+    expect(pumps({ pumpDb: cutOf(mask, gated(-6), open).pump })).toBe(false)
+    const quiet = testTake({ speechDb: -21, noiseDb: -75 })
+    const qm = prepareTake(quiet)
+    if (!qm) throw new Error('no take')
+    expect(cutOf(qm, quiet, fineLevels(quiet, 48000)).pump).toBe(0)
+    const t = targetsOf(goalsOf())
+    const m = { ...measure(mask, x), cutShare: 0, cutEvents: 0 }
+    expect(scoreOf({ ...m, pumpDb: 20 }, t).damage).toBeGreaterThan(scoreOf({ ...m, pumpDb: 8 }, t).damage + 8)
+  })
+
+  it('a loud room gets the note about the room itself; a Noise Removal that silences the pauses is said, not counted as damage', async () => {
+    const chain: ChainSlot[] = [noiseRemoval(44, false), eq(), comp(GOOD_WET)]
+    const loud = await run({ noiseDb: -36 }, chain, { amount: 'strong' })
+    expect(loud.result.unmet[0]).toMatchObject({ key: 'desktop.autotune.unmet.room.loud' })
+    expect(Number(loud.result.unmet[0].params?.snr)).toBeLessThan(20)
+    const quiet = await run({ noiseDb: -70 }, chain)
+    expect(unmetKeys(quiet.result)).not.toContain('room.loud')
+    // the fake remover zeroes the pauses from strength 80: with the room this loud the strong amount gets there
+    if (loud.result.after.deadSilence > 0.05) {
+      expect(unmetKeys(loud.result)).toContain('silentPauses')
+      expect(unmetKeys(loud.result)).not.toContain('dead')
+      expect(loud.result.after.score.damage).toBeLessThan(5)
+    }
+    expect(loud.result.after.snrDb).toBeGreaterThan(loud.result.before.snrDb + 2)
   }, TIMEOUT)
 })

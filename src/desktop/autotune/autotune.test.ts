@@ -175,6 +175,7 @@ describe('result rows', () => {
     wordLossDb: 0,
     cutSpeech: 0,
     cutEvents: 0,
+    pumpDb: 0,
     score: { level: 0, noise: 0, tone: 0, consistency: 0, damage: 0, total: 0 },
     ...o,
   })

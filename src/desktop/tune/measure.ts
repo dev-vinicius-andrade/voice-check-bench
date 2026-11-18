@@ -40,6 +40,21 @@ export const CUT_FULL_DB = 20
 export const CUT_EVENT_DB = 8
 export const CUT_VOICE_DB = 6
 export const CUT_MIN_FRAMES = 2
+/**
+ * Room noise in the tone. A band of the RAW take whose speech windows are not MASK_DB over its pause windows carries
+ * no measurable voice (on the real take 640 Hz–2.5 kHz read +0.6 / +1.3 dB: room, not voice): it is masked, NaN in
+ * every render of that take, so a remover that takes the room out is not read as taking the voice out. In the other
+ * bands the render's own pause spectrum is subtracted from its speech spectrum, never below NOISE_FLOOR_SHARE of it.
+ */
+export const MASK_DB = 3
+export const NOISE_FLOOR_SHARE = 0.1
+export const MIN_PAUSE_WINDOWS = 3
+/**
+ * Pumping: a gate that turns the room down in the pauses and lets it back between the words. Counted when the room is
+ * audible in the ungated chain (its voice less than PUMP_AUDIBLE_SNR_DB over its pauses), as the dB the gate takes off
+ * the pauses.
+ */
+export const PUMP_AUDIBLE_SNR_DB = 35
 
 /** The fixed frames of a take, from the raw recording. */
 export interface TakeMask {
@@ -58,6 +73,10 @@ export interface TakeMask {
   seconds: number[][]
   /** Start samples of the FFT windows that are mostly speech. */
   windows: number[]
+  /** Start samples of the FFT windows that lie in pause frames only (the room alone). */
+  pauseWindows: number[]
+  /** Per BANDS entry: the raw take has no measurable voice there (not MASK_DB over the room). */
+  masked: boolean[]
   /** Cell of each FFT bin (−1: outside the bands). */
   binCell: Int16Array
   /** Centre frequency of each cell, Hz. */
@@ -85,6 +104,8 @@ export interface Measured {
   quietPeakDb: number
   /** The voice is gone (speech at SILENT_DB or under): nothing but the level and the damage can be judged. */
   silent: boolean
+  /** How far a gate moves an audible room between pauses and words, dB (cutOf; filled in with cutShare). */
+  pumpDb: number
   /**
    * Speech cut by a gate (cutOf), filled in by the session when it has the ungated render of the same chain: share of
    * the voice frames that are cut (0..1) and cut events per 10 s. NaN while not measured.
@@ -181,7 +202,53 @@ export function prepareTake(take: Float32Array, sampleRate = TUNE_SAMPLE_RATE): 
     if (n >= perWindow * 0.6) windows.push(st)
   }
 
-  return { sampleRate, win, frames, rawLevels: fr, speech, loud, quiet, pause, seconds, windows, ...cellLayout(sampleRate), analysis: a }
+  const isPause = new Uint8Array(frames)
+  for (const f of pause) isPause[f] = 1
+  const pauseWindows: number[] = []
+  for (let st = 0; st + FFT_N <= take.length; st += FFT_HOP) {
+    let all = true
+    for (let f = Math.floor(st / win); f <= Math.floor((st + FFT_N - 1) / win); f++) if (f >= frames || !isPause[f]) all = false
+    if (all) pauseWindows.push(st)
+  }
+  const layout = cellLayout(sampleRate)
+  const voice = sumCells(take, windows, layout.binCell)
+  const room = sumCells(take, pauseWindows, layout.binCell)
+  const masked = Array.from({ length: N_BANDS }, (_, b) => {
+    if (pauseWindows.length < MIN_PAUSE_WINDOWS || !windows.length) return false
+    let s = 0
+    let n = 0
+    for (let k = 0; k < CELLS_PER_BAND; k++) {
+      s += voice[b * CELLS_PER_BAND + k] / windows.length
+      n += room[b * CELLS_PER_BAND + k] / pauseWindows.length
+    }
+    return s < n * 10 ** (MASK_DB / 10)
+  })
+  return { sampleRate, win, frames, rawLevels: fr, speech, loud, quiet, pause, seconds, windows, pauseWindows, masked, ...layout, analysis: a }
+}
+
+/** Summed power per cell over FFT windows. */
+function sumCells(x: Float32Array, starts: readonly number[], binCell: Int16Array): Float64Array {
+  const cells = new Float64Array(N_CELLS)
+  for (const st of starts) {
+    const p = powerSpec(x, st, FFT_N)
+    for (let i = 0; i < p.length; i++) {
+      const c = binCell[i]
+      if (c >= 0) cells[c] += p[i]
+    }
+  }
+  return cells
+}
+
+/** The speech spectrum of a render without the room: masked bands NaN, the render's pause spectrum taken off the rest. */
+function voiceCells(mask: TakeMask, audio: Float32Array): Float64Array {
+  const cells = sumCells(audio, mask.windows, mask.binCell)
+  const room = mask.pauseWindows.length >= MIN_PAUSE_WINDOWS ? sumCells(audio, mask.pauseWindows, mask.binCell) : null
+  const k = mask.windows.length / Math.max(1, mask.pauseWindows.length)
+  for (let c = 0; c < N_CELLS; c++) {
+    if (mask.masked[Math.floor(c / CELLS_PER_BAND)]) cells[c] = NaN
+    else if (room) cells[c] = Math.max(cells[c] - room[c] * k, cells[c] * NOISE_FLOOR_SHARE)
+  }
+  return cells
 }
 
 const medianAt = (levels: Float64Array, idx: readonly number[]): number => (idx.length ? median(idx.map((f) => levels[f])) : NaN)
@@ -227,14 +294,7 @@ export function measure(mask: TakeMask, audio: Float32Array): Measured {
   const gain = (idx: readonly number[]): number => (idx.length ? median(idx.map((f) => fr[f] - mask.rawLevels[f])) : NaN)
   const loss = gain(mask.loud) - gain(mask.quiet)
 
-  const cells = new Float64Array(N_CELLS)
-  for (const st of mask.windows) {
-    const p = powerSpec(audio, st, FFT_N)
-    for (let i = 0; i < p.length; i++) {
-      const c = mask.binCell[i]
-      if (c >= 0) cells[c] += p[i]
-    }
-  }
+  const cells = voiceCells(mask, audio)
 
   const zero = digitalSilence(audio, mask.sampleRate)
   return {
@@ -252,6 +312,7 @@ export function measure(mask: TakeMask, audio: Float32Array): Measured {
     silent: !(speechDb > SILENT_DB),
     cutShare: NaN,
     cutEvents: NaN,
+    pumpDb: NaN,
     cells,
   }
 }
@@ -277,7 +338,7 @@ export function fineLevels(x: Float32Array, sampleRate: number): Float32Array {
  * CUT_FULL_DB → 1: a word start held 6 dB down is heard far less than one held 20 dB down); `events`: runs of
  * CUT_MIN_FRAMES frames more than CUT_EVENT_DB under, per 10 s of that region. The whole-take word loss (median gain of the quiet quarter) cannot see a word start or tail cut for 50 ms.
  */
-export function cutOf(mask: TakeMask, gated: Float32Array, open: Float32Array): { share: number; events: number } {
+export function cutOf(mask: TakeMask, gated: Float32Array, open: Float32Array): { share: number; events: number; pump: number } {
   const per = Math.round(FRAME_SEC / CUT_FRAME_SEC)
   const g = fineLevels(gated, mask.sampleRate)
   const n = Math.min(g.length, open.length)
@@ -317,7 +378,11 @@ export function cutOf(mask: TakeMask, gated: Float32Array, open: Float32Array): 
       } else run = 0
     }
   }
-  return { share: voice ? cut / voice : 0, events: frames ? (events / (frames * CUT_FRAME_SEC)) * 10 : 0 }
+  // pumping: what the gate takes off the pauses of a room that is audible without it
+  const loud = fine(mask.loud, (i) => open[i])
+  const audible = Number.isFinite(room) && loud.length > 0 && median(loud) - room < PUMP_AUDIBLE_SNR_DB
+  const depth = mask.pause.length >= MIN_PAUSE_FRAMES ? median(fine(mask.pause, (i) => open[i] + gain - g[i])) : 0
+  return { share: voice ? cut / voice : 0, events: frames ? (events / (frames * CUT_FRAME_SEC)) * 10 : 0, pump: audible ? Math.max(0, depth) : 0 }
 }
 
 /** Speech energy of each band, dB, from the cells (analyze()'s band sums; `rel` is these minus the body band). */

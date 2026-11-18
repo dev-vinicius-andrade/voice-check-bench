@@ -10,8 +10,8 @@ import type { ChainSlot } from '../advice/types'
 import { bandsOfCells, type Measured } from './measure'
 import { bandRange, reasonMsg } from './msgs'
 import { CHOP_OK_DB, REGRESS_TOL, scoreOf, toneOf, worseBecause } from './score'
-import { switchMove, type Move, type Session } from './session'
-import { CHOP_MIN_GAIN_DB, DEAD_MIN_GAIN, GATE_OPENED_DB, NOISE_MIN_GAIN_DB, regate, replaceGates, strengthen } from './stages'
+import { switchMove, type Kept, type Session } from './session'
+import { CHOP_MIN_GAIN_DB, DEAD_MIN_GAIN, GATE_OPENED_DB, NOISE_MIN_GAIN_DB, regate, replaceGates } from './stages'
 import { BAND_KEYS, toneExcess, toneJudge } from './targets'
 import { toneStage, type ToneNotes } from './toneStage'
 
@@ -44,42 +44,64 @@ export async function repairSwitches(s: Session): Promise<void> {
   }
 }
 
-/** Strengths a Noise Removal that was off is first tried at: the lightest first, inside the amount's cap. */
-const firstStrengths = (s: Session): number[] => [...new Set([0, s.targets.caps.nrStep, s.targets.caps.nrMax])].sort((a, b) => a - b)
+/** Strengths a Noise Removal that was off is tried at, lightest first, inside the amount's cap. */
+const strengths = (s: Session): number[] => [...new Set([0, 5, 10, s.targets.caps.nrStep, s.targets.caps.nrMax])].filter((v) => v <= s.targets.caps.nrMax).sort((a, b) => a - b)
 
 /**
  * The voice over the pauses misses the target by NR_ON_MIN_MISS_DB, nothing is damaged, no Noise Removal is on and
- * one sits in the chain switched off → Noise Removal on at the lightest strength that wins NOISE_MIN_GAIN_DB (0, one
- * step, the amount's cap; each one render, the next only while the one before removed too little), then stronger while
- * it helps (strengthen). The keep rule judges it like any noise move: a remover that costs the voice its tone or its
- * quiet words is switched back off (on the real chain Elgato Noise Removal behind the compressor took 7 dB out of
- * 640 Hz–2.5 kHz at any strength).
+ * one sits in the chain switched off → Noise Removal on, at the strength that scores best: each strength is one
+ * render, lightest first, up to the first that reaches the target; of those that win NOISE_MIN_GAIN_DB and pass the
+ * keep rule, the best total is kept (the lighter on a tie). Pauses a remover turns fully silent are not damage while
+ * no word is cut (the targets allow dead silence from here on; the result says so, unmet.silentPauses): Elgato Noise
+ * Removal does that from a strength of about 5, where it also takes the room 25 dB further down than at 0. A remover
+ * that costs the voice is not kept, and one that removed the room at some strength and was rejected at all of them is
+ * not asked again.
  */
 export async function noiseRemovalOn(s: Session): Promise<void> {
-  const t = s.targets
-  if (s.m.silent || dead(s, s.m) || chopped(s.m) || !(s.m.snrDb < t.snrDb - NR_ON_MIN_MISS_DB)) return
+  const strict = s.targets
+  if (s.m.silent || dead(s, s.m) || chopped(s.m) || !(s.m.snrDb < strict.snrDb - NR_ON_MIN_MISS_DB)) return
   if (s.refused.has(NR_ON) || s.live('noiseRemoval', 'strength').length) return
   const nr = s.off('noiseRemoval', 'strength').at(0)
   if (!nr) return
-  const snrUp = (b: Measured, a: Measured): string | null => (a.snrDb >= b.snrDb + NOISE_MIN_GAIN_DB ? null : `voice over pauses ${b.snrDb.toFixed(1)} → ${a.snrDb.toFixed(1)} dB: not enough`)
-  for (const strength of firstStrengths(s)) {
-    const moves: Move[] = [
+  const t = strict.allowDeadSilence ? strict : { ...strict, allowDeadSilence: true }
+  const before = scoreOf(s.m, t, s.trim())
+  let best: { set: Kept['set']; audio: Float32Array; m: Measured; total: number; strength: number } | null = null
+  let harmed = false
+  for (const strength of strengths(s)) {
+    const set = s.withMoves('noise', [
       switchMove(nr, true, { reason: 'noisyPause', titleMsg: reasonMsg('switch.nrOn', { snr: s.m.snrDb }), metric: 'snrDb' }),
       { slot: nr, key: 'strength', to: strength, reason: 'noisyPause', titleMsg: reasonMsg('noise.onStrength', { to: strength }), metric: 'snrDb' },
-    ]
-    const renders = s.renders
-    const r = await s.tryMoves('noise', moves, 'noise', snrUp)
-    if (r === 'budget') return
-    if (r === 'kept') {
-      await strengthen(s, nr)
-      return
+    ])
+    if (!set) continue
+    if (s.left('noise') < 1) {
+      s.outOfBudget = true
+      break
     }
-    // it did bring the room down and was still rejected: it costs the voice something no strength gives back
-    if (s.renders > renders && !snrUp(s.m, s.last)) {
-      s.refused.add(NR_ON)
-      return
+    const { audio, m } = await s.render('noise', set)
+    s.cut(set, audio, m, s.m)
+    const after = scoreOf(m, t, s.trim(set))
+    const removed = m.snrDb >= s.m.snrDb + NOISE_MIN_GAIN_DB
+    const why = !removed ? 'not enough' : chopped(m) ? 'it cuts quiet words' : worseBecause(before, after, 'noise')
+    s.note('noise', why ? 'revert' : 'render', `#${s.renders} noiseRemoval[${nr.index}] on at strength ${strength}: voice over pauses ${s.m.snrDb.toFixed(1)} → ${m.snrDb.toFixed(1)} dB, dead silence ${(100 * m.deadSilence).toFixed(1)} %, word loss ${m.wordLossDb.toFixed(1)} dB${why ? `: ${why}` : ''}`, after)
+    if (why) {
+      harmed ||= removed
+      // quiet words cut: a stronger setting only cuts more
+      if (chopped(m)) break
+      continue
     }
+    if (!best || after.total < best.total - 1e-9) best = { set, audio, m, total: after.total, strength }
+    if (m.snrDb >= t.snrDb) break
   }
+  if (!best) {
+    if (harmed) s.refused.add(NR_ON)
+    return
+  }
+  s.note('noise', 'keep', `noiseRemoval[${nr.index}] on at strength ${best.strength}: score ${before.total.toFixed(1)} → ${best.total.toFixed(1)}`)
+  s.silentByRemover = t !== strict
+  s.targets = t
+  s.set = best.set
+  s.audio = best.audio
+  s.m = best.m
 }
 
 /**

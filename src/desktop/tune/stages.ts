@@ -6,7 +6,7 @@ import { sameValue } from '../advice/chain'
 import type { ChainSlot } from '../advice/types'
 import type { Measured } from './measure'
 import { reasonMsg } from './msgs'
-import { CHOP_OK_DB, cutsSpeech, LEVEL_TOL_DB, MIN_GAIN, scoreOf, type ScorePart } from './score'
+import { CHOP_OK_DB, cutsSpeech, LEVEL_TOL_DB, MIN_GAIN, pumps, scoreOf, type ScorePart } from './score'
 import { GATE_DEEPER, type Move, type Outcome, type Session } from './session'
 import type { TuneTargets } from './targets'
 import type { TuneStage } from './types'
@@ -285,7 +285,8 @@ export async function noiseStage(s: Session): Promise<void> {
       const renders = s.renders
       const r = await s.tryMoves('noise', moves, 'noise', snrUp(DOUBLED_MIN_GAIN_DB))
       if (r === 'budget') return
-      if (r !== 'reverted' || s.renders === renders || !cutsSpeech(s.last)) break
+      // a shallower floor next when this one cut speech, or pumps an audible room (kept or not)
+      if (s.renders === renders || !(cutsSpeech(s.last) || pumps(s.last))) break
     }
   }
 
@@ -376,7 +377,7 @@ export async function protectWords(s: Session, stage: TuneStage = 'noise', repai
   if (s.m.silent || !s.gatesWorking().length) return
   if (!(await s.checkCut(stage)) || !repair) return
   const t = s.targets
-  for (let round = 0; round < 2 && cutsSpeech(s.m); round++) {
+  for (let round = 0; round < 2 && (cutsSpeech(s.m) || pumps(s.m)); round++) {
     const g = s.gatesWorking().at(-1)
     if (!g) return
     s.refused.add(GATE_DEEPER)
@@ -397,9 +398,9 @@ export async function protectWords(s: Session, stage: TuneStage = 'noise', repai
       s.cut(set, audio, m)
       const score = scoreOf(m, t, s.trim(set))
       const text = moves.map((mv) => `${mv.key} → ${mv.to}`).join(', ')
-      s.note(stage, 'render', `#${s.renders} gentler gate, ${text}: speech cut ${(100 * m.cutShare).toFixed(1)} % / ${m.cutEvents.toFixed(1)} per 10 s, voice over pauses ${m.snrDb.toFixed(1)} dB`, score)
+      s.note(stage, 'render', `#${s.renders} gentler gate, ${text}: speech cut ${(100 * m.cutShare).toFixed(1)} % / ${m.cutEvents.toFixed(1)} per 10 s, room moved ${m.pumpDb.toFixed(1)} dB, voice over pauses ${m.snrDb.toFixed(1)} dB`, score)
       if (!(score.damage <= before.damage - MIN_GAIN)) continue
-      const clear = !cutsSpeech(m)
+      const clear = !cutsSpeech(m) && !pumps(m)
       const rank = clear ? score.total : score.damage
       if (!best || (clear && !best.clear) || (clear === best.clear && rank < best.total)) best = { set, audio, m, total: rank, clear, text }
     }

@@ -31,7 +31,8 @@ describe('prepareTake / measure', () => {
     expect(m.deadSilence).toBe(0)
     expect(m.silent).toBe(false)
     const e = bandsOfCells(m.cells)
-    e.forEach((v, i) => expect(v - e[4], BANDS[i].name).toBeCloseTo(a.rel[i], 6))
+    // the room's own spectrum (the pauses) is taken off the speech spectrum: on this quiet take under 0.005 dB
+    e.forEach((v, i) => expect(v - e[4], BANDS[i].name).toBeCloseTo(a.rel[i], 2))
   })
 
   it('keeps speech, pauses and windows apart', () => {
