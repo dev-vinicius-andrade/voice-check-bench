@@ -212,6 +212,106 @@
         "dull": "You hear your voice as dull. We didn't measure this, but you hear it — here's a gentle tweak in the EQ settings."
       }
     },
+    "classify": {
+      "roomHum": {
+        "summary": "A low electrical hum at {{hz}} Hz is audible in your recording",
+        "step": {
+          "placement": "Move the mic cable away from power cords and adapters",
+          "ground": "Try a different USB port or wall outlet — ground loops cause hum",
+          "notch": "Apply a narrow EQ cut at {{hz}} Hz to remove the hum tone"
+        }
+      },
+      "fanTone": {
+        "summary": "A steady tone at {{hz}} Hz from a fan or machine is picked up by the mic",
+        "step": {
+          "move": "Move the mic further from fans, vents, and computer cases",
+          "notch": "Apply a narrow EQ cut at {{hz}} Hz to reduce the tone"
+        }
+      },
+      "broadbandHiss": {
+        "summary": "Background hiss or room noise is competing with your voice (SNR {{snr}} dB)",
+        "step": {
+          "osSuppression": "Turn on noise suppression in your OS audio settings or meeting app",
+          "subtract": "Use noise reduction software to learn and subtract the background noise"
+        }
+      },
+      "roomNoise": {
+        "summary": "Your room noise is {{noise}} dBFS with an SNR of {{snr}} dB — too loud for clear calls",
+        "step": {
+          "environment": "Close windows, switch off fans, and move away from noisy appliances",
+          "gate": "Use a noise gate to silence the mic when you're not talking"
+        }
+      },
+      "tooQuiet": {
+        "summary": "Your voice is too quiet at {{speech}} dBFS — listeners will struggle to hear you",
+        "step": {
+          "closer": "Move closer to the mic, about one fist away",
+          "osGain": "Turn up the input volume (gain) in your OS sound settings",
+          "compress": "Use a compressor to even out your level and bring up quieter words"
+        }
+      },
+      "tooLoud": {
+        "summary": "Your voice is too loud at {{speech}} dBFS and may distort",
+        "step": {
+          "backOff": "Move back from the mic a little, or turn down the input gain",
+          "osGain": "Lower the input volume (gain) in your OS sound settings"
+        }
+      },
+      "unevenLevel": {
+        "summary": "Your volume varies by {{spread}} dB between loud and quiet moments",
+        "step": {
+          "distance": "Keep a consistent distance from the mic while talking",
+          "compress": "Use a compressor to gently even out the loud and quiet parts"
+        }
+      },
+      "boomy": {
+        "summary": "Too much bass around 150 Hz makes your voice boomy and words blur together",
+        "step": {
+          "physical": "Move slightly further from the mic — bass builds up when you're very close",
+          "eq": "Apply a low-shelf EQ cut around 150 Hz to reduce the boom"
+        }
+      },
+      "muffled": {
+        "summary": "Low-mid buildup around 450 Hz makes your voice sound muffled",
+        "step": {
+          "physical": "Check that nothing is covering or blocking the mic capsule",
+          "eq": "Apply an EQ cut around 450 Hz to clear the mud"
+        }
+      },
+      "thin": {
+        "summary": "Not enough bass around 150 Hz makes your voice sound thin",
+        "step": {
+          "physical": "Move closer to the mic — proximity adds warmth to dynamic mics",
+          "eq": "Apply a low-shelf EQ boost around 150 Hz to add body"
+        }
+      },
+      "harsh": {
+        "summary": "Upper tones around 3.5 kHz are pushed, making your voice sound sharp and tiring",
+        "step": {
+          "physical": "Angle the mic slightly off-axis from your mouth",
+          "eq": "Apply an EQ cut around 3.5 kHz to soften the harshness"
+        }
+      },
+      "sibilant": {
+        "summary": "S and SH sounds are sharp and hissy",
+        "step": {
+          "angle": "Angle the mic slightly to the side of your mouth instead of straight on",
+          "deess": "Use a de-esser to tame sharp S sounds without affecting the rest of your voice"
+        }
+      },
+      "dull": {
+        "summary": "Not enough sparkle above 10 kHz makes consonants hard to make out",
+        "step": {
+          "physical": "Make sure the mic is pointing directly at your mouth, not off to the side",
+          "eq": "Apply a high-shelf EQ boost around 10 kHz to add clarity"
+        }
+      },
+      "installOffer": {
+        "title": "Automatic fix available",
+        "body": "Install free ReaPlugs to apply these fixes automatically through Wave Link.",
+        "button": "Install ReaPlugs"
+      }
+    },
     "refine": {
       "wrongDistance": "This take was recorded at {{actual}}, but the settings were made for {{dist}}, so it can't tell whether they work. Record again at {{dist}}, or get new settings made for {{actual}}.",
       "gateTooHigh": "The gate was closing on your voice: its Threshold goes down {{db, number(maximumFractionDigits: 1)}} dB, to {{to, number(maximumFractionDigits: 1)}} dB.",

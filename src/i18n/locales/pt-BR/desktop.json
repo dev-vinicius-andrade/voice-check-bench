@@ -54,7 +54,26 @@
       },
       "undo": "Voltar como estava.",
       "conflict": "Esse valor mudou depois que você aplicou isto, então Desfazer apagaria sua mudança. Volte o valor pelo controle deslizante.",
-      "missing": "Esse efeito ou valor não está mais na cadeia."
+      "missing": "Esse efeito ou valor não está mais na cadeia.",
+      "steps": {
+        "reaplugs": {
+          "highpass": "No ReaEQ, ative uma banda, defina Type como High Pass e insira a frequência.",
+          "eqCut": "No ReaEQ, ative uma banda livre, defina Type como Band, insira a frequência e um ganho negativo.",
+          "eqBoost": "No ReaEQ, ative uma banda livre, defina Type como Band, insira a frequência e um ganho positivo.",
+          "lowShelf": "No ReaEQ, ative a Banda 1, defina Type como Low Shelf, insira a frequência e o ganho.",
+          "highShelf": "No ReaEQ, ative a última banda, defina Type como High Shelf, insira a frequência e o ganho.",
+          "noiseSubtract": "No ReaFIR, defina Mode como Subtract e crie um perfil de ruído a partir de uma seção silenciosa.",
+          "gate": "No ReaGate, ative o plugin e defina o Threshold para que ele feche nas pausas mas permaneça aberto na sua voz.",
+          "compress": "No ReaComp, ative o plugin e defina Threshold e Ratio para nivelar seu volume.",
+          "deess": "Ative o plugin De-Esser para suavizar os sons de S estridentes."
+        },
+        "equalizerApo": {
+          "openConfig": "Abra o Configuration Editor do Equalizer APO (ou edite config.ini diretamente).",
+          "addLine": "Adicione esta linha de filtro: {{line}}",
+          "save": "Salve a configuração. As alterações entram em vigor imediatamente em todo o áudio.",
+          "unsupported": "O Equalizer APO não suporta este tipo de correção. Use Wave Link ReaPlugs em vez disso."
+        }
+      }
     },
     "autotune": {
       "reason": {
@@ -316,6 +335,9 @@
         },
         "result": {
           "title": "Ouvir e salvar",
+          "problems": {
+            "title": "{{count}} coisas que encontramos na sua gravação"
+          },
           "listen": "Compare na mesma gravação",
           "abHint": "Troque enquanto toca para ouvir o mesmo momento antes e depois.",
           "before": "Antes",

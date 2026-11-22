@@ -15,6 +15,7 @@ import { AdjustPanel } from './AdjustPanel'
 import { ChangesList } from './ChangesList'
 import { MetricTable } from './MetricTable'
 import { TakeSpectrumCard } from './spectrum/TakeSpectrumCard'
+import { ProblemExplanations } from './ProblemExplanations'
 import { UnmetList } from './UnmetList'
 import { useAbPlayer } from './useAbPlayer'
 import type { ManualEq } from './useManualEq'
@@ -60,6 +61,7 @@ export function ResultStep({ take, result, manual, save, noise, onAdjust, onReco
       <TakeSpectrumCard take={take} processed={result.processed} manual={manual} player={player} voiceNoise={voiceNoise} noiseCut={noise} />
       {rows.length > 0 && <MetricTable rows={rows} />}
       {!none && <ChangesList changes={result.changes} edits={manual.edits} />}
+      <ProblemExplanations take={take} />
       <UnmetList unmet={result.unmet} edited={manual.edits.length > 0} />
       {save.saved && (
         <Alert severity="success" data-testid="autotune-saved">

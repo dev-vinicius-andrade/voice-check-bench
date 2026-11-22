@@ -23,6 +23,10 @@ import {
   saveUiPrefs,
   type UiPrefs,
 } from '../storage/prefs'
+import { isDesktop } from '../desktop/bridge'
+import { defaultActuatorsState, loadActuatorsState, mergeDetection, saveActuatorsState, type DetectedActuator } from '../desktop/discovery'
+import { registerReaplugsAdapter } from '../desktop/advice/reaplugsAdapter'
+import { registerEqualizerApoAdapter } from '../desktop/advice/equalizerApoAdapter'
 import { openTakesDb, type TakesDb } from '../storage/takesDb'
 import {
   DEFAULT_GOAL,
@@ -69,6 +73,7 @@ export function initialBenchState(): BenchState {
     mains: 'auto',
     goal: { ...DEFAULT_GOAL, perceived: [] },
     applied: null,
+    actuators: defaultActuatorsState(),
     status: null,
   }
 }
@@ -271,6 +276,7 @@ export const useBench = create<BenchStore>()((set, get) => {
           mains: loadMains(),
           goal: loadGoal(),
           applied: loadApplied(),
+          actuators: loadActuatorsState(),
         })
         const db = await getDb()
         const takes: Take[] = []
@@ -281,6 +287,12 @@ export const useBench = create<BenchStore>()((set, get) => {
         set({ takes, storageAvailable: db.available })
         set(reconcileFxDist(get(), fxDistChosen))
         get().goTo(ui.screen, step)
+        // Register adapters for any previously detected actuators (so classify() installOffer is correct before discoverActuators runs)
+        const loadedActuators = get().actuators
+        for (const a of Object.values(loadedActuators.detected)) {
+          if (a.id === 'reaplugs') registerReaplugsAdapter()
+          if (a.id === 'equalizer-apo') registerEqualizerApoAdapter()
+        }
         // ready last: listeners (hash routing, demo loader) see the restored screen
         set({ ready: true })
         if (!getEngine().isSupported()) {
@@ -502,6 +514,33 @@ export const useBench = create<BenchStore>()((set, get) => {
     },
     setStatus: (msg, error = false) => set({ status: { msg, error } }),
     clearStatus: () => set({ status: null }),
+
+    async discoverActuators() {
+      const prev = get().actuators
+      // On desktop, filesystem-level detection via the Rust detect_actuators command.
+      // Works without Wave Link running — just checks if Settings.json exists at the known path.
+      // The web build has no actuators — discovery returns empty.
+      const found: DetectedActuator[] = []
+      if (isDesktop()) {
+        try {
+          const { detectActuators } = await import('../desktop/bridge')
+          const backend = await detectActuators()
+          for (const a of backend) {
+            found.push({ id: a.id, name: a.name, detectedAt: a.detectedAt, meta: a.meta })
+          }
+        } catch {
+          // Tauri command failed or not available: no actuators detected
+        }
+      }
+      const next = mergeDetection(prev, found, true)
+      saveActuatorsState(next)
+      set({ actuators: next })
+      // Register adapters for detected actuators
+      for (const a of Object.values(next.detected)) {
+        if (a.id === 'reaplugs') registerReaplugsAdapter()
+        if (a.id === 'equalizer-apo') registerEqualizerApoAdapter()
+      }
+    },
   }
 })
 

@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { Analysis, Take } from '../../types'
 import { GoalLine } from './GoalLine'
 import { NextActions } from './NextActions'
+import { ProblemCards } from './ProblemCards'
 import { PlainSummaries } from './PlainSummaries'
 import { SaveProfile } from '../profiles/SaveProfile'
 import { RatingCards } from './RatingCards'
@@ -20,7 +21,7 @@ const scrollToSettings = (): void =>
 
 /** Plain-first results for take A: score → ratings → next actions → summaries → collapsed technical details. */
 export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
-  const { score, ratings, actions, ctx, before } = usePlainResults(A, a)
+  const { score, ratings, actions, problems, ctx, before } = usePlainResults(A, a)
   const loop = useRefineLoop(A)
   const [open, setOpen] = useDetailsOpen()
   const pendingScroll = useRef(false)
@@ -45,6 +46,7 @@ export function PlainResults({ A, a }: { A: Take; a: Analysis }) {
       <ScoreHero score={score} before={before} />
       {loop && <RefineLoopPanel A={A} loop={loop} />}
       <RatingCards ratings={ratings} />
+      <ProblemCards report={problems} />
       <NextActions actions={actions} ctx={ctx} onShowSettings={showSettings} />
       <PlainSummaries A={A} />
       {/* when the attempt worked, "Save as profile" sits in the "It worked" card */}

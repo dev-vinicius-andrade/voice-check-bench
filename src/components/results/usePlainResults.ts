@@ -1,7 +1,8 @@
-// Inputs for the plain-language results of take A: clarity score, ratings and the next actions with their context.
+// Inputs for the plain-language results of take A: clarity score, ratings, classifier problems and the next actions with their context.
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { nextActions, type ActionContext } from '../../plain/actions'
+import { classify, type ProblemReport } from '../../plain/classify'
 import { plainRatings } from '../../plain/ratings'
 import { clarityScore } from '../../plain/score'
 import type { Action, ClarityScore, Rating } from '../../plain/types'
@@ -15,6 +16,8 @@ export interface PlainResults {
   score: ClarityScore
   ratings: Rating[]
   actions: Action[]
+  /** Hardware-agnostic problem report from classify(): ranked problems with fix steps and install offer. */
+  problems: ProblemReport
   ctx: ActionContext
   /** Score of the session's raw reference when A is the processed take (before vs after). */
   before: ClarityScore | null
@@ -41,6 +44,7 @@ export function usePlainResults(A: Take, a: Analysis): PlainResults {
       score: clarityScore(a, { raw, goal }),
       ratings: plainRatings(a, { raw, goal }),
       actions: nextActions(a, ctx),
+      problems: classify(a, mic, goal),
       ctx,
       before: raw ? clarityScore(raw, { goal }) : null,
       raw,

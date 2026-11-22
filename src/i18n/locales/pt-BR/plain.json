@@ -212,6 +212,106 @@
         "dull": "Você ouve sua voz sem brilho. Não medimos isso, mas você ouve — aqui vai um ajuste suave nas configurações de EQ."
       }
     },
+    "classify": {
+      "roomHum": {
+        "summary": "Um zumbido elétrico grave em {{hz}} Hz é audível na sua gravação",
+        "step": {
+          "placement": "Afaste o cabo do microfone de cabos de energia e adaptadores",
+          "ground": "Tente uma porta USB ou tomada diferente — loops de terra causam zumbido",
+          "notch": "Aplique um corte estreito de EQ em {{hz}} Hz para remover o tom de zumbido"
+        }
+      },
+      "fanTone": {
+        "summary": "Um tom constante em {{hz}} Hz de um ventilador ou máquina está sendo captado pelo microfone",
+        "step": {
+          "move": "Afaste o microfone de ventiladores, saídas de ar e gabinetes de computador",
+          "notch": "Aplique um corte estreito de EQ em {{hz}} Hz para reduzir o tom"
+        }
+      },
+      "broadbandHiss": {
+        "summary": "Chiado de fundo ou ruído ambiente está competindo com sua voz (SNR {{snr}} dB)",
+        "step": {
+          "osSuppression": "Ative a supressão de ruído nas configurações de áudio do sistema ou no app de reunião",
+          "subtract": "Use software de redução de ruído para aprender e subtrair o ruído de fundo"
+        }
+      },
+      "roomNoise": {
+        "summary": "O ruído do seu ambiente está em {{noise}} dBFS com SNR de {{snr}} dB — alto demais para chamadas claras",
+        "step": {
+          "environment": "Feche janelas, desligue ventiladores e afaste-se de aparelhos barulhentos",
+          "gate": "Use um gate de ruído para silenciar o microfone quando você não estiver falando"
+        }
+      },
+      "tooQuiet": {
+        "summary": "Sua voz está baixa demais em {{speech}} dBFS — quem ouve vai ter dificuldade para te escutar",
+        "step": {
+          "closer": "Chegue mais perto do microfone, a cerca de um punho de distância",
+          "osGain": "Aumente o volume de entrada (ganho) nas configurações de som do sistema",
+          "compress": "Use um compressor para nivelar seu volume e trazer à tona as palavras mais baixas"
+        }
+      },
+      "tooLoud": {
+        "summary": "Sua voz está alta demais em {{speech}} dBFS e pode distorcer",
+        "step": {
+          "backOff": "Afaste-se um pouco do microfone ou diminua o ganho de entrada",
+          "osGain": "Diminua o volume de entrada (ganho) nas configurações de som do sistema"
+        }
+      },
+      "unevenLevel": {
+        "summary": "Seu volume varia {{spread}} dB entre os momentos altos e baixos",
+        "step": {
+          "distance": "Mantenha uma distância consistente do microfone enquanto fala",
+          "compress": "Use um compressor para suavizar as partes altas e baixas"
+        }
+      },
+      "boomy": {
+        "summary": "Grave demais por volta de 150 Hz deixa sua voz embolada e as palavras se misturam",
+        "step": {
+          "physical": "Afaste-se um pouco do microfone — o grave aumenta quando você está muito perto",
+          "eq": "Aplique um corte low-shelf de EQ por volta de 150 Hz para reduzir o boom"
+        }
+      },
+      "muffled": {
+        "summary": "Acúmulo de médio-graves por volta de 450 Hz deixa sua voz abafada",
+        "step": {
+          "physical": "Verifique se nada está cobrindo ou bloqueando a cápsula do microfone",
+          "eq": "Aplique um corte de EQ por volta de 450 Hz para limpar o som"
+        }
+      },
+      "thin": {
+        "summary": "Pouco grave por volta de 150 Hz deixa sua voz fina",
+        "step": {
+          "physical": "Chegue mais perto do microfone — a proximidade adiciona calor aos microfones dinâmicos",
+          "eq": "Aplique um boost low-shelf de EQ por volta de 150 Hz para adicionar corpo"
+        }
+      },
+      "harsh": {
+        "summary": "Os agudos por volta de 3,5 kHz estão elevados, deixando sua voz estridente e cansativa",
+        "step": {
+          "physical": "Angule o microfone levemente para o lado da sua boca",
+          "eq": "Aplique um corte de EQ por volta de 3,5 kHz para suavizar a estridência"
+        }
+      },
+      "sibilant": {
+        "summary": "Os sons de S e CH estão chiados e ásperos",
+        "step": {
+          "angle": "Angule o microfone levemente para o lado da boca em vez de apontar direto",
+          "deess": "Use um de-esser para domar os sons de S sem afetar o resto da voz"
+        }
+      },
+      "dull": {
+        "summary": "Pouco brilho acima de 10 kHz dificulta entender as consoantes",
+        "step": {
+          "physical": "Certifique-se de que o microfone está apontando direto para sua boca, não para o lado",
+          "eq": "Aplique um boost high-shelf de EQ por volta de 10 kHz para adicionar clareza"
+        }
+      },
+      "installOffer": {
+        "title": "Correção automática disponível",
+        "body": "Instale o ReaPlugs gratuito para aplicar essas correções automaticamente pelo Wave Link.",
+        "button": "Instalar ReaPlugs"
+      }
+    },
     "refine": {
       "wrongDistance": "Esta gravação foi feita a {{actual}}, mas as configurações foram feitas para {{dist}}, então ela não mostra se elas funcionam. Grave de novo a {{dist}} ou peça configurações novas feitas para {{actual}}.",
       "gateTooHigh": "O gate estava fechando em cima da sua voz: o Threshold dele desce {{db, number(maximumFractionDigits: 1)}} dB, para {{to, number(maximumFractionDigits: 1)}} dB.",

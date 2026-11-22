@@ -4,6 +4,7 @@ import type { ChartView, DeviceChoice, DeviceKind, MicProfile, Screen, StepRef, 
 import type { InputDevice } from '../audio/AudioEngine'
 import type { MainsSetting } from '../audio/mains'
 import type { Msg } from '../plain/types'
+import type { ActuatorsState } from '../desktop/discovery'
 
 export type MicStatus = 'off' | 'connecting' | 'on' | 'error'
 export type RecorderPhase = 'idle' | 'silence' | 'reading' | 'analyzing'
@@ -44,6 +45,8 @@ export interface BenchState {
   goal: VoiceGoal
   /** Settings currently applied (persisted in localStorage 'vcb-applied'); copied onto each new processed take. */
   applied: AppliedSettings | null
+  /** Detected audio actuators on this machine (persisted in localStorage 'vcb-actuators'). */
+  actuators: ActuatorsState
   status: StatusMessage | null
 }
 
@@ -85,6 +88,8 @@ export interface BenchActions {
   setMains(mains: MainsSetting): void
   setStatus(msg: Msg, error?: boolean): void
   clearStatus(): void
+  /** Scan for installed audio actuators, update state and register matching adapters. */
+  discoverActuators(): Promise<void>
 }
 
 export type BenchStore = BenchState & BenchActions

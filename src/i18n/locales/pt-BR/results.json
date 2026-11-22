@@ -32,6 +32,17 @@
       "showHow": "Mostre como",
       "hideHow": "Esconder"
     },
+    "problems": {
+      "title": "{{count}} coisas para melhorar",
+      "severity": {
+        "bad": "Precisa de atenção",
+        "warn": "Pode melhorar"
+      },
+      "autoAvailable": "Pode ser corrigido automaticamente com software de áudio",
+      "showAuto": "Mostrar correção automática",
+      "hideAuto": "Esconder correção automática",
+      "installNeeded": "Esta correção requer software de processamento de áudio. Instale o ReaPlugs (gratuito) para aplicá-la automaticamente."
+    },
     "how": {
       "placement": {
         "distanceKnown": "Sua melhor distância nesta sessão: {{everyday}}, {{dist}}.",

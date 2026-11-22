@@ -192,6 +192,21 @@ export async function saveWav(name: string, wav: ArrayBuffer): Promise<string> {
   return invoke<string>('save_wav', new Uint8Array(wav), { headers: { 'x-file-name': name } })
 }
 
+// ---- Actuator discovery (desktop/src-tauri/src/discovery.rs): filesystem-level detection of installed audio software. ----
+
+/** Detected actuator returned by the Rust backend; mirrors `DetectedActuator` in src/desktop/discovery.ts. */
+export interface DetectedActuatorBackend {
+ id: string
+ name: string
+ detectedAt: string
+ meta?: Record<string, string>
+}
+
+/** Scan for installed audio actuators via filesystem checks (works without Wave Link running). */
+export async function detectActuators(): Promise<DetectedActuatorBackend[]> {
+ return call<DetectedActuatorBackend[]>('detect_actuators')
+}
+
 /** The offline render commands in one object; code that renders takes a `RenderBridge` (a fake in tests). */
 export const renderBridge = {
   renderOpen,

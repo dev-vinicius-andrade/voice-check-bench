@@ -54,7 +54,26 @@
       },
       "undo": "Put it back the way it was.",
       "conflict": "That value was changed after you applied this, so Undo would overwrite your change. Set it back with its slider instead.",
-      "missing": "That effect or value isn't in the chain any more."
+      "missing": "That effect or value isn't in the chain any more.",
+      "steps": {
+        "reaplugs": {
+          "highpass": "In ReaEQ, enable a band, set Type to High Pass, and enter the frequency.",
+          "eqCut": "In ReaEQ, enable a free band, set Type to Band, enter the frequency and a negative gain.",
+          "eqBoost": "In ReaEQ, enable a free band, set Type to Band, enter the frequency and a positive gain.",
+          "lowShelf": "In ReaEQ, enable Band 1, set Type to Low Shelf, enter the frequency and gain.",
+          "highShelf": "In ReaEQ, enable the last band, set Type to High Shelf, enter the frequency and gain.",
+          "noiseSubtract": "In ReaFIR, set Mode to Subtract and build a noise profile from a quiet section.",
+          "gate": "In ReaGate, enable the plugin and set the Threshold so it closes in pauses but stays open on your voice.",
+          "compress": "In ReaComp, enable the plugin and set Threshold and Ratio to even out your level.",
+          "deess": "Enable the De-Esser plugin to tame sharp S sounds."
+        },
+        "equalizerApo": {
+          "openConfig": "Open Equalizer APO's Configuration Editor (or edit config.ini directly).",
+          "addLine": "Add this filter line: {{line}}",
+          "save": "Save the configuration. Changes take effect immediately on all audio.",
+          "unsupported": "Equalizer APO does not support this type of fix. Use Wave Link ReaPlugs instead."
+        }
+      }
     },
     "autotune": {
       "reason": {
@@ -316,6 +335,9 @@
         },
         "result": {
           "title": "Listen and save",
+          "problems": {
+            "title": "{{count}} things we found in your recording"
+          },
           "listen": "Compare on the same recording",
           "abHint": "Switch while it plays to hear the same moment before and after.",
           "before": "Before",
