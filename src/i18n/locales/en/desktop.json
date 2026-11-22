@@ -336,7 +336,7 @@
         "result": {
           "title": "Listen and save",
           "problems": {
-            "title": "{{count}} things we found in your recording"
+            "title": "{count, plural, one {# thing we found in your recording} other {# things we found in your recording}}"
           },
           "listen": "Compare on the same recording",
           "abHint": "Switch while it plays to hear the same moment before and after.",

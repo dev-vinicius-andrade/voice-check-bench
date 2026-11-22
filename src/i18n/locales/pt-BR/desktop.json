@@ -336,7 +336,7 @@
         "result": {
           "title": "Ouvir e salvar",
           "problems": {
-            "title": "{{count}} coisas que encontramos na sua gravação"
+            "title": "{count, plural, one {# coisa que encontramos na sua gravação} many {# coisas que encontramos na sua gravação} other {# coisas que encontramos na sua gravação}}"
           },
           "listen": "Compare na mesma gravação",
           "abHint": "Troque enquanto toca para ouvir o mesmo momento antes e depois.",

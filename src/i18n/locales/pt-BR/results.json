@@ -33,7 +33,7 @@
       "hideHow": "Esconder"
     },
     "problems": {
-      "title": "{{count}} coisas para melhorar",
+      "title": "{count, plural, one {# coisa para melhorar} many {# coisas para melhorar} other {# coisas para melhorar}}",
       "severity": {
         "bad": "Precisa de atenção",
         "warn": "Pode melhorar"
