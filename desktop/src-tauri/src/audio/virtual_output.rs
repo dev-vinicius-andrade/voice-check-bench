@@ -13,8 +13,8 @@ mod inner {
     use std::sync::atomic::{AtomicU32, Ordering};
     use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::System::Memory::{
-        CreateFileMappingW, MapViewOfFile, UnmapViewOfFile, FILE_MAP_ALL_ACCESS,
-        PAGE_READWRITE,
+        CreateFileMappingW, MapViewOfFile, UnmapViewOfFile, MEMORY_MAPPED_VIEW_ADDRESS,
+        FILE_MAP_ALL_ACCESS, PAGE_READWRITE,
     };
     use windows_sys::Win32::System::Threading::{CreateEventW, SetEvent, ResetEvent};
 
@@ -80,15 +80,19 @@ mod inner {
                     SHM_SIZE as u32,
                     SHM_NAME.as_ptr(),
                 );
-                if mapping == 0 {
+                if mapping.is_null() {
                     return None;
                 }
 
-                let base = MapViewOfFile(mapping, FILE_MAP_ALL_ACCESS, 0, 0, SHM_SIZE);
-                if base.is_null() {
+                let mapped = MapViewOfFile(mapping, FILE_MAP_ALL_ACCESS, 0, 0, SHM_SIZE);
+                // MEMORY_MAPPED_VIEW_ADDRESS has a `Value` field that is *mut c_void
+                let base_ptr = mapped.Value;
+                if base_ptr.is_null() {
                     CloseHandle(mapping);
                     return None;
                 }
+
+                let base = base_ptr as *mut u8;
 
                 // Initialize header
                 let header = base as *mut RingHeader;
@@ -104,7 +108,7 @@ mod inner {
 
                 Some(Self {
                     mapping,
-                    base: base as *mut u8,
+                    base,
                     header,
                     write_event,
                 })
@@ -162,7 +166,7 @@ mod inner {
                     .store(write_pos + BLOCK_SAMPLES, Ordering::Release);
 
                 // Signal kernel that data is available
-                if self.write_event != 0 {
+                if !self.write_event.is_null() {
                     SetEvent(self.write_event);
                 }
 
@@ -184,12 +188,15 @@ mod inner {
             unsafe {
                 self.deactivate();
                 if !self.base.is_null() {
-                    UnmapViewOfFile(self.base as *const _);
+                    let addr = MEMORY_MAPPED_VIEW_ADDRESS {
+                        Value: self.base as *mut _,
+                    };
+                    UnmapViewOfFile(addr);
                 }
-                if self.mapping != 0 {
+                if !self.mapping.is_null() {
                     CloseHandle(self.mapping);
                 }
-                if self.write_event != 0 {
+                if !self.write_event.is_null() {
                     ResetEvent(self.write_event);
                     CloseHandle(self.write_event);
                 }
