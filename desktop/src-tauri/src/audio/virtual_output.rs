@@ -24,8 +24,21 @@ mod inner {
     const CHANNELS: u32 = 1;
     const RING_BLOCKS: u32 = 64;
     const RING_SAMPLES: u32 = RING_BLOCKS * BLOCK_SAMPLES;
-    const SHM_NAME: &[u16] = w!("Global\\VCBAudioRing");
-    const WRITE_EVENT_NAME: &[u16] = w!("Global\\VCBWriteReady");
+    const SHM_NAME: &[u16] = &[
+        b'G' as u16, b'l' as u16, b'o' as u16, b'b' as u16, b'a' as u16, b'l' as u16,
+        b'\\' as u16,
+        b'V' as u16, b'C' as u16, b'B' as u16, b'A' as u16, b'u' as u16, b'd' as u16,
+        b'i' as u16, b'o' as u16, b'R' as u16, b'i' as u16, b'n' as u16, b'g' as u16,
+        0,
+    ];
+    const WRITE_EVENT_NAME: &[u16] = &[
+        b'G' as u16, b'l' as u16, b'o' as u16, b'b' as u16, b'a' as u16, b'l' as u16,
+        b'\\' as u16,
+        b'V' as u16, b'C' as u16, b'B' as u16, b'W' as u16, b'r' as u16, b'i' as u16,
+        b't' as u16, b'e' as u16, b'R' as u16, b'e' as u16, b'a' as u16, b'd' as u16,
+        b'y' as u16,
+        0,
+    ];
 
     /// Header layout matching VCB_RING_HEADER in vcb_ring.h.
     /// repr(C) + align(4) ensures identical memory layout to the C struct.
