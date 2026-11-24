@@ -36,8 +36,11 @@ const deesser = (on = false, index = 5): ChainSlot => ({
   values: {},
 })
 
-/** Standard chain with all plugin types present. */
-const fullChain = (): ChainSlot[] => [noiseRemoval(), gate(), eq(), comp(), reafir(), deesser()]
+/** Standard chain with all plugin types present; band 2 is disabled so EQ commands have a free band. */
+const fullChain = (): ChainSlot[] => {
+ const bands = GUIDE_BANDS.map((b, i) => ({ ...b, on: i !== 1 }))
+ return [noiseRemoval(), gate(), eq(bands), comp(), reafir(), deesser()]
+}
 
 /** Chain where every ReaEQ band is enabled (no free bands). */
 const chainNoFreeBands = (): ChainSlot[] => {

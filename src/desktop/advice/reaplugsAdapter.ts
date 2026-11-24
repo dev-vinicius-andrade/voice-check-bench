@@ -20,14 +20,13 @@ export const replugsCapability: ActuatorCapability = {
   handles: HANDLED,
 }
 
-/** Find a free (disabled) ReaEQ band in the given slot; falls back to the last enabled band when all are in use. Returns null only when the slot has no bands at all. */
+/** Find a free (disabled) ReaEQ band in the given slot, or null if none available. */
 function freeEqBand(slot: ChainSlot): number | null {
   const bands = eqBands(slot)
   for (const b of bands) {
     if (!b.on) return b.n
   }
-  // All bands enabled: reuse the last one rather than refusing the command.
-  return bands.length > 0 ? bands[bands.length - 1].n : null
+  return null
 }
 
 /** Build a ValueChange for an EQ band field. */
