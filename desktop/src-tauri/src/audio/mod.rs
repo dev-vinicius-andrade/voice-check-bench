@@ -38,6 +38,8 @@ pub mod pipeline;
 pub mod stats;
 pub mod stream;
 pub mod types;
+#[cfg(windows)]
+pub mod virtual_output;
 
 pub use devices::{AudioDevice, AudioDevices};
 pub use engine::{Engine, EngineOptions};
