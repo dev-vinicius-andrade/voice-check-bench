@@ -43,81 +43,86 @@ jobs:
           workspaces: desktop/src-tauri -> target
       - run: npm ci
 
+      # Install WDK (Windows Driver Kit) — not pre-installed on GitHub Actions runners.
+      # The WDK provides ntddk.h, portcls.h, ksmedia.h and kernel-mode libs needed for driver compilation.
+      - name: Install WDK
+        shell: pwsh
+        run: |
+          $wdkNugetUrl = "https://www.nuget.org/api/v2/package/Microsoft.Windows.WDK.x64/10.0.26100.2454"
+          $wdkZip = Join-Path $env:TEMP "wdk.nupkg.zip"
+          $wdkExtract = Join-Path $env:TEMP "wdk-extracted"
+
+          Write-Host "Downloading WDK NuGet package..."
+          Invoke-WebRequest -Uri $wdkNugetUrl -OutFile $wdkZip -UseBasicParsing
+
+          Write-Host "Extracting WDK..."
+          Expand-Archive -Path $wdkZip -DestinationPath $wdkExtract -Force
+
+          # Find the build directory containing WindowsDriver.common.targets
+          $wdkBuildDir = Get-ChildItem $wdkExtract -Recurse -Filter "WindowsDriver.Common.targets" -ErrorAction SilentlyContinue |
+            Select-Object -First 1 | Split-Path -Parent
+          if (-not $wdkBuildDir) {
+            Write-Host "WARNING: WindowsDriver.Common.targets not found in NuGet package. Listing contents:"
+            Get-ChildItem $wdkExtract -Recurse -Depth 3 | Select-Object FullName | Format-Table -AutoSize
+            Write-Error "WDK NuGet package does not contain expected build targets."
+            exit 1
+          }
+
+          # Find Include/km directory for ntddk.h
+          $wdkIncludeKm = Get-ChildItem $wdkExtract -Recurse -Directory -Filter "km" -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path (Join-Path $_.FullName "ntddk.h") } |
+            Select-Object -First 1
+          $wdkIncludeBase = if ($wdkIncludeKm) { $wdkIncludeKm.Parent.FullName } else { $null }
+
+          Write-Host "WDK build dir: $wdkBuildDir"
+          Write-Host "WDK include base: $wdkIncludeBase"
+
+          # Export as environment variables for subsequent steps
+          echo "WDK_BUILD_DIR=$wdkBuildDir" >> $env:GITHUB_ENV
+          echo "WDK_INCLUDE_BASE=$wdkIncludeBase" >> $env:GITHUB_ENV
+
       # Build the virtual audio capture driver with WDK before Tauri bundles it.
       # The compiled .sys/.inf/.cat are placed in desktop/src-driver/ where tauri.conf.json expects them.
       - name: Build virtual audio driver (WDK)
         shell: pwsh
         run: |
-          # Diagnostic: discover what SDK/WDK paths exist on this runner
-          Write-Host "=== SDK Discovery ==="
-          foreach ($base in @("C:\Program Files (x86)\Windows Kits\10", "C:\Program Files\Windows Kits\10")) {
-            if (Test-Path "$base\Include") {
-              Write-Host "Include dirs under $base :"
-              Get-ChildItem "$base\Include" -Directory | ForEach-Object { Write-Host "  $($_.Name)" }
-            } else {
-              Write-Host "NOT FOUND: $base\Include"
-            }
-          }
-          $regPath = "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
-          if (Test-Path $regPath) {
-            $regSdk = (Get-ItemProperty $regPath -Name KitsRoot10 -ErrorAction SilentlyContinue).KitsRoot10
-            Write-Host "Registry KitsRoot10: $regSdk"
-          } else {
-            Write-Host "Registry key not found: $regPath"
-          }
-          Write-Host "=== End SDK Discovery ==="
+          $wdkBuildDir = $env:WDK_BUILD_DIR
+          $wdkIncludeBase = $env:WDK_INCLUDE_BASE
 
-          # Try to find a valid SDK version with km/ headers
-          $sdkVersion = $null
-          $sdkBase = $null
-          foreach ($base in @("C:\Program Files (x86)\Windows Kits\10", "C:\Program Files\Windows Kits\10")) {
-            if (Test-Path "$base\Include") {
-              $ver = Get-ChildItem "$base\Include" -Directory -ErrorAction SilentlyContinue |
-                Where-Object { Test-Path (Join-Path $_.FullName "km") } |
-                Sort-Object Name -Descending | Select-Object -First 1
-              if ($ver) { $sdkVersion = $ver.Name; $sdkBase = $base; break }
-            }
+          if (-not $wdkBuildDir -or -not (Test-Path $wdkBuildDir)) {
+            Write-Error "WDK_BUILD_DIR not set or invalid: $wdkBuildDir"
+            exit 1
           }
 
-          # Fallback: use registry
-          if (-not $sdkVersion) {
-            $regPath = "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
-            if (Test-Path $regPath) {
-              $sdkBase = (Get-ItemProperty $regPath -Name KitsRoot10 -ErrorAction SilentlyContinue).KitsRoot10
-              if ($sdkBase -and (Test-Path "$sdkBase\Include")) {
-                $ver = Get-ChildItem "$sdkBase\Include" -Directory -ErrorAction SilentlyContinue |
-                  Where-Object { Test-Path (Join-Path $_.FullName "km") } |
-                  Sort-Object Name -Descending | Select-Object -First 1
-                if ($ver) { $sdkVersion = $ver.Name }
-              }
-            }
-          }
-
-          # Final fallback: let MSBuild resolve via WindowsTargetPlatformVersion=10.0
-          if (-not $sdkVersion) {
-            Write-Host "WARNING: No SDK with km/ headers found. Falling back to WindowsTargetPlatformVersion=10.0"
-            $sdkVersion = "10.0"
-            $sdkBase = "C:\Program Files (x86)\Windows Kits\10"
-          }
-
-          $env:WindowsSdkDir = "$sdkBase\"
-          $env:WDKContentRoot = "$sdkBase\"
-          $env:WindowsTargetPlatformVersion = $sdkVersion
-          Write-Host "Using SDK version: $sdkVersion"
-          Write-Host "WindowsSdkDir: $env:WindowsSdkDir"
+          # Find SDK version
+          $sdkBase = "C:\Program Files (x86)\Windows Kits\10"
+          $sdkVersion = Get-ChildItem "$sdkBase\Include" -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending | Select-Object -First 1 | Select-Object -ExpandProperty Name
+          if (-not $sdkVersion) { $sdkVersion = "10.0.26100.0" }
+          Write-Host "SDK version: $sdkVersion"
+          Write-Host "WDK build dir: $wdkBuildDir"
+          Write-Host "WDK include base: $wdkIncludeBase"
 
           # Locate MSBuild
           $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" 2>$null | Select-Object -First 1
           if (-not $msbuild -or -not (Test-Path $msbuild)) {
-            Write-Error "MSBuild not found. Ensure C++ and WDK components are installed."
+            Write-Error "MSBuild not found."
             exit 1
           }
           Write-Host "Using MSBuild: $msbuild"
 
           $projectFile = Join-Path $PWD "desktop\src-driver\vcb_capture.vcxproj"
 
-          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=$sdkVersion /p:WDKContentRoot="$env:WDKContentRoot" /p:WindowsSdkDir="$env:WindowsSdkDir" /m /verbosity:normal
+          # Pass WDK paths explicitly so MSBuild can find ntddk.h and driver build targets
+          & $msbuild $projectFile `
+            /p:Configuration=Release `
+            /p:Platform=x64 `
+            /p:WindowsTargetPlatformVersion=$sdkVersion `
+            /p:WindowsSdkDir="$sdkBase\" `
+            /p:WDKContentRoot="$wdkBuildDir\" `
+            /p:AdditionalIncludeDirectories="$wdkIncludeBase;$wdkIncludeBase\km;$wdkIncludeBase\shared;$wdkIncludeBase\um;$(ProjectDir)" `
+            /m /verbosity:normal
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Driver build failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
