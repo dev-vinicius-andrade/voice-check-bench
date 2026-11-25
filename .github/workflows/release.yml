@@ -48,26 +48,29 @@ jobs:
       - name: Build virtual audio driver (WDK)
         shell: pwsh
         run: |
-          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
-            -latest -property installationPath 2>$null
-          if (-not $vsPath) { Write-Error "Visual Studio not found"; exit 1 }
-
-          # Locate MSBuild from VS installation
-          $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
-          if (-not (Test-Path $msbuild)) {
-            # Fallback: try finding via vswhere
-            $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
-              -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" 2>$null | Select-Object -First 1
+          # Discover WDK root and set environment variables so MSBuild finds ntddk.h, portcls.h, etc.
+          $wdkRoot = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10" -Directory |
+            Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $wdkRoot) {
+            Write-Error "WDK not found under C:\Program Files (x86)\Windows Kits\10"
+            exit 1
           }
+          $env:WDKContentRoot = $wdkRoot.FullName + "\"
+          $env:WindowsSdkDir = $wdkRoot.FullName + "\"
+          Write-Host "WDK root: $env:WDKContentRoot"
+
+          # Locate MSBuild
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" 2>$null | Select-Object -First 1
           if (-not $msbuild -or -not (Test-Path $msbuild)) {
             Write-Error "MSBuild not found. Ensure C++ and WDK components are installed."
             exit 1
           }
-
           Write-Host "Using MSBuild: $msbuild"
+
           $projectFile = Join-Path $PWD "desktop\src-driver\vcb_capture.vcxproj"
 
-          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
+          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WDKContentRoot="$env:WDKContentRoot" /p:WindowsSdkDir="$env:WindowsSdkDir" /m /verbosity:normal
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Driver build failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
