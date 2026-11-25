@@ -116,7 +116,21 @@ jobs:
           $projectFile = Join-Path $PWD "desktop\src-driver\vcb_capture.vcxproj"
           $includeDirs = "$wdkIncludeBase;$wdkIncludeBase\km;$wdkIncludeBase\shared;$wdkIncludeBase\um"
 
-          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=$sdkVersion "/p:WindowsSdkDir=$sdkBase\" "/p:WDKContentRoot=$wdkBuildDir\" "/p:AdditionalIncludeDirectories=$includeDirs" /m /verbosity:normal
+          # Use an MSBuild response file so PowerShell does not split semicolons in AdditionalIncludeDirectories
+          $rspFile = Join-Path $env:TEMP "vcb_msbuild.rsp"
+          @"
+$projectFile
+/p:Configuration=Release
+/p:Platform=x64
+/p:WindowsTargetPlatformVersion=$sdkVersion
+/p:WindowsSdkDir=$sdkBase\
+/p:WDKContentRoot=$wdkBuildDir\
+/p:AdditionalIncludeDirectories=$includeDirs
+/m
+/verbosity:normal
+"@ | Set-Content -Path $rspFile -Encoding ASCII
+
+          & $msbuild "@$rspFile"
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Driver build failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
