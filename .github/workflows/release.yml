@@ -121,7 +121,8 @@ jobs:
             /p:WindowsTargetPlatformVersion=$sdkVersion `
             /p:WindowsSdkDir="$sdkBase\" `
             /p:WDKContentRoot="$wdkBuildDir\" `
-            '/p:AdditionalIncludeDirectories=$wdkIncludeBase;$wdkIncludeBase\km;$wdkIncludeBase\shared;$wdkIncludeBase\um;$(ProjectDir)' `
+            $includeDirs = "$wdkIncludeBase;$wdkIncludeBase\km;$wdkIncludeBase\shared;$wdkIncludeBase\um"
+ & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=$sdkVersion "/p:WindowsSdkDir=$sdkBase\" "/p:WDKContentRoot=$wdkBuildDir\" "/p:AdditionalIncludeDirectories=$includeDirs" /m /verbosity:normal
             /m /verbosity:normal
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Driver build failed with exit code $LASTEXITCODE"
