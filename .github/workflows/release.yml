@@ -118,17 +118,18 @@ jobs:
 
           # Use an MSBuild response file so PowerShell does not split semicolons in AdditionalIncludeDirectories
           $rspFile = Join-Path $env:TEMP "vcb_msbuild.rsp"
-          @"
-$projectFile
-/p:Configuration=Release
-/p:Platform=x64
-/p:WindowsTargetPlatformVersion=$sdkVersion
-/p:WindowsSdkDir=$sdkBase\
-/p:WDKContentRoot=$wdkBuildDir\
-/p:AdditionalIncludeDirectories=$includeDirs
-/m
-/verbosity:normal
-"@ | Set-Content -Path $rspFile -Encoding ASCII
+          $rspLines = @(
+            $projectFile,
+            "/p:Configuration=Release",
+            "/p:Platform=x64",
+            "/p:WindowsTargetPlatformVersion=$sdkVersion",
+            "/p:WindowsSdkDir=$sdkBase\",
+            "/p:WDKContentRoot=$wdkBuildDir\",
+            "/p:AdditionalIncludeDirectories=$includeDirs",
+            "/m",
+            "/verbosity:normal"
+          )
+          $rspLines | Set-Content -Path $rspFile -Encoding ASCII
 
           & $msbuild "@$rspFile"
           if ($LASTEXITCODE -ne 0) {
