@@ -1,5 +1,18 @@
 {
   "desktop": {
+    "driver": {
+      "title": "Virtual microphone",
+      "description": "Install a virtual audio device so any app (Zoom, Teams, Discord, OBS) can use your processed voice as a microphone input.",
+      "checking": "Checking driver status…",
+      "notInstalled": "The Voice Check Bench virtual microphone is not installed. Install it to use your processed voice in any app.",
+      "installed": "Voice Check Bench Mic is installed and ready to use. Select it as your microphone in any app.",
+      "install": "Install virtual microphone",
+      "uninstall": "Uninstall virtual microphone",
+      "installing": "Installing virtual microphone…",
+      "uninstalling": "Uninstalling virtual microphone…",
+      "error": "Driver operation failed.",
+      "adminHint": "Try running Voice Check Bench as Administrator. Right-click the app and select \"Run as administrator\"."
+    },
     "nav": "Tune effects",
     "title": "Tune your effects live",
     "loading": "Asking the engine…",

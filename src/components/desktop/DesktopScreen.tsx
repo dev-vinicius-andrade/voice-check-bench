@@ -5,6 +5,7 @@ import { AutoTuneScreen } from './autotune/AutoTuneScreen'
 import type { OpenTuneSession } from './autotune/useTuneRun'
 import { BridgeContext } from './bridgeContext'
 import { DesktopNav, type DesktopPage } from './DesktopNav'
+import { DriverInstallPanel } from './DriverInstallPanel'
 import { EngineFooter } from './EngineFooter'
 import { UpdateCheckButton } from './UpdateCheckButton'
 import { LiveTuning } from './tuning/LiveTuning'
@@ -30,6 +31,7 @@ export function DesktopScreen({ bridge = desktopBridge, page = 'autotune', openS
               <Typography variant="h4" component="h1">{t('desktop.autotune.ui.title')}</Typography>
               <Typography color="text.secondary">{t('desktop.autotune.ui.subtitle')}</Typography>
             </div>
+            <DriverInstallPanel />
             <AutoTuneScreen openSession={openSession} />
           </>
         ) : (
