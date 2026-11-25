@@ -47,7 +47,7 @@
       <PreprocessorDefinitions>_KERNEL_MODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WarningLevel>Level4</WarningLevel>
-      <LanguageStandard>stdclatest</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>portcls.lib;ks.lib;ntstrsafe.lib;%(AdditionalDependencies)</AdditionalDependencies>
