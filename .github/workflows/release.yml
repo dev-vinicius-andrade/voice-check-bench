@@ -81,8 +81,9 @@ jobs:
           echo "WDK_BUILD_DIR=$wdkBuildDir" >> $env:GITHUB_ENV
           echo "WDK_INCLUDE_BASE=$wdkIncludeBase" >> $env:GITHUB_ENV
 
-      # Build the virtual audio capture driver with WDK before Tauri bundles it.
-      # The compiled .sys/.inf/.cat are placed in desktop/src-driver/ where tauri.conf.json expects them.
+      # Build the virtual audio capture driver with WDK, then inject resources into tauri.conf.json.
+      # Driver files are NOT in tauri.conf.json statically (would break push-triggered builds).
+      # This step builds them on CI and patches the config before Tauri runs.
       - name: Build virtual audio driver (WDK)
         shell: pwsh
         run: |
@@ -113,26 +114,17 @@ jobs:
           Write-Host "Using MSBuild: $msbuild"
 
           $projectFile = Join-Path $PWD "desktop\src-driver\vcb_capture.vcxproj"
+          $includeDirs = "$wdkIncludeBase;$wdkIncludeBase\km;$wdkIncludeBase\shared;$wdkIncludeBase\um"
 
-          # Pass WDK paths explicitly so MSBuild can find ntddk.h and driver build targets
-          & $msbuild $projectFile `
-            /p:Configuration=Release `
-            /p:Platform=x64 `
-            /p:WindowsTargetPlatformVersion=$sdkVersion `
-            /p:WindowsSdkDir="$sdkBase\" `
-            /p:WDKContentRoot="$wdkBuildDir\" `
-            $includeDirs = "$wdkIncludeBase;$wdkIncludeBase\km;$wdkIncludeBase\shared;$wdkIncludeBase\um"
- & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=$sdkVersion "/p:WindowsSdkDir=$sdkBase\" "/p:WDKContentRoot=$wdkBuildDir\" "/p:AdditionalIncludeDirectories=$includeDirs" /m /verbosity:normal
-            /m /verbosity:normal
+          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=$sdkVersion "/p:WindowsSdkDir=$sdkBase\" "/p:WDKContentRoot=$wdkBuildDir\" "/p:AdditionalIncludeDirectories=$includeDirs" /m /verbosity:normal
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Driver build failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
           }
 
-          # Copy built artifacts to where tauri.conf.json expects them
+          # Copy built artifacts to desktop/src-driver/
           $outputDir = Join-Path $PWD "desktop\src-driver\x64\Release"
           $destDir = Join-Path $PWD "desktop\src-driver"
-
           $files = @("vcb_capture.sys", "vcb_capture.inf", "vcb_capture.cat")
           foreach ($f in $files) {
             $src = Join-Path $outputDir $f
@@ -140,20 +132,20 @@ jobs:
               Copy-Item $src $destDir -Force
               Write-Host "Copied $f to $destDir"
             } else {
-              Write-Warning "$f not found at $src — driver may not be fully built"
+              Write-Warning "$f not found at $src"
             }
           }
 
-          # Verify all required files exist for Tauri bundling
-          $missing = @()
-          foreach ($f in $files) {
-            if (-not (Test-Path (Join-Path $destDir $f))) { $missing += $f }
-          }
-          if ($missing.Count -gt 0) {
-            Write-Error "Missing driver files after build: $($missing -join ', '). Tauri bundle will fail."
-            exit 1
-          }
-          Write-Host "All driver files ready for Tauri bundling."
+          # Inject resources into tauri.conf.json so Tauri bundles them
+          $confPath = Join-Path $PWD "desktop\src-tauri\tauri.conf.json"
+          $conf = Get-Content $confPath -Raw | ConvertFrom-Json
+          $conf.bundle | Add-Member -NotePropertyName "resources" -NotePropertyValue @(
+            "../src-driver/vcb_capture.sys",
+            "../src-driver/vcb_capture.inf",
+            "../src-driver/vcb_capture.cat"
+          ) -Force
+          $conf | ConvertTo-Json -Depth 10 | Set-Content $confPath -Encoding UTF8
+          Write-Host "Injected driver resources into tauri.conf.json"
       # tauri.release.conf.json turns on createUpdaterArtifacts (only here: without the key that build fails), and
       # the signing key makes Tauri write the updater signature (<setup>.exe.sig) next to the installer.
       - name: Build signed installer
