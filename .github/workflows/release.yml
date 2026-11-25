@@ -48,20 +48,62 @@ jobs:
       - name: Build virtual audio driver (WDK)
         shell: pwsh
         run: |
-          # Find the Windows SDK root (parent of Include/Lib/UnionMetadata, NOT subdirs like WPT)
-          $sdkBase = "C:\Program Files (x86)\Windows Kits\10"
-          $sdkVersions = Get-ChildItem "$sdkBase\Include" -Directory -ErrorAction SilentlyContinue |
-            Where-Object { Test-Path (Join-Path $_.FullName "km") } |
-            Sort-Object Name -Descending
-          if (-not $sdkVersions) {
-            Write-Error "No valid Windows SDK version found under $sdkBase\Include"
-            exit 1
+          # Diagnostic: discover what SDK/WDK paths exist on this runner
+          Write-Host "=== SDK Discovery ==="
+          foreach ($base in @("C:\Program Files (x86)\Windows Kits\10", "C:\Program Files\Windows Kits\10")) {
+            if (Test-Path "$base\Include") {
+              Write-Host "Include dirs under $base :"
+              Get-ChildItem "$base\Include" -Directory | ForEach-Object { Write-Host "  $($_.Name)" }
+            } else {
+              Write-Host "NOT FOUND: $base\Include"
+            }
           }
-          $sdkVersion = $sdkVersions[0].Name
+          $regPath = "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+          if (Test-Path $regPath) {
+            $regSdk = (Get-ItemProperty $regPath -Name KitsRoot10 -ErrorAction SilentlyContinue).KitsRoot10
+            Write-Host "Registry KitsRoot10: $regSdk"
+          } else {
+            Write-Host "Registry key not found: $regPath"
+          }
+          Write-Host "=== End SDK Discovery ==="
+
+          # Try to find a valid SDK version with km/ headers
+          $sdkVersion = $null
+          $sdkBase = $null
+          foreach ($base in @("C:\Program Files (x86)\Windows Kits\10", "C:\Program Files\Windows Kits\10")) {
+            if (Test-Path "$base\Include") {
+              $ver = Get-ChildItem "$base\Include" -Directory -ErrorAction SilentlyContinue |
+                Where-Object { Test-Path (Join-Path $_.FullName "km") } |
+                Sort-Object Name -Descending | Select-Object -First 1
+              if ($ver) { $sdkVersion = $ver.Name; $sdkBase = $base; break }
+            }
+          }
+
+          # Fallback: use registry
+          if (-not $sdkVersion) {
+            $regPath = "HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots"
+            if (Test-Path $regPath) {
+              $sdkBase = (Get-ItemProperty $regPath -Name KitsRoot10 -ErrorAction SilentlyContinue).KitsRoot10
+              if ($sdkBase -and (Test-Path "$sdkBase\Include")) {
+                $ver = Get-ChildItem "$sdkBase\Include" -Directory -ErrorAction SilentlyContinue |
+                  Where-Object { Test-Path (Join-Path $_.FullName "km") } |
+                  Sort-Object Name -Descending | Select-Object -First 1
+                if ($ver) { $sdkVersion = $ver.Name }
+              }
+            }
+          }
+
+          # Final fallback: let MSBuild resolve via WindowsTargetPlatformVersion=10.0
+          if (-not $sdkVersion) {
+            Write-Host "WARNING: No SDK with km/ headers found. Falling back to WindowsTargetPlatformVersion=10.0"
+            $sdkVersion = "10.0"
+            $sdkBase = "C:\Program Files (x86)\Windows Kits\10"
+          }
+
           $env:WindowsSdkDir = "$sdkBase\"
           $env:WDKContentRoot = "$sdkBase\"
           $env:WindowsTargetPlatformVersion = $sdkVersion
-          Write-Host "SDK version: $sdkVersion"
+          Write-Host "Using SDK version: $sdkVersion"
           Write-Host "WindowsSdkDir: $env:WindowsSdkDir"
 
           # Locate MSBuild
