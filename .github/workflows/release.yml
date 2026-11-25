@@ -42,6 +42,62 @@ jobs:
         with:
           workspaces: desktop/src-tauri -> target
       - run: npm ci
+
+      # Build the virtual audio capture driver with WDK before Tauri bundles it.
+      # The compiled .sys/.inf/.cat are placed in desktop/src-driver/ where tauri.conf.json expects them.
+      - name: Build virtual audio driver (WDK)
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -property installationPath 2>$null
+          if (-not $vsPath) { Write-Error "Visual Studio not found"; exit 1 }
+
+          # Locate MSBuild from VS installation
+          $msbuild = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
+          if (-not (Test-Path $msbuild)) {
+            # Fallback: try finding via vswhere
+            $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+              -latest -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" 2>$null | Select-Object -First 1
+          }
+          if (-not $msbuild -or -not (Test-Path $msbuild)) {
+            Write-Error "MSBuild not found. Ensure C++ and WDK components are installed."
+            exit 1
+          }
+
+          Write-Host "Using MSBuild: $msbuild"
+          $projectFile = Join-Path $PWD "desktop\src-driver\vcb_capture.vcxproj"
+
+          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /m /verbosity:minimal
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Driver build failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+
+          # Copy built artifacts to where tauri.conf.json expects them
+          $outputDir = Join-Path $PWD "desktop\src-driver\x64\Release"
+          $destDir = Join-Path $PWD "desktop\src-driver"
+
+          $files = @("vcb_capture.sys", "vcb_capture.inf", "vcb_capture.cat")
+          foreach ($f in $files) {
+            $src = Join-Path $outputDir $f
+            if (Test-Path $src) {
+              Copy-Item $src $destDir -Force
+              Write-Host "Copied $f to $destDir"
+            } else {
+              Write-Warning "$f not found at $src — driver may not be fully built"
+            }
+          }
+
+          # Verify all required files exist for Tauri bundling
+          $missing = @()
+          foreach ($f in $files) {
+            if (-not (Test-Path (Join-Path $destDir $f))) { $missing += $f }
+          }
+          if ($missing.Count -gt 0) {
+            Write-Error "Missing driver files after build: $($missing -join ', '). Tauri bundle will fail."
+            exit 1
+          }
+          Write-Host "All driver files ready for Tauri bundling."
       # tauri.release.conf.json turns on createUpdaterArtifacts (only here: without the key that build fails), and
       # the signing key makes Tauri write the updater signature (<setup>.exe.sig) next to the installer.
       - name: Build signed installer
