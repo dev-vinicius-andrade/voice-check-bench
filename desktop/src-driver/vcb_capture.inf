@@ -1,0 +1,76 @@
+; VCB Virtual Audio Capture Driver — INF
+; Installs a virtual audio capture endpoint visible system-wide in Windows Sound.
+; Based on sysvad Package/sysvad.inf structure.
+; Requires test signing or WHQL attestation for production use.
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = MEDIA
+ClassGUID   = {4d36e96c-e325-11ce-bfc1-08002be10318}
+Provider    = %ManufacturerName%
+CatalogFile = vcb_capture.cat
+DriverVer   = 11/24/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir          = 13 ; Driver Store
+VcbCapture.CopyFiles    = 13
+
+[SourceDisksNames]
+1 = %DiskName%
+
+[SourceDisksFiles]
+vcb_capture.sys = 1
+
+; ---- Manufacturer & Models ----
+
+[Manufacturer]
+%ManufacturerName% = Standard,NTamd64
+
+[Standard.NTamd64]
+%VcbCapture.DeviceDesc% = VcbCapture_Device, Root\VCB_Capture
+
+; ---- Device Install Section ----
+
+[VcbCapture_Device]
+Include = ks.inf, wdmaudio.inf
+Needs   = KS.Registration, WDMAUDIO.Registration
+CopyFiles = VcbCapture.CopyFiles
+AddReg  = VcbCapture.AddReg
+
+[VcbCapture.CopyFiles]
+vcb_capture.sys
+
+[VcbCapture.AddReg]
+HKR,,FriendlyName,,%VcbCapture.DeviceDesc%
+
+; ---- Service Install ----
+
+[VcbCapture_Device.Services]
+AddService = VcbCapture,,VcbCapture_Service_Inst
+
+[VcbCapture_Service_Inst]
+DisplayName    = %VcbCapture.ServiceDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\vcb_capture.sys
+
+; ---- Interfaces ----
+
+[VcbCapture_Device.Interfaces]
+AddInterface = {6994ad04-93ef-11d0-a3cc-00a0c9223196}, VcbCapture_Interface
+
+[VcbCapture_Interface]
+AddReg = VcbCapture_Interface_AddReg
+
+[VcbCapture_Interface_AddReg]
+HKR,,FriendlyName,,%VcbCapture.DeviceDesc%
+
+; ---- Strings ----
+
+[Strings]
+ManufacturerName     = "Voice Check Bench"
+DiskName             = "VCB Virtual Audio Capture Driver Installation Disk"
+VcbCapture.DeviceDesc = "Voice Check Bench Mic"
+VcbCapture.ServiceDesc = "Voice Check Bench Virtual Audio Capture Service"

@@ -4,6 +4,7 @@ pub mod audio;
 pub mod chain;
 pub mod discovery;
 pub mod download;
+pub mod driver_install;
 pub mod host;
 pub mod render;
 pub mod wavelink;
@@ -60,6 +61,9 @@ pub fn run() {
             render::commands::render_close,
             download::save_wav,
             discovery::detect_actuators,
+            driver_install::install_virtual_audio_driver,
+            driver_install::uninstall_virtual_audio_driver,
+            driver_install::is_virtual_audio_driver_installed,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Voice Check Bench")

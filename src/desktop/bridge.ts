@@ -207,6 +207,29 @@ export async function detectActuators(): Promise<DetectedActuatorBackend[]> {
  return call<DetectedActuatorBackend[]>('detect_actuators')
 }
 
+// ---- Virtual audio driver installation (desktop/src-tauri/src/driver_install.rs) ----
+
+export interface DriverInstallResult {
+ success: boolean
+ message: string
+ alreadyInstalled: boolean
+}
+
+/** Install the bundled VCB virtual audio capture driver. Requires admin privileges. */
+export async function installVirtualAudioDriver(): Promise<DriverInstallResult> {
+ return call<DriverInstallResult>('install_virtual_audio_driver')
+}
+
+/** Uninstall the VCB virtual audio capture driver. */
+export async function uninstallVirtualAudioDriver(): Promise<DriverInstallResult> {
+ return call<DriverInstallResult>('uninstall_virtual_audio_driver')
+}
+
+/** Check if the VCB virtual audio capture driver is currently installed. */
+export async function isVirtualAudioDriverInstalled(): Promise<boolean> {
+ return call<boolean>('is_virtual_audio_driver_installed')
+}
+
 /** The offline render commands in one object; code that renders takes a `RenderBridge` (a fake in tests). */
 export const renderBridge = {
   renderOpen,
