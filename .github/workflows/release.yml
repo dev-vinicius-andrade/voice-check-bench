@@ -48,16 +48,21 @@ jobs:
       - name: Build virtual audio driver (WDK)
         shell: pwsh
         run: |
-          # Discover WDK root and set environment variables so MSBuild finds ntddk.h, portcls.h, etc.
-          $wdkRoot = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10" -Directory |
-            Sort-Object Name -Descending | Select-Object -First 1
-          if (-not $wdkRoot) {
-            Write-Error "WDK not found under C:\Program Files (x86)\Windows Kits\10"
+          # Find the Windows SDK root (parent of Include/Lib/UnionMetadata, NOT subdirs like WPT)
+          $sdkBase = "C:\Program Files (x86)\Windows Kits\10"
+          $sdkVersions = Get-ChildItem "$sdkBase\Include" -Directory -ErrorAction SilentlyContinue |
+            Where-Object { Test-Path (Join-Path $_.FullName "km") } |
+            Sort-Object Name -Descending
+          if (-not $sdkVersions) {
+            Write-Error "No valid Windows SDK version found under $sdkBase\Include"
             exit 1
           }
-          $env:WDKContentRoot = $wdkRoot.FullName + "\"
-          $env:WindowsSdkDir = $wdkRoot.FullName + "\"
-          Write-Host "WDK root: $env:WDKContentRoot"
+          $sdkVersion = $sdkVersions[0].Name
+          $env:WindowsSdkDir = "$sdkBase\"
+          $env:WDKContentRoot = "$sdkBase\"
+          $env:WindowsTargetPlatformVersion = $sdkVersion
+          Write-Host "SDK version: $sdkVersion"
+          Write-Host "WindowsSdkDir: $env:WindowsSdkDir"
 
           # Locate MSBuild
           $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
@@ -70,7 +75,7 @@ jobs:
 
           $projectFile = Join-Path $PWD "desktop\src-driver\vcb_capture.vcxproj"
 
-          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WDKContentRoot="$env:WDKContentRoot" /p:WindowsSdkDir="$env:WindowsSdkDir" /m /verbosity:normal
+          & $msbuild $projectFile /p:Configuration=Release /p:Platform=x64 /p:WindowsTargetPlatformVersion=$sdkVersion /p:WDKContentRoot="$env:WDKContentRoot" /p:WindowsSdkDir="$env:WindowsSdkDir" /m /verbosity:normal
           if ($LASTEXITCODE -ne 0) {
             Write-Error "Driver build failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
