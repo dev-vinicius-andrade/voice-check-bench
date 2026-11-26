@@ -138,35 +138,45 @@ jobs:
           $rspLines | Set-Content -Path $rspFile -Encoding ASCII
 
           & $msbuild /noAutoResponse "@$rspFile"
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Driver build failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
-          }
+          $driverBuildOk = ($LASTEXITCODE -eq 0)
 
-          # Copy built artifacts to desktop/src-driver/
-          $outputDir = Join-Path $PWD "desktop\src-driver\x64\Release"
+          # Copy built artifacts to desktop/src-driver/ only if build succeeded
           $destDir = Join-Path $PWD "desktop\src-driver"
           $files = @("vcb_capture.sys", "vcb_capture.inf", "vcb_capture.cat")
-          foreach ($f in $files) {
-            $src = Join-Path $outputDir $f
-            if (Test-Path $src) {
-              Copy-Item $src $destDir -Force
-              Write-Host "Copied $f to $destDir"
-            } else {
-              Write-Warning "$f not found at $src"
+          $allFilesPresent = $true
+
+          if ($driverBuildOk) {
+            $outputDir = Join-Path $PWD "desktop\src-driver\x64\Release"
+            foreach ($f in $files) {
+              $src = Join-Path $outputDir $f
+              if (Test-Path $src) {
+                Copy-Item $src $destDir -Force
+                Write-Host "Copied $f to $destDir"
+              } else {
+                Write-Warning "$f not found at $src after successful build"
+                $allFilesPresent = $false
+              }
             }
+          } else {
+            Write-Warning "WDK driver build failed (exit code $LASTEXITCODE). Driver files will NOT be bundled in this release."
+            Write-Warning "To bundle the driver, build it locally with WDK installed and run the release workflow again."
+            $allFilesPresent = $false
           }
 
-          # Inject resources into tauri.conf.json so Tauri bundles them
-          $confPath = Join-Path $PWD "desktop\src-tauri\tauri.conf.json"
-          $conf = Get-Content $confPath -Raw | ConvertFrom-Json
-          $conf.bundle | Add-Member -NotePropertyName "resources" -NotePropertyValue @(
-            "../src-driver/vcb_capture.sys",
-            "../src-driver/vcb_capture.inf",
-            "../src-driver/vcb_capture.cat"
-          ) -Force
-          $conf | ConvertTo-Json -Depth 10 | Set-Content $confPath -Encoding UTF8
-          Write-Host "Injected driver resources into tauri.conf.json"
+          # Only inject resources into tauri.conf.json if all driver files are present
+          if ($allFilesPresent) {
+            $confPath = Join-Path $PWD "desktop\src-tauri\tauri.conf.json"
+            $conf = Get-Content $confPath -Raw | ConvertFrom-Json
+            $conf.bundle | Add-Member -NotePropertyName "resources" -NotePropertyValue @(
+              "../src-driver/vcb_capture.sys",
+              "../src-driver/vcb_capture.inf",
+              "../src-driver/vcb_capture.cat"
+            ) -Force
+            $conf | ConvertTo-Json -Depth 10 | Set-Content $confPath -Encoding UTF8
+            Write-Host "Injected driver resources into tauri.conf.json"
+          } else {
+            Write-Host "Skipping resource injection — driver files not available. App will show install guidance without bundled driver."
+          }
       # tauri.release.conf.json turns on createUpdaterArtifacts (only here: without the key that build fails), and
       # the signing key makes Tauri write the updater signature (<setup>.exe.sig) next to the installer.
       - name: Build signed installer
