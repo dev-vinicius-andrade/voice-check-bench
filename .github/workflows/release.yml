@@ -115,12 +115,16 @@ jobs:
 
           $projectFile = Join-Path $PWD "desktop\src-driver\vcb_capture.vcxproj"
 
-          # Set WDK include dirs as env var — MSBuild reads $(VCB_WDK_INCLUDE) from .vcxproj,
-          # avoiding semicolon splitting issues with command-line properties and response files.
+          # Set WDK paths as environment variables so Toolset.props reads them natively
+          # without MSBuild property quoting/escaping issues that cause MSB4102 illegal path errors.
+          $env:WDKContentRoot = $wdkBuildDir
+          $env:WindowsSdkDir = $sdkBase
           $env:VCB_WDK_INCLUDE = "$wdkIncludeBase;$wdkIncludeBase\km;$wdkIncludeBase\shared;$wdkIncludeBase\um"
+          Write-Host "WDKContentRoot=$env:WDKContentRoot"
+          Write-Host "WindowsSdkDir=$env:WindowsSdkDir"
           Write-Host "VCB_WDK_INCLUDE=$env:VCB_WDK_INCLUDE"
 
-          # Use an MSBuild response file for non-semicolon properties.
+          # Use an MSBuild response file for non-path properties only.
           # /noAutoResponse disables the default MSBuild.rsp which contains paths with spaces that conflict.
           $rspFile = Join-Path $env:TEMP "vcb_msbuild.rsp"
           $rspLines = @(
@@ -128,8 +132,6 @@ jobs:
             "/p:Configuration=Release",
             "/p:Platform=x64",
             "/p:WindowsTargetPlatformVersion=$sdkVersion",
-            "/p:WindowsSdkDir=`"$sdkBase`"",
-            "/p:WDKContentRoot=`"$wdkBuildDir`"",
             "/m",
             "/verbosity:normal"
           )
