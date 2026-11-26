@@ -128,8 +128,8 @@ jobs:
             "/p:Configuration=Release",
             "/p:Platform=x64",
             "/p:WindowsTargetPlatformVersion=$sdkVersion",
-            "/p:WindowsSdkDir=`"$sdkBase\`"",
-            "/p:WDKContentRoot=`"$wdkBuildDir\`"",
+            "/p:WindowsSdkDir=`"$sdkBase`"",
+            "/p:WDKContentRoot=`"$wdkBuildDir`"",
             "/m",
             "/verbosity:normal"
           )
