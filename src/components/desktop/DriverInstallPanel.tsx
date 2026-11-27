@@ -1,33 +1,31 @@
-// Driver installation panel: lets users install/uninstall the VCB virtual audio capture driver
-// directly from the app. Calls the Tauri backend commands which use pnputil under the hood.
-// Requires the app to be running as Administrator for install/uninstall to succeed.
+// VB-Cable detection panel: checks whether VB-Audio Virtual Cable is installed
+// by querying WASAPI audio endpoints. If not found, shows download instructions.
+// If found, confirms readiness for virtual microphone use.
 import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
+import Link from '@mui/material/Link'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
-import {
- isVirtualAudioDriverInstalled,
- installVirtualAudioDriver,
- uninstallVirtualAudioDriver,
- type DriverInstallResult,
-} from '../../desktop/bridge'
+import { isVbCableInstalled } from '../../desktop/bridge'
 
-type DriverState = 'checking' | 'installed' | 'not-installed' | 'installing' | 'uninstalling' | 'error'
+type VbCableState = 'checking' | 'installed' | 'not-installed' | 'error'
+
+const VB_CABLE_DOWNLOAD_URL = 'https://vb-audio.com/Cable/'
 
 export function DriverInstallPanel() {
  const { t } = useTranslation()
- const [state, setState] = useState<DriverState>('checking')
+ const [state, setState] = useState<VbCableState>('checking')
  const [message, setMessage] = useState('')
 
  const checkStatus = useCallback(async () => {
  setState('checking')
- try {
- const installed = await isVirtualAudioDriverInstalled()
- setState(installed ? 'installed' : 'not-installed')
  setMessage('')
+ try {
+ const installed = await isVbCableInstalled()
+ setState(installed ? 'installed' : 'not-installed')
  } catch (e) {
  setState('error')
  setMessage(String(e))
@@ -37,44 +35,6 @@ export function DriverInstallPanel() {
  useEffect(() => {
  void checkStatus()
  }, [checkStatus])
-
- const handleInstall = async () => {
- setState('installing')
- setMessage('')
- try {
- const result: DriverInstallResult = await installVirtualAudioDriver()
- if (result.success) {
- setState('installed')
- setMessage(result.message)
- } else {
- setState('error')
- setMessage(result.message)
- }
- } catch (e) {
- setState('error')
- setMessage(String(e))
- }
- }
-
- const handleUninstall = async () => {
- setState('uninstalling')
- setMessage('')
- try {
- const result: DriverInstallResult = await uninstallVirtualAudioDriver()
- if (result.success) {
- setState('not-installed')
- setMessage(result.message)
- } else {
- setState('error')
- setMessage(result.message)
- }
- } catch (e) {
- setState('error')
- setMessage(String(e))
- }
- }
-
- const busy = state === 'checking' || state === 'installing' || state === 'uninstalling'
 
  return (
  <Paper component="section" className="grid gap-4 p-6" elevation={0} variant="outlined">
@@ -99,43 +59,42 @@ export function DriverInstallPanel() {
  {state === 'not-installed' && (
  <div className="grid gap-3">
  <Alert severity="info" variant="outlined">
- {t('desktop.driver.notInstalled')}
+ {t('desktop.driver.vbCableNotInstalled')}
  </Alert>
+ <div className="grid gap-2">
+ <Typography variant="body2">
+ {t('desktop.driver.vbCableInstructions')}
+ </Typography>
+ <ol className="ml-5 grid gap-1 text-sm">
+ <li>{t('desktop.driver.vbCableStep1')}</li>
+ <li>{t('desktop.driver.vbCableStep2')}</li>
+ <li>{t('desktop.driver.vbCableStep3')}</li>
+ <li>{t('desktop.driver.vbCableStep4')}</li>
+ </ol>
  <Button
  variant="contained"
- onClick={() => void handleInstall()}
- disabled={busy}
+ component={Link}
+ href={VB_CABLE_DOWNLOAD_URL}
+ target="_blank"
+ rel="noopener noreferrer"
  sx={{ alignSelf: 'start' }}
  >
- {t('desktop.driver.install')}
+ {t('desktop.driver.downloadVbCable')}
  </Button>
+ <Button variant="text" size="small" onClick={() => void checkStatus()} sx={{ alignSelf: 'start' }}>
+ {t('desktop.driver.recheck')}
+ </Button>
+ </div>
  </div>
  )}
 
  {state === 'installed' && (
  <div className="grid gap-3">
  <Alert severity="success" variant="outlined">
- {t('desktop.driver.installed')}
+ {t('desktop.driver.vbCableInstalled')}
  </Alert>
- <Button
- variant="outlined"
- color="error"
- onClick={() => void handleUninstall()}
- disabled={busy}
- sx={{ alignSelf: 'start' }}
- >
- {t('desktop.driver.uninstall')}
- </Button>
- </div>
- )}
-
- {(state === 'installing' || state === 'uninstalling') && (
- <div className="flex items-center gap-3 py-2">
- <CircularProgress size={20} />
- <Typography variant="body2" color="text.secondary">
- {state === 'installing'
- ? t('desktop.driver.installing')
- : t('desktop.driver.uninstalling')}
+ <Typography variant="caption" color="text.secondary">
+ {t('desktop.driver.vbCableReadyHint')}
  </Typography>
  </div>
  )}
@@ -143,16 +102,10 @@ export function DriverInstallPanel() {
  {state === 'error' && (
  <Alert severity="error" variant="outlined">
  <Typography variant="body2">{message || t('desktop.driver.error')}</Typography>
- <Typography component="span" variant="caption" sx={{ display: 'block', mt: 1 }}>
- {t('desktop.driver.adminHint')}
- </Typography>
+ <Button variant="text" size="small" onClick={() => void checkStatus()} sx={{ mt: 1, p: 0 }}>
+ {t('desktop.driver.recheck')}
+ </Button>
  </Alert>
- )}
-
- {message && state !== 'error' && state !== 'checking' && (
- <Typography variant="caption" color="text.secondary">
- {message}
- </Typography>
  )}
  </Paper>
  )

@@ -7,6 +7,7 @@ pub mod download;
 pub mod driver_install;
 pub mod host;
 pub mod render;
+pub mod vb_cable;
 pub mod wavelink;
 
 /// What the engine reports about itself; proves the JS ↔ Rust bridge (`src/desktop/types.ts` EngineInfo).
@@ -64,6 +65,7 @@ pub fn run() {
             driver_install::install_virtual_audio_driver,
             driver_install::uninstall_virtual_audio_driver,
             driver_install::is_virtual_audio_driver_installed,
+            vb_cable::is_vb_cable_installed,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Voice Check Bench")

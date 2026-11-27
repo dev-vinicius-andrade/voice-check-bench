@@ -230,6 +230,13 @@ export async function isVirtualAudioDriverInstalled(): Promise<boolean> {
  return call<boolean>('is_virtual_audio_driver_installed')
 }
 
+// ---- VB-Cable detection (checks WASAPI endpoints for VB-Audio Virtual Cable) ----
+
+/** Check if VB-Audio Virtual Cable is installed by enumerating WASAPI audio endpoints. */
+export async function isVbCableInstalled(): Promise<boolean> {
+ return call<boolean>('is_vb_cable_installed')
+}
+
 /** The offline render commands in one object; code that renders takes a `RenderBridge` (a fake in tests). */
 export const renderBridge = {
   renderOpen,
