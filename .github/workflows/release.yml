@@ -137,11 +137,19 @@ jobs:
           )
           $rspLines | Set-Content -Path $rspFile -Encoding ASCII
 
-          # Temporarily disable exit-on-error so a failed driver build doesn't kill the entire job
-          $ErrorActionPreference = 'Continue'
-          & $msbuild /noAutoResponse "@$rspFile"
-          $driverBuildOk = ($LASTEXITCODE -eq 0)
-          $ErrorActionPreference = 'Stop'
+          # Run MSBuild in a subprocess so its non-zero exit code doesn't fail this step.
+          # The kernel driver cannot be built on CI (missing WDK platform toolset),
+          # but the release must still produce an exe with VB-Cable guidance.
+          $driverBuildOk = $false
+          try {
+            $proc = Start-Process -FilePath $msbuild -ArgumentList "/noAutoResponse","@$rspFile" -NoNewWindow -Wait -PassThru
+            $driverBuildOk = ($proc.ExitCode -eq 0)
+          } catch {
+            Write-Warning "MSBuild process failed: $_"
+          }
+          if (-not $driverBuildOk) {
+            Write-Warning "WDK driver build failed. Driver files will NOT be bundled."
+          }
 
           # Copy built artifacts to desktop/src-driver/ only if build succeeded
           $destDir = Join-Path $PWD "desktop\src-driver"
