@@ -4,79 +4,77 @@
 
 #[cfg(windows)]
 mod inner {
- use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_READ};
- use winreg::RegKey;
+    use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_READ};
+    use winreg::RegKey;
 
- /// Check if VB-Audio Virtual Cable is installed by looking for its registry entries.
- /// VB-Cable registers under HKLM\SOFTWARE\VB-Audio\Cable or as an audio endpoint.
- #[tauri::command]
- pub fn is_vb_cable_installed() -> Result<bool, String> {
- // Strategy 1: Check VB-Audio's own registry key
- let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    /// Check if VB-Audio Virtual Cable is installed by looking for its registry entries.
+    #[tauri::command]
+    pub fn is_vb_cable_installed() -> Result<bool, String> {
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
 
- // Check common VB-Cable registry locations
- let cable_paths = [
- "SOFTWARE\\VB-Audio\\Cable",
- "SOFTWARE\\VB-Audio\\Virtual Cable",
- "SOFTWARE\\WOW6432Node\\VB-Audio\\Cable",
- ];
+        // Strategy 1: Check VB-Audio's own registry key
+        let cable_paths = [
+            "SOFTWARE\\VB-Audio\\Cable",
+            "SOFTWARE\\VB-Audio\\Virtual Cable",
+            "SOFTWARE\\WOW6432Node\\VB-Audio\\Cable",
+        ];
 
- for path in &cable_paths {
- if hklm.open_subkey_with_flags(path, KEY_READ).is_ok() {
- return Ok(true);
- }
- }
+        for path in &cable_paths {
+            if hklm.open_subkey_with_flags(path, KEY_READ).is_ok() {
+                return Ok(true);
+            }
+        }
 
- // Strategy 2: Search audio endpoint registry for "CABLE" in device descriptions
- // Audio endpoints are registered under HKLM\SYSTEM\CurrentControlSet\Control\DeviceClasses
- // but a simpler check is to look at the installed drivers
- let driver_paths = [
- "SYSTEM\\CurrentControlSet\\Services\\VBAudioVAC",
- "SYSTEM\\CurrentControlSet\\Services\\VBCable",
- "SYSTEM\\CurrentControlSet\\Services\\vb-audio-cable",
- ];
+        // Strategy 2: Check installed driver services
+        let driver_paths = [
+            "SYSTEM\\CurrentControlSet\\Services\\VBAudioVAC",
+            "SYSTEM\\CurrentControlSet\\Services\\VBCable",
+            "SYSTEM\\CurrentControlSet\\Services\\vb-audio-cable",
+        ];
 
- for path in &driver_paths {
- if hklm.open_subkey_with_flags(path, KEY_READ).is_ok() {
- return Ok(true);
- }
- }
+        for path in &driver_paths {
+            if hklm.open_subkey_with_flags(path, KEY_READ).is_ok() {
+                return Ok(true);
+            }
+        }
 
- // Strategy 3: Check uninstall registry for VB-Cable entry
- let uninstall_paths = [
- "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
- "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
- ];
+        // Strategy 3: Check uninstall registry for VB-Cable entry
+        let uninstall_paths = [
+            "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+            "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+        ];
 
- for uninst_path in &uninstall_paths {
- if let Ok(key) = hklm.open_subkey_with_flags(uninst_path, KEY_READ) {
- if let Ok(subkeys) = key.enum_keys() {
- for subkey_result in subkeys {
- if let Ok(name) = subkey_result {
- if name.to_lowercase().contains("vb") || name.to_lowercase().contains("cable") {
- if let Ok(sk) = key.open_subkey_with_flags(&name, KEY_READ) {
- if let Ok(display_name): Result<String, _> = sk.get_value("DisplayName") {
- if display_name.to_uppercase().contains("CABLE") {
- return Ok(true);
- }
- }
- }
- }
- }
- }
- }
- }
+        for uninst_path in &uninstall_paths {
+            if let Ok(key) = hklm.open_subkey_with_flags(uninst_path, KEY_READ) {
+                if let Ok(subkeys) = key.enum_keys() {
+                    for subkey_result in subkeys {
+                        if let Ok(name) = subkey_result {
+                            let lower = name.to_lowercase();
+                            if lower.contains("vb") || lower.contains("cable") {
+                                if let Ok(sk) = key.open_subkey_with_flags(&name, KEY_READ) {
+                                    if let Ok(display_name) = sk.get_value::<String, _>("DisplayName") {
+                                        if display_name.to_uppercase().contains("CABLE") {
+                                            return Ok(true);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
- Ok(false)
- }
+        Ok(false)
+    }
 }
 
 #[cfg(not(windows))]
 mod inner {
- #[tauri::command]
- pub fn is_vb_cable_installed() -> Result<bool, String> {
- Ok(false)
- }
+    #[tauri::command]
+    pub fn is_vb_cable_installed() -> Result<bool, String> {
+        Ok(false)
+    }
 }
 
 pub use inner::*;
