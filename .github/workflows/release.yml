@@ -137,8 +137,11 @@ jobs:
           )
           $rspLines | Set-Content -Path $rspFile -Encoding ASCII
 
+          # Temporarily disable exit-on-error so a failed driver build doesn't kill the entire job
+          $ErrorActionPreference = 'Continue'
           & $msbuild /noAutoResponse "@$rspFile"
           $driverBuildOk = ($LASTEXITCODE -eq 0)
+          $ErrorActionPreference = 'Stop'
 
           # Copy built artifacts to desktop/src-driver/ only if build succeeded
           $destDir = Join-Path $PWD "desktop\src-driver"
