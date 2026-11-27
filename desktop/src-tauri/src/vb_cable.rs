@@ -46,16 +46,14 @@ mod inner {
 
         for uninst_path in &uninstall_paths {
             if let Ok(key) = hklm.open_subkey_with_flags(uninst_path, KEY_READ) {
-                if let Ok(subkeys) = key.enum_keys() {
-                    for subkey_result in subkeys {
-                        if let Ok(name) = subkey_result {
-                            let lower = name.to_lowercase();
-                            if lower.contains("vb") || lower.contains("cable") {
-                                if let Ok(sk) = key.open_subkey_with_flags(&name, KEY_READ) {
-                                    if let Ok(display_name) = sk.get_value::<String, _>("DisplayName") {
-                                        if display_name.to_uppercase().contains("CABLE") {
-                                            return Ok(true);
-                                        }
+                for subkey_result in key.enum_keys() {
+                    if let Ok(name) = subkey_result {
+                        let lower = name.to_lowercase();
+                        if lower.contains("vb") || lower.contains("cable") {
+                            if let Ok(sk) = key.open_subkey_with_flags(&name, KEY_READ) {
+                                if let Ok(display_name) = sk.get_value::<String, _>("DisplayName") {
+                                    if display_name.to_uppercase().contains("CABLE") {
+                                        return Ok(true);
                                     }
                                 }
                             }
